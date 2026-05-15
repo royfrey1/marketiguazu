@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 
 export default function EditarPublicacion() {
+  const dropdownRef = useRef(null)
+  const [menuOpen, setMenuOpen] = useState(false)
   const { id } = useParams()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
@@ -18,6 +20,14 @@ export default function EditarPublicacion() {
     categoria_id: '',
     imagen_url: '',
   })
+  useEffect(() => {
+        const closeMenu = (e) => {
+          if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setMenuOpen(false)
+        }
+        document.addEventListener('mousedown', closeMenu)
+        return () => document.removeEventListener('mousedown', closeMenu)
+  }, [])
+
 
   useEffect(() => {
     const cargarDatos = async () => {
@@ -119,17 +129,29 @@ export default function EditarPublicacion() {
     }
   }
 
+  const handleCancelar = () => {
+      // validamos si hay cambios en el formulario (titulo, descripcion o imagen) antes de cancelar
+      if (form.titulo.trim() || form.descripcion.trim() || imagen) {
+        const confirmar = window.confirm("Tenés cambios sin guardar. ¿Seguro que querés salir?");
+        if (confirmar) navigate('/dashboard');
+      } else {
+        // Si el formulario está vacío, salimos directo sin molestar
+        navigate('/dashboard');
+      }
+    }; 
+
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <p className="text-cyan-400 animate-pulse">Cargando...</p>
+      <div className="min-h-screen bg-[#185749] flex items-center justify-center">
+        <p className="text-[#B5E3D4] animate-pulse font-black uppercase tracking-[0.3em]">Cargando Edición...</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 px-6 py-10 max-w-2xl mx-auto">
-      <h1 className="text-3xl font-bold text-white mb-8">Editar publicación</h1>
+    <div className="min-h-screen bg-[#1b382f] px-4 md:px-6 pt-38 pb-10 py-10 max-w-6xl mx-auto text-white">
+      <h1 className="text-3xl font-bold text-white tracking-tighter mb-6">Editar publicación</h1>
 
       {error && (
         <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm px-4 py-3 rounded-xl mb-6">
@@ -137,21 +159,22 @@ export default function EditarPublicacion() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-8 bg-white/5 backdrop-blur-xl border-2 border-[#B5E3D4]/20 rounded-[2.5rem] p-6 md:p-10 shadow-2xl">
 
         {/* Imagen */}
-        <div>
-          <label className="text-sm text-slate-400 mb-2 block">Foto del producto</label>
+        <div className="space-y-4">
+          <label className="text-sm text-white/60 mb-2 block">Foto del producto</label>
           <div
             onClick={() => document.getElementById('input-imagen').click()}
-            className="border-2 border-dashed border-slate-700 hover:border-cyan-500 rounded-xl p-6 text-center cursor-pointer transition-colors"
+            className="border-2 border-dashed border-white/20 hover:border-[#B5E3D4] rounded-[2rem] p-10 text-center cursor-pointer transition-all bg-white/5 group"
           >
             {preview ? (
               <img src={preview} alt="Preview" className="max-h-48 mx-auto rounded-lg object-cover" />
             ) : (
-              <div>
-                <p className="text-slate-400 text-sm">Hacé click para cambiar la foto</p>
-                <p className="text-slate-600 text-xs mt-1">PNG, JPG hasta 5MB</p>
+              <div className="flex flex-col items-center gap-2">
+                <span className="text-4xl group-hover:scale-110 transition-transform">📸</span>
+                <p className="text-white/80 text-sm font-medium">Hacé click para cambiar la foto de tu producto</p>
+                <p className="text-white/40 text-xs">PNG, JPG hasta 5MB</p>
               </div>
             )}
           </div>
@@ -166,34 +189,34 @@ export default function EditarPublicacion() {
 
         {/* Título */}
         <div>
-          <label className="text-sm text-slate-400 mb-1 block">Título</label>
+          <label className="text-sm text-white/60 mb-1 block">Título</label>
           <input
             type="text"
             name="titulo"
             value={form.titulo}
             onChange={handleChange}
             required
-            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-cyan-500 transition-colors"
+            className="w-full bg-white/5 border border-white/30 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#1CAAA8] transition-colors"
           />
         </div>
 
         {/* Descripción */}
         <div>
-          <label className="text-sm text-slate-400 mb-1 block">Descripción</label>
+          <label className="text-sm text-white/60 mb-1 block">Descripción</label>
           <textarea
             name="descripcion"
             value={form.descripcion}
             onChange={handleChange}
             rows={4}
-            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-cyan-500 transition-colors resize-none"
+            className="w-full bg-white/5 border border-white/30 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#1CAAA8] transition-colors resize-none"
           />
         </div>
 
         {/* Precio */}
         <div>
-          <label className="text-sm text-slate-400 mb-1 block">Precio</label>
+          <label className="text-sm text-white/60 mb-1 block">Precio</label>
           <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 text-sm">$</span>
             <input
               type="number"
               name="precio"
@@ -201,44 +224,68 @@ export default function EditarPublicacion() {
               onChange={handleChange}
               required
               min="0"
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-8 pr-4 py-3 text-white text-sm focus:outline-none focus:border-cyan-500 transition-colors"
+              className="w-full bg-white/5 border border-white/30 rounded-xl pl-8 pr-4 py-3 text-white text-sm focus:outline-none focus:border-[#1CAAA8] transition-colors"
             />
           </div>
         </div>
 
-        {/* Categoría */}
-        <div>
-          <label className="text-sm text-slate-400 mb-1 block">Categoría</label>
-          <select
-            name="categoria_id"
-            value={form.categoria_id}
-            onChange={handleChange}
-            required
-            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-cyan-500 transition-colors"
-          >
-            <option value="">Seleccioná una categoría</option>
-            {categorias.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.icono} {cat.nombre}
-              </option>
-            ))}
-          </select>
+
+        <div className="relative" ref={dropdownRef}>
+          <label className="text-sm text-white/60 mb-1 block">Categoría</label>
+          
+          {/* El "Botón" que simula el select */}
+          <div
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="w-full bg-white/5 border border-white/30 rounded-xl px-4 py-3 text-white text-sm cursor-pointer flex justify-between items-center hover:border-[#B5E3D4] transition-all"
+           >
+            <span className={form.categoria_id ? "text-white" : "text-white/40"}>
+              {form.categoria_id 
+                ? categorias.find(c => String(c.id) === String(form.categoria_id))?.nombre 
+                : "Seleccioná una categoría"}
+            </span>
+            <span className={`transition-transform duration-300 ${menuOpen ? 'rotate-180' : ''}`}>
+              ▼
+            </span>
+          </div>
+
+          {/* El Menú Desplegable (Capa de cristal) */}
+          {menuOpen && (
+            <ul className="absolute bottom-[calc(100%+5px)] left-0 z-[100] w-full bg-[#1b382f] border border-white/20 rounded-2xl overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.5)]">
+              {categorias.map((cat) => (
+                <li
+                  key={cat.id}
+                  onClick={() => {
+                    // Simulamos el evento para que tu handleChange actual funcione o seteamos directo
+                    setForm({ ...form, categoria_id: cat.id });
+                    setMenuOpen(false);
+                  }}
+                  className="px-4 py-3 text-sm text-white hover:bg-[#B5E3D4] hover:text-[#050810] cursor-pointer transition-colors flex items-center gap-3"
+                >
+                  <span>{cat.icono}</span>
+                  <span className="font-medium">{cat.nombre}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
-        <div className="flex gap-4">
+        <div className="flex flex-col md:flex-row gap-4 pt-4">
+            {/* Botón de Cancelar */}
           <button
             type="button"
-            onClick={() => navigate('/dashboard')}
-            className="flex-1 border border-slate-700 text-slate-300 hover:border-slate-500 font-bold py-3 rounded-xl transition-colors"
+            onClick={handleCancelar}
+            className="flex-1 bg-white/5 border border-white/20 text-white/60 hover:text-white hover:bg-red-500/10 hover:border-red-500/50 py-4 rounded-xl font-bold transition-all order-2 md:order-1 cursor-pointer"
           >
-            Cancelar
+            Descartar
           </button>
+
+            {/* Botón de guardar */}
           <button
             type="submit"
             disabled={saving}
-            className="flex-1 bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-slate-900 font-bold py-3 rounded-xl transition-colors"
+            className="flex-[2] bg-[#B5E3D4] hover:bg-[#1CAAA8]/80 disabled:opacity-50 text-slate-900 font-bold py-3 rounded-xl order-1 md:order-2 transition-colors cursor-pointer disabled:cursor-not-allowed"
           >
-            {saving ? 'Guardando...' : 'Guardar cambios'}
+            {saving ? 'Guardando cambios...' : 'Guardar Cambios'}
           </button>
         </div>
       </form>

@@ -1,1 +1,6 @@
 @import "tailwindcss";
+@variant dark (&:where(.dark, .dark *));
+
+* {
+  font-family: 'Montserrat', sans-serif;
+}
