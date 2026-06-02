@@ -580,7 +580,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-6 py-12">
           
           {/* Grid de Secciones */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
             
             {/* Columna 1: Info de la Marca */}
             <div className="space-y-3">

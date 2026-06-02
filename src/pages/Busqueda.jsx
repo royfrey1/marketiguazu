@@ -86,7 +86,7 @@ export default function Busqueda() {
 
 
   return (
-    <div className="min-h-screen bg-[#1b382f] pt-32 px-6 py-10 pb-10 md:px-6 text-white max-w-6xl mx-auto">
+    <div className="min-h-screen bg-[#1b382f] pt-24 md:pt-32 px-6 py-10 pb-10 md:px-6 text-white max-w-6xl mx-auto">
       <div className="max-w-7xl mx-auto">
         {/* Volver */}
       <Link

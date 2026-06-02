@@ -98,7 +98,7 @@ export default function PerfilVendedor() {
   return (
     
         <div className="min-h-screen bg-[#1b382f] pt-12">
-          <div className="max-w-7xl mx-auto px-4 py-8 pt-18">
+          <div className="max-w-7xl mx-auto px-4 py-8 pt-10 md:pt-24">
 
               {/* Volver */}
               <button
