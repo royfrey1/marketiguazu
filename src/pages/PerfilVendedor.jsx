@@ -68,6 +68,27 @@ export default function PerfilVendedor() {
     )
   }
 
+  const compartirPerfil = async () => {
+      const shareData = {
+        title: `Perfil de ${perfil.nombre} - Iguazú Marketplace`,
+        text: `Mirá todos los productos de ${perfil.nombre} en Iguazú Marketplace.`,
+        url: window.location.href, // Toma la URL actual del perfil
+      }
+
+      try {
+        if (navigator.share) {
+          // Si el navegador soporta compartir (celulares)
+          await navigator.share(shareData)
+        } else {
+          // Si es PC, copiamos al portapapeles
+          await navigator.clipboard.writeText(window.location.href)
+          alert('¡Enlace copiado al portapapeles! 📋')
+        }
+      } catch (err) {
+        console.error('Error al compartir:', err)
+      }
+  }
+
   const whatsappLink = `https://wa.me/${perfil.whatsapp?.replace(/\D/g, '')}?text=Hola! Vi tu perfil en Iguazú Marketplace y quiero consultarte algo.`
 
   return (
@@ -116,6 +137,23 @@ export default function PerfilVendedor() {
                       ✅ Vendedor verificado
                     </span>
                   </div>
+
+                  {/* Botón Compartir Perfil */}
+                  <button
+                    onClick={compartirPerfil}
+                    className="w-full mt-2 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/80 border-2 border-[#1CAAA8] text-[#1CAAA8] font-bold text-sm hover:bg-[#1CAAA8] hover:text-white transition-all group"
+                  >
+                    <svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      fill="none" viewBox="0 0 24 24" 
+                      strokeWidth={2} 
+                      stroke="currentColor" 
+                      className="w-5 h-5 group-hover:scale-110 transition-transform"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0-10.628a2.25 2.25 0 1 1 0 4.5 2.25 2.25 0 0 1 0-4.5m0 10.628a2.25 2.25 0 1 1 0 4.5 2.25 2.25 0 0 1 0-4.5" />
+                    </svg>
+                    Compartir Perfil
+                  </button>
 
                   {/* Menú lateral */}
                   <nav className="space-y-2 mb-8">
