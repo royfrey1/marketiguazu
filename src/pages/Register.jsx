@@ -71,7 +71,7 @@ export default function Register() {
 }
 
   return (
-    <div className="min-h-screen bg-[#0D3732] flex items-center justify-center px-4 pt-30 pb-10 relative overflow-hidden">
+    <div className="min-h-screen bg-[#1b382f] flex items-center justify-center px-4 pt-30 pb-10 relative overflow-hidden">
       <div className="w-full max-w-md bg-white/5 backdrop-blur-xl border-2 border-[#B5E3D4]/20 
             rounded-[2rem] md:rounded-[2.5rem] 
             p-6 md:p-10 

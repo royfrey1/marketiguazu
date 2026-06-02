@@ -9,6 +9,11 @@ import DetallePublicacion from './pages/DetallePublicacion'
 import ProtectedRoute from './components/ProtectedRoute'
 import EditarPublicacion from './pages/EditarPublicacion'
 import PerfilVendedor from './pages/PerfilVendedor'
+// import EditarPerfil from './pages/EditarPerfil'
+import ResetPass from './pages/ResetPass'
+import Busqueda from './pages/Busqueda'
+import Btnfav from './pages/Btnfav'
+import MiPerfil from './pages/Miperfil'
 
 function App() {
   return (
@@ -24,6 +29,11 @@ function App() {
             <Dashboard />
           </ProtectedRoute>
         } />
+        <Route path="/perfil" element={
+          <ProtectedRoute>
+            <MiPerfil />
+          </ProtectedRoute>
+        } />
         <Route path="/nueva-publicacion" element={
           <ProtectedRoute>
             <NuevaPublicacion />
@@ -34,8 +44,15 @@ function App() {
             <EditarPublicacion />
           </ProtectedRoute>
         } />
+        <Route path="/miperfil" element={
+          <ProtectedRoute>
+            <MiPerfil />
+          </ProtectedRoute>
+        } />
         <Route path="/vendedor/:id" element={<PerfilVendedor />} />
-
+        <Route path="/reset-password" element={<ResetPass />} />
+        <Route path="/busqueda" element={<Busqueda />} />
+        <Route path="/btnfav" element={<Btnfav />} />
       </Routes>
     </BrowserRouter>
   )

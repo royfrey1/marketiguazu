@@ -28,7 +28,7 @@ export default function Login() {
 
       if (authError) throw authError
 
-      navigate('/dashboard')
+      navigate('/')
     } catch (err) {
       setError(err.message)
     } finally {
@@ -36,8 +36,29 @@ export default function Login() {
     }
   }
 
+   const recuperarContrasena = async (e) => {
+   e.preventDefault()
+   if (!form.email) {
+     alert("Por favor, ingresá tu correo electrónico primero.")
+     return
+   }
+ 
+   try {
+     const { error } = await supabase.auth.resetPasswordForEmail(form.email, {
+       // Esta es la URL de tu app a donde Supabase va a redirigir al usuario
+       redirectTo: 'http://localhost:5173/reset-password', 
+     })
+
+     if (error) throw error
+     alert("¡Email de recuperación enviado! Revisá tu casilla de correo (y la carpeta de spam).")
+   } catch (error) {
+     alert("Error al enviar el correo: " + error.message)
+   }
+ }
+
+
   return (
-    <div className="min-h-screen bg-[#0D3732] flex items-center justify-center px-4 pt-35 pb-10 relative overflow-hidden">
+    <div className="min-h-screen bg-[#1b382f] flex items-center justify-center px-4 pt-35 pb-10 relative overflow-hidden">
       <div className="w-full max-w-md bg-white/5 backdrop-blur-xl border-2 border-[#B5E3D4]/20 
             rounded-[2rem] md:rounded-[2.5rem] 
             p-6 md:p-10 
@@ -80,6 +101,16 @@ export default function Login() {
               className="w-full bg-white/5 border border-white/10 rounded-full px-5 py-2.5 md:py-3.5 text-white text-sm focus:outline-none focus:border-[#B5E3D4] transition-all placeholder:text-white/20"
               placeholder="••••••••"
             />
+          </div>
+
+          <div className="text-left">
+            <button
+              type="button"
+              onClick={recuperarContrasena}
+              className="text-xs text-[#B5E3D4] hover:text-[#1CAAA8] transition-colors uppercase tracking-widest cursor-pointer"
+            >
+              ¿Olvidaste tu contraseña?
+            </button>
           </div>
 
           <button
