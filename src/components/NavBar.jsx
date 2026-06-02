@@ -39,30 +39,30 @@ export default function NavBar() {
     navigate('/')
   }
  
-  if (location.pathname === '/login') {
+  if (location.pathname === '/login' || location.pathname === '/register') {
+    const isLogin = location.pathname === '/login';
     return (
-      <header className="fixed top-0 left-0 right-0 z-50 flex justify-center p-4">
-        <nav className="max-w-7xl w-auto flex items-center justify-between px-6 py-2 w-[95%] md:w-[85%] bg-[#1CAAA8]/10 backdrop-blur-md rounded-full border-2 border-[#B5E3D4]/30">
-          <Link to="/">
-            <img src={logo} alt="Logo" className="h-20 w-auto" />
+      <header className="fixed top-0 left-0 right-0 z-50 flex justify-center p-2 md:p-4">
+        <nav className="w-[95%] md:w-[85%] max-w-7xl flex items-center justify-between px-4 md:px-6 py-2 bg-[#1CAAA8]/10 backdrop-blur-md rounded-full border-2 border-[#B5E3D4]/30 gap-2">
+          
+          {/* Logo más chico en móvil para que no empuje al botón */}
+          <Link to="/" className="flex-shrink-0">
+            <img src={logo} alt="Logo" className="h-12 md:h-20 w-auto object-contain" />
           </Link>
-          <Link to="/register" className="shadow-xl shadow-[#1CAAA8]/20 transition-all duration-300 hover:shadow-[#1CAAA8]/50 hover:scale-105 text-[#B5E3D4] font-bold text-lg hover:text-white transition-colors px-4 py-2 rounded-full border border-[#B5E3D4]/30 hover:border-white/50 ">
-            Crear nueva cuenta
-          </Link>
-        </nav>
-      </header>
-    )
-  }
-
-   if (location.pathname === '/register') {
-    return (
-      <header className="fixed top-0 left-0 right-0 z-50 flex justify-center p-4">
-        <nav className="max-w-7xl w-auto flex items-center justify-between px-6 py-2 w-[95%] md:w-[85%] bg-[#1CAAA8]/10 backdrop-blur-md rounded-full border-2 border-[#B5E3D4]/30">
-          <Link to="/">
-            <img src={logo} alt="Logo" className="h-20 w-auto" />
-          </Link>
-          <Link to="/login" className="shadow-xl shadow-[#1CAAA8]/20 transition-all duration-300 hover:shadow-[#1CAAA8]/50 hover:scale-105 text-[#B5E3D4] font-bold text-lg hover:text-white transition-colors px-4 py-2 rounded-full border border-[#B5E3D4]/30 hover:border-white/50 ">
-            Iniciar sesión
+          
+          {/* Botón con texto adaptativo: menos padding y fuente más chica en móvil */}
+          <Link 
+            to={isLogin ? "/register" : "/login"} 
+            className="shadow-lg shadow-[#1CAAA8]/10 transition-all duration-300 hover:scale-105 text-[#B5E3D4] font-bold text-xs md:text-lg hover:text-white px-3 py-2 md:px-5 md:py-2 rounded-full border border-[#B5E3D4]/30 hover:border-white/50 text-center leading-tight"
+          >
+            {isLogin ? (
+              <>
+                <span className="md:hidden">Crear cuenta</span>
+                <span className="hidden md:inline">Crear nueva cuenta</span>
+              </>
+            ) : (
+              "Iniciar sesión"
+            )}
           </Link>
         </nav>
       </header>
