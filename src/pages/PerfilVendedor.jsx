@@ -69,10 +69,14 @@ export default function PerfilVendedor() {
   }
 
   const compartirPerfil = async () => {
+      const urlBase = window.location.origin; 
+      const rutaPerfil = location.pathname; // Esto trae p.ej: /perfil/nombre-vendedor
+      const urlFinal = `${urlBase}${rutaPerfil}`;
+
       const shareData = {
         title: `Perfil de ${perfil.nombre} - Iguazú Marketplace`,
         text: `Mirá todos los productos de ${perfil.nombre} en Iguazú Marketplace.`,
-        url: window.location.href, // Toma la URL actual del perfil
+        url: urlFinal,
       }
 
       try {
