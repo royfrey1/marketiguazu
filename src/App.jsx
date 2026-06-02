@@ -14,7 +14,6 @@ import ResetPass from './pages/ResetPass'
 import Busqueda from './pages/Busqueda'
 import Btnfav from './pages/Btnfav'
 import MiPerfil from './pages/Miperfil'
-import { Analytics } from "@vercel/analytics/next"
 
 function App() {
   return (
