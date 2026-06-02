@@ -120,19 +120,19 @@ export default function NavBar() {
                 {/* Quiero Vender - Texto oculto en tablets, icono siempre visible */}
                 <Link to="/dashboard" className={`flex items-center gap-2 font-bold bg-[#1CAAA8] p-2.5 md:px-5 md:py-2 rounded-full transition-all hover:brightness-110 border border-[#185749]/20 ${isScrolled ? 'text-emerald-900' : 'text-white'}`}>
                   <FontAwesomeIcon icon={faDollarSign} />
-                  <span className="hidden lg:inline">Quiero Vender</span>
+                  <span className="hidden md:inline">Vender</span>
                 </Link>
 
                 {/* Perfil - Texto oculto en tablets */}
                 <Link to="/miperfil" className={`flex items-center gap-2 font-bold bg-[#1CAAA8] p-2.5 md:px-5 md:py-2 rounded-full transition-all hover:brightness-110 border border-[#185749]/20 ${isScrolled ? 'text-emerald-900' : 'text-white'}`}>
                   <FontAwesomeIcon icon={faUserGear} />
-                  <span className="hidden lg:inline">Perfil</span>
+                  <span className="hidden md:inline">Perfil</span>
                 </Link>
 
                 {/* Salir - Texto siempre oculto en pantallas medianas */}
                 <button onClick={handleLogout} className="cursor-pointer flex items-center gap-2 bg-white/50 p-2.5 md:px-5 md:py-2 rounded-full font-bold hover:bg-red-500 hover:text-white transition-all">
                   <FontAwesomeIcon icon={faSignOutAlt} className="text-red-600 group-hover:text-white" />
-                  <span className="hidden lg:inline">Salir</span>
+                  <span className="hidden md:inline">Salir</span>
                 </button>
               </>
             ) : (
