@@ -1,0 +1,1819 @@
+01. Objetivo del sistema
+02. Alcance del MVP
+03. Stack tecnológico
+04. Arquitectura
+05. Estructura de carpetas
+06. Modelo de base de datos
+07. Roles y permisos
+08. Productos
+09. Stock
+10. Carrito
+11. Checkout
+12. Pedidos
+13. Pagos
+14. Envíos
+15. Panel administrador
+16. Seguridad
+17. SEO
+18. Performance
+19. Responsive
+20. Roadmap
+
+
+01. Objetivo del sistema el objetivo para mi es que los clientes puedan hacer compras de sus articulos favoritos a un precio mucho mas bajo que las tiendas de argentina.
+
+02. Alcance del MVP por el momento solo quiero tener una tienda online con productos, precios, carrito de compras, cobros con Mercadopago u otro método. 
+
+03. Stack tecnológico 
+React
+Vite
+TypeScript       ← incorporar
+Tailwind CSS
+Supabase
+Vercel
+
+Y probablemente incorporar:
+
+Zustand           → carrito / estado global
+Zod               → validación
+React Hook Form   → formularios complejos
+
+04. Arquitectura
+			IGUAZÚ MARKETPLACE
+                           	│
+              ┌────────────┴────────────┐
+              │                         		│
+          TIENDA WEB               	 	ADMIN
+              │                         		│
+              └────────────┬────────────┘
+                           	│
+                           	▼
+                       	SUPABASE
+                           	│
+            ┌──────────────┼──────────────┐
+            ▼              ▼              ▼
+        PostgreSQL       Auth           Storage
+            │
+            ▼
+       Edge Functions
+            │
+       ┌────┼─────┐
+       ▼    ▼     ▼
+      MP   Envíos  otras APIs
+05. estructura de carpetas[por definir]
+06. 06- Base de datos
+	profiles
+	categories
+	products
+	product_images
+	inventory
+
+	favorites
+
+	carts
+	cart_items
+
+	orders
+	order_items
+
+	payments
+
+	addresses
+	shipments
+supongo que a medida que va creciendo mas la pagina se va añadiendo mas tablas a la BD.
+
+07. 07. Roles y permisos
+
+-Cliente
+
+Puede:
+
+registrarse
+iniciar sesión
+ver productos
+agregar favoritos
+usar carrito
+comprar
+ver sus pedidos
+modificar sus datos
+
+-Administrador
+
+
+Puede:
+
+crear productos
+editar productos
+eliminar productos
+modificar precios
+modificar stock
+administrar categorías
+ver pedidos
+cambiar estados
+ver clientes
+administrar promociones
+
+Y nadie más.
+
+08. Productos
+
+Iguazú Marketplace será inicialmente una tienda propia enfocada principalmente en productos electrónicos e informáticos.
+
+Cada producto deberá contar como mínimo con:
+
+Identificación
+ID
+SKU
+Slug
+Información
+Nombre
+Descripción
+Marca
+Categoría
+Tipo de producto
+Precio
+Precio actual
+Precio anterior, si corresponde
+Indicador de oferta
+Imágenes
+Imagen principal
+Múltiples imágenes adicionales
+Orden de las imágenes
+Texto alternativo
+Estado
+Activo
+Inactivo
+Agotado
+Descontinuado
+Marketing
+Producto destacado
+Oferta
+Variantes
+
+Los productos podrán tener o no variantes dependiendo de su naturaleza.
+
+Ejemplos:
+
+Producto sin variantes:
+
+Mouse Logitech G203
+
+Producto
+└── Stock
+
+Producto con variantes:
+
+Memoria RAM DDR5
+
+Producto
+├── 8 GB
+├── 16 GB
+└── 32 GB
+
+Otro ejemplo:
+
+SSD NVMe
+├── 500 GB
+├── 1 TB
+└── 2 TB
+
+Las variantes deberán poder tener información propia cuando corresponda, especialmente:
+
+SKU
+precio
+stock
+atributos
+imagen, si fuera necesario
+
+La arquitectura deberá permitir incorporar nuevos tipos de variantes en el futuro sin tener que rediseñar completamente el sistema.
+
+09. Stock
+
+El sistema deberá mantener control de inventario para cada producto o variante.
+
+Conceptualmente:
+
+Stock disponible
+Stock reservado
+Stock total
+
+El stock deberá controlarse del lado del servidor, evitando depender exclusivamente del frontend.
+
+El sistema deberá impedir que se confirme una compra cuando no exista stock suficiente.
+
+Cuando un pedido sea creado, el sistema deberá contemplar la reserva/descuento correspondiente del inventario.
+
+El administrador podrá:
+
+consultar stock
+modificar stock
+agregar unidades
+descontar unidades
+visualizar productos agotados
+
+A futuro se podrá incorporar un historial de movimientos de inventario.
+
+10. Carrito
+
+Los clientes podrán:
+
+agregar productos
+seleccionar variantes
+modificar cantidades
+eliminar productos
+consultar subtotal
+consultar costo de envío
+consultar total
+
+El carrito podrá ser utilizado sin autenticación.
+
+Sin embargo:
+
+No se podrá finalizar una compra sin autenticarse.
+
+Para usuarios no autenticados, el carrito podrá almacenarse localmente.
+
+Para usuarios autenticados, el carrito podrá sincronizarse con Supabase.
+
+El sistema deberá evitar agregar cantidades superiores al stock disponible.
+
+11. Checkout
+
+El checkout requerirá autenticación.
+
+Flujo:
+
+Carrito
+   ↓
+¿Usuario autenticado?
+   │
+   ├── NO → Login / Registro
+   │
+   └── SÍ
+        ↓
+     Checkout
+        ↓
+ Datos de entrega
+        ↓
+ Método de envío
+        ↓
+ Método de pago
+        ↓
+ Resumen
+        ↓
+ Confirmar compra
+
+El checkout deberá recopilar únicamente la información necesaria.
+
+Datos del cliente
+Nombre
+Email
+Teléfono
+Datos de entrega
+Dirección
+Ciudad
+Provincia
+Código postal
+Envío
+
+El cliente deberá seleccionar uno de los métodos disponibles para su ubicación.
+
+Pago
+
+Inicialmente:
+
+Mercado Pago
+Otros métodos podrán incorporarse posteriormente.
+
+Antes de crear/confirmar el pedido, el sistema deberá validar nuevamente:
+
+productos
+variantes
+precios
+stock
+costo de envío
+total
+
+La información crítica no deberá confiarse exclusivamente al frontend.
+
+12. Pedidos
+
+Cada compra confirmada generará un pedido único.
+
+Un pedido deberá almacenar:
+
+ID
+número de pedido
+cliente
+productos
+variantes
+cantidades
+precio unitario
+subtotal
+costo de envío
+total
+dirección de entrega
+método de envío
+método de pago
+estado del pago
+estado del pedido
+fecha de creación
+fecha de actualización
+Estados del pedido
+
+Inicialmente:
+
+PENDIENTE DE PAGO
+PAGADO
+EN PREPARACIÓN
+ENVIADO
+ENTREGADO
+CANCELADO
+
+Los estados podrán evolucionar posteriormente.
+
+El cliente podrá consultar sus pedidos desde su cuenta.
+
+El administrador podrá:
+
+visualizar pedidos
+consultar detalles
+cambiar estados
+consultar información del cliente
+consultar productos
+consultar método de envío
+consultar estado del pago
+13. Pagos
+
+El método de pago principal será inicialmente Mercado Pago.
+
+La arquitectura deberá permitir incorporar otros métodos posteriormente.
+
+Flujo conceptual:
+
+Cliente
+   ↓
+Checkout
+   ↓
+Crear operación de pago
+   ↓
+Mercado Pago
+   ↓
+Cliente realiza el pago
+   ↓
+Mercado Pago
+   ↓
+Webhook
+   ↓
+Edge Function
+   ↓
+Validación del pago
+   ↓
+Actualizar pedido
+   ↓
+Actualizar stock
+
+El sistema no deberá considerar un pedido como pagado únicamente porque el frontend informe que el pago fue exitoso.
+
+La confirmación deberá realizarse mediante comunicación server-side/webhook y validación con Mercado Pago.
+
+14. Envíos
+
+Iguazú Marketplace ofrecerá inicialmente diferentes empresas de transporte/logística.
+
+Métodos previstos:
+
+Vía Cargo
+Correo Argentino
+Crucero Express
+OCA
+
+La arquitectura deberá permitir incorporar nuevos proveedores posteriormente sin tener que modificar completamente el sistema.
+
+El método de envío seleccionado deberá formar parte del pedido.
+
+Conceptualmente:
+
+Pedido
+│
+├── Productos
+├── Cliente
+├── Dirección
+├── Método de envío
+│     ├── Vía Cargo
+│     ├── Correo Argentino
+│     ├── Crucero Express
+│     └── OCA
+│
+└── Pago
+
+Inicialmente el sistema podrá trabajar con costos de envío configurables, sin necesidad de integrar inmediatamente las APIs de cada empresa.
+
+A futuro se podrán incorporar:
+
+cálculo automático del costo
+seguimiento
+generación de etiquetas
+número de seguimiento
+integración directa con APIs
+más empresas de transporte
+
+15. Panel Administrador
+Objetivo
+
+Crear un panel administrativo privado desde el cual el administrador pueda controlar todos los aspectos comerciales y operativos de Iguazú Marketplace.
+
+Inicialmente existirá un único administrador.
+
+El acceso al panel deberá estar completamente protegido mediante autenticación y autorización.
+
+Un usuario común nunca deberá poder acceder a funcionalidades administrativas aunque intente navegar directamente hacia las rutas del dashboard.
+
+Estructura general
+
+Propongo inicialmente:
+
+ADMIN
+│
+├── Dashboard
+│
+├── Productos
+│   ├── Todos
+│   ├── Nuevo producto
+│   ├── Editar producto
+│   └── Stock
+│
+├── Categorías
+│
+├── Pedidos
+│   ├── Todos
+│   ├── Pendientes
+│   ├── Pagados
+│   ├── En preparación
+│   ├── Enviados
+│   └── Entregados
+│
+├── Clientes
+│
+├── Envíos
+│
+├── Promociones
+│
+└── Configuración
+
+No necesariamente todas estas secciones tienen que existir en la primera versión.
+
+Pero la arquitectura debería estar preparada para incorporarlas.
+
+Dashboard principal
+
+Al ingresar, el administrador debería encontrarse con un resumen del negocio.
+
+Por ejemplo:
+
+┌──────────────────────────────────────────┐
+│           IGUAZÚ MARKETPLACE             					│
+│              ADMINISTRACIÓN              					│
+├──────────────┬──────────────┬─────────────┤
+│ Ventas       │ Pedidos      │ Clientes    				│
+│ $2.450.000   │ 37           │ 184         				│
+├──────────────┴──────────────┴─────────────┤
+│                                          					│
+│           Actividad reciente             					│
+│                                          					│
+│ Pedido #1045    PAGADO                   					│
+│ Pedido #1044    EN PREPARACIÓN           					│
+│ Pedido #1043    ENVIADO                  					│
+│                                          					│
+├──────────────────────────────────────────┤
+│ Productos con poco stock                 					│
+│                                          					│
+│ iPhone 15             2 unidades         					│
+│ SSD NVMe 1TB          3 unidades         					│
+└──────────────────────────────────────────┘
+
+Más adelante podremos agregar:
+
+ventas del día
+ventas semanales
+ventas mensuales
+productos más vendidos
+ticket promedio
+conversión
+clientes nuevos
+pedidos pendientes
+ingresos
+productos agotados
+
+Pero inicialmente no necesitamos construir un sistema de BI.
+
+Productos
+
+Esta será probablemente la sección más utilizada por vos.
+
+Debe permitir:
+
+Crear
+Nuevo producto
+
+Formulario:
+
+Información
+├── Nombre
+├── Descripción
+├── Marca
+├── Categoría
+└── SKU
+
+Precio
+├── Precio
+└── Precio anterior
+
+Imágenes
+├── Principal
+├── Imagen 2
+├── Imagen 3
+└── ...
+
+Variantes
+├── ¿Tiene variantes?
+│
+├── No
+│
+└── Sí
+    ├── Tipo
+    ├── Valores
+    ├── SKU
+    ├── Precio
+    └── Stock
+
+Configuración
+├── Activo
+├── Destacado
+└── Oferta
+Edición
+
+El administrador podrá modificar:
+
+nombre
+descripción
+categoría
+marca
+imágenes
+precios
+variantes
+stock
+estado
+destacados
+ofertas
+
+Pero quiero que establezcamos una regla importante:
+
+El administrador nunca debería poder modificar accidentalmente información histórica de un pedido.
+
+Por ejemplo:
+
+Si vendiste:
+
+iPhone 15
+Precio: $1.000.000
+
+y mañana cambiás el producto a:
+
+$1.200.000
+
+el pedido histórico debe seguir mostrando:
+
+iPhone 15
+Precio unitario: $1.000.000
+
+Por eso order_items deberá guardar el precio histórico de venta, no depender del precio actual del producto.
+
+Esto lo tendremos en cuenta cuando diseñemos la base de datos.
+
+Eliminación de productos
+
+Yo no recomiendo borrar físicamente productos que ya tuvieron ventas.
+
+En lugar de:
+
+DELETE product
+
+utilizaremos estados:
+
+ACTIVO
+INACTIVO
+DESCONTINUADO
+
+Esto permite conservar el historial.
+
+Por ejemplo:
+
+Producto
+   ↓
+Tuvo ventas
+   ↓
+Ya no lo comercializás
+   ↓
+DESCONTINUADO
+
+El producto deja de aparecer en la tienda pero sus pedidos históricos permanecen intactos.
+
+Categorías
+
+El administrador podrá:
+
+crear categorías
+editar categorías
+desactivar categorías
+ordenar categorías
+
+Ejemplo:
+
+Tecnología
+Celulares
+Informática
+Gaming
+Audio
+Accesorios
+Hogar
+
+Más adelante podremos incorporar:
+
+Categoría
+└── Subcategoría
+
+sin necesidad de rediseñar todo el sistema.
+
+Stock
+
+Desde el dashboard:
+
+Productos
+│
+├── Stock disponible
+├── Stock reservado
+├── Stock bajo
+└── Agotados
+
+El administrador podrá modificar inventario.
+
+Por ejemplo:
+
+SSD Kingston 1TB
+
+Stock actual: 7
+
+[ + Agregar stock ]
+[ - Ajustar stock ]
+
+A futuro sería interesante tener:
+
+Historial de inventario
+
++10  Compra/importación
+-1   Venta #1045
++5   Reposición
+-1   Ajuste manual
+
+Pero esto puede quedar para una segunda etapa.
+
+Pedidos
+
+Esta será otra de las secciones principales.
+
+Vista:
+
+PEDIDOS
+
+#1045
+Juan Pérez
+$450.000
+PAGADO
+EN PREPARACIÓN
+
+#1044
+María González
+$125.000
+PAGADO
+ENVIADO
+
+#1043
+Pedro López
+$89.000
+PENDIENTE
+PAGO
+
+Al abrir un pedido:
+
+PEDIDO #1045
+
+Cliente
+Juan Pérez
+Email
+Teléfono
+
+Productos
+────────────────────
+iPhone 15 × 1
+$1.000.000
+
+SSD 1TB × 2
+$180.000
+
+Subtotal
+$1.180.000
+
+Envío
+$20.000
+
+TOTAL
+$1.200.000
+
+Pago
+Mercado Pago
+PAGADO
+
+Envío
+OCA
+Código de seguimiento: XXXXX
+
+Estado
+EN PREPARACIÓN
+
+Y el administrador podrá cambiar el estado.
+
+Clientes
+
+Inicialmente:
+
+Clientes
+│
+├── Nombre
+├── Email
+├── Teléfono
+├── Ciudad
+├── Fecha de registro
+└── Cantidad de pedidos
+
+Al abrir un cliente:
+
+Cliente
+Juan Pérez
+
+Pedidos
+├── #1045
+├── #1021
+└── #998
+
+Total comprado
+$2.450.000
+
+No necesitamos construir CRM complejo todavía.
+
+Envíos
+
+Esta sección podría permitir administrar:
+
+Transportistas
+
+Vía Cargo
+Correo Argentino
+Crucero Express
+OCA
+
+Y configurar:
+
+nombre
+activo/inactivo
+costo
+zonas
+información adicional
+
+Inicialmente incluso podemos manejar:
+
+Vía Cargo
+$X
+
+Correo Argentino
+$X
+
+Crucero Express
+$X
+
+OCA
+$X
+
+Y posteriormente conectar APIs.
+
+Promociones
+
+La sección puede quedar preparada para:
+
+Promociones
+│
+├── Descuento porcentual
+├── Descuento fijo
+├── Precio promocional
+├── Cupones
+└── Ofertas
+
+Pero no considero necesario desarrollar un sistema de cupones complejo para el MVP.
+
+Podemos empezar simplemente con:
+
+Precio normal
+Precio anterior
+Precio promocional
+Configuración
+
+Inicialmente:
+
+Configuración
+│
+├── Información de la tienda
+├── WhatsApp
+├── Redes sociales
+├── Métodos de envío
+├── Métodos de pago
+└── Configuración general
+
+Y posteriormente:
+
+SEO
+Emails
+Notificaciones
+Integraciones
+Impuestos
+Facturación
+etc.
+Seguridad del Dashboard
+
+Este punto es fundamental.
+
+No alcanza con esconder un botón:
+
+/admin
+
+El sistema deberá verificar:
+
+Usuario autenticado
+        ↓
+¿Tiene rol ADMIN?
+        │
+   ┌────┴────┐
+   │         │
+  NO        SÍ
+   │         │
+ DENEGAR    ADMIN
+
+Y la seguridad debe existir también en Supabase/RLS, no solamente en React.
+
+Porque alguien podría intentar:
+
+supabase.from("products").delete(...)
+
+desde la consola del navegador.
+
+El frontend nunca debe ser considerado una barrera de seguridad.
+
+Auditoría futura
+
+Como queremos que esto crezca durante años, también dejaría prevista una eventual:
+
+audit_logs
+
+Para registrar acciones administrativas:
+
+Administrador
+    ↓
+Modificó precio
+    ↓
+Producto: iPhone 15
+    ↓
+Antes: $1.000.000
+Después: $1.050.000
+    ↓
+Fecha/hora
+
+No es imprescindible para el MVP, pero es una excelente pieza de arquitectura para una plataforma que pretende crecer.
+
+16. SEGURIDAD
+
+La seguridad tiene que estar presente desde la arquitectura, no agregarse al final.
+
+Autenticación
+
+Utilizaremos:
+
+Supabase Auth
+
+Los usuarios podrán:
+
+registrarse
+iniciar sesión
+cerrar sesión
+recuperar contraseña
+actualizar sus datos
+
+El acceso a determinadas funcionalidades requerirá autenticación.
+
+Acciones que requieren autenticación
+Favoritos
+Carrito sincronizado
+Checkout
+Compras
+Pedidos
+Datos personales
+
+La navegación de productos seguirá siendo pública.
+
+Administración
+
+El dashboard deberá requerir:
+
+Usuario autenticado
+        ↓
+¿Rol ADMIN?
+        │
+    ┌───┴───┐
+    NO      SÍ
+    ↓       ↓
+ DENEGAR   ACCESO
+
+La autorización deberá implementarse tanto en:
+
+frontend
+Supabase / RLS
+Edge Functions cuando corresponda
+
+Nunca confiar únicamente en las protecciones del frontend.
+
+Row Level Security
+
+Supabase deberá utilizar RLS (Row Level Security) para controlar qué datos puede consultar o modificar cada usuario.
+
+Ejemplos:
+
+Cliente
+
+Puede:
+
+VER productos públicos
+VER sus propios pedidos
+MODIFICAR sus propios datos
+VER sus favoritos
+
+No puede:
+
+MODIFICAR productos
+MODIFICAR stock
+VER pedidos de otros clientes
+MODIFICAR pedidos ajenos
+Administrador
+
+Puede administrar los recursos necesarios del sistema.
+
+Pagos
+
+Toda lógica sensible relacionada con pagos deberá ejecutarse server-side.
+
+Nunca:
+
+Frontend
+   ↓
+"Pago aprobado"
+   ↓
+Pedido PAGADO
+
+Sino:
+
+Mercado Pago
+      ↓
+Webhook
+      ↓
+Edge Function
+      ↓
+Validación
+      ↓
+Pedido actualizado
+Variables de entorno
+
+Nunca se deberán almacenar en el repositorio:
+
+secretos
+tokens privados
+credenciales
+claves privadas
+access tokens
+
+Las variables deberán diferenciar correctamente:
+
+Development
+Production
+
+Las claves públicas de servicios que por diseño sean públicas podrán utilizarse en frontend, pero deberán manejarse mediante configuración apropiada.
+
+Validación
+
+Toda información enviada por el usuario deberá validarse.
+
+Ejemplos:
+
+email
+teléfono
+dirección
+cantidades
+precios
+IDs
+variantes
+productos
+datos del checkout
+
+La validación importante deberá realizarse server-side.
+
+Protección contra manipulación
+
+Nunca debemos confiar en:
+
+precio enviado por frontend
+stock enviado por frontend
+total enviado por frontend
+rol enviado por frontend
+
+El servidor deberá obtener/verificar los valores reales.
+
+Por ejemplo:
+
+Cliente:
+"Quiero comprar 1 producto por $10"
+
+Servidor:
+Producto real = $100.000
+Stock = 4
+
+→ recalcula el pedido
+17. SEO
+
+Aunque inicialmente el tráfico pueda venir principalmente de:
+
+Instagram
+Facebook
+WhatsApp
+Google
+
+quiero que la arquitectura esté preparada para posicionamiento orgánico.
+
+Cada producto debería tener
+URL
+Título
+Descripción
+Imagen
+Meta title
+Meta description
+
+Ejemplo:
+
+/producto/iphone-15-128gb
+
+En lugar de:
+
+/producto?id=123
+SEO técnico
+
+Deberíamos contemplar:
+
+URLs amigables
+meta title
+meta description
+Open Graph
+Twitter/X cards
+sitemap.xml
+robots.txt
+canonical URLs
+headings correctos
+alt text en imágenes
+datos estructurados
+
+Especialmente para productos:
+
+Product structured data / Schema.org
+
+Esto permitirá que los buscadores entiendan:
+
+Producto
+├── Nombre
+├── Imagen
+├── Precio
+├── Disponibilidad
+└── Marca
+Indexación
+
+No todo debería ser indexable.
+
+Indexable
+Inicio
+Categorías
+Productos
+Marcas
+No necesariamente indexable
+Dashboard
+Perfil privado
+Checkout
+Carrito
+Pedidos
+Login
+18. PERFORMANCE
+
+La regla principal será:
+
+La tienda debe cargar solamente la información necesaria.
+
+No repetiremos el problema actual de:
+
+1.000 productos
+       ↓
+Frontend descarga los 1.000
+       ↓
+React filtra
+
+En su lugar:
+
+Usuario busca
+       ↓
+Supabase
+       ↓
+devuelve solamente resultados necesarios
+Catálogo
+
+Implementaremos:
+
+paginación
+filtros server-side
+búsqueda server-side
+ordenamiento server-side
+límites de resultados
+
+Por ejemplo:
+
+Productos 1–24
+        ↓
+[ Siguiente ]
+        ↓
+25–48
+Imágenes
+
+Las imágenes son uno de los elementos más importantes para un e-commerce.
+
+Deberemos utilizar:
+
+formatos optimizados
+compresión
+thumbnails
+lazy loading
+tamaños apropiados
+imágenes responsive
+
+No tiene sentido cargar una imagen de 4 MB para mostrarla a 300 × 300 px.
+
+Code splitting
+
+Las secciones que no sean necesarias inmediatamente deberán poder cargarse bajo demanda.
+
+Especialmente:
+
+Tienda
+      ↓
+carga catálogo
+
+Admin
+      ↓
+carga dashboard
+
+No queremos que el usuario que solamente está mirando un producto tenga que cargar todo el código del panel administrativo.
+
+Caché
+
+Deberemos aprovechar caching donde tenga sentido:
+
+categorías
+productos
+imágenes
+configuraciones
+datos que cambian poco
+
+Pero sin cachear incorrectamente información crítica como:
+
+stock
+estado de pago
+pedidos
+Performance objetivo
+
+No establecería ahora números artificiales imposibles de garantizar, pero sí una regla:
+
+La aplicación deberá mantener una experiencia fluida a medida que aumenten los productos, usuarios y pedidos.
+
+Y se deberán evitar operaciones que crezcan innecesariamente con el tamaño total de la base de datos.
+
+19. RESPONSIVE
+
+Esto para mí es obligatorio.
+
+La tienda probablemente tendrá una gran cantidad de tráfico desde:
+
+📱 celulares.
+
+Por lo tanto:
+
+Mobile-first.
+
+No queremos diseñar desktop y después "acomodarlo" para móvil.
+
+Breakpoints
+
+Mantendría una estructura sencilla:
+
+Mobile
+< 768px
+
+Tablet
+768–1023px
+
+Desktop
+≥ 1024px
+
+Y a diferencia de tu proyecto anterior, no quiero asumir que tablet = desktop.
+
+Tablet deberá tener su propia adaptación cuando sea necesario.
+
+Tienda móvil
+
+Debe funcionar perfectamente:
+
+navbar
+búsqueda
+filtros
+categorías
+cards
+imágenes
+producto
+variantes
+carrito
+checkout
+pedidos
+
+Especial atención a:
+
+BOTONES
+
+Deben tener tamaño cómodo para tocar.
+
+Dashboard responsive
+
+El administrador también deberá ser responsive.
+
+En desktop:
+
+┌──────────┬─────────────────────┐
+│             │                    			 │
+│ SIDEBAR     │     CONTENIDO       		 │
+│             │                     		 │
+│             │                     		 │
+└──────────┴─────────────────────┘
+
+En móvil:
+
+┌─────────────────────┐
+│ ☰  	IGUAZÚ ADMIN     	  │
+├─────────────────────┤
+│                     		  │
+│     CONTENIDO       	   	  │
+│                     		  │
+└─────────────────────┘
+
+No quiero que el dashboard sea usable solamente desde una PC.
+
+Accesibilidad
+
+También incluiría accesibilidad dentro de este bloque.
+
+Debemos contemplar:
+
+HTML semántico
+labels en formularios
+navegación por teclado
+focus visible
+contraste adecuado
+alt text
+botones correctamente identificados
+mensajes de error comprensibles
+evitar depender solamente del color
+
+No necesitamos perseguir una certificación WCAG desde el día 1, pero sí construir correctamente.
+
+Fase 0 — Auditoría y preparación
+
+Antes de modificar código.
+
+Objetivo
+
+Preparar el proyecto existente para la reconstrucción.
+
+Tareas
+Auditar código actual.
+Identificar qué código/UI se conserva.
+Identificar código que debe eliminarse.
+Revisar dependencias.
+Revisar configuración de Vite/Tailwind.
+Revisar variables de entorno.
+Revisar configuración de Supabase.
+Revisar RLS actuales.
+Revisar Storage.
+Revisar Auth.
+Crear estrategia de migración de base de datos.
+Definir arquitectura definitiva.
+Definir estructura de carpetas.
+Definir modelo de datos.
+Resultado
+
+No deberíamos tener todavía un e-commerce terminado.
+
+Deberíamos tener:
+
+Una arquitectura clara y un proyecto preparado para comenzar la reconstrucción.
+
+Fase 1 — Fundación técnica
+
+Acá reconstruimos la base.
+
+Frontend
+Migrar progresivamente a TypeScript.
+Crear estructura de carpetas.
+Crear layouts.
+Crear sistema de componentes.
+Crear sistema de diseño.
+Crear manejo de errores.
+Crear loading states.
+Crear sistema de notificaciones.
+Crear configuración de rutas.
+Crear protección de rutas.
+Backend
+
+Mantener:
+
+Supabase
+
+y utilizar:
+
+PostgreSQL
+Auth
+Storage
+Edge Functions
+RLS
+Resultado
+
+Una aplicación vacía pero con una arquitectura profesional.
+
+Frontend
+     ↓
+Services
+     ↓
+Supabase
+     ↓
+Database
+Fase 2 — Base de datos e-commerce
+
+Esta fase es crítica.
+
+Construiremos definitivamente:
+
+profiles
+categories
+products
+product_images
+product_variants
+inventory
+
+favorites
+
+carts
+cart_items
+
+orders
+order_items
+
+payments
+
+addresses
+shipments
+
+Y diseñaremos correctamente:
+
+relaciones
+foreign keys
+índices
+constraints
+RLS
+estados
+timestamps
+UUIDs
+integridad de datos
+
+También prepararemos migraciones versionadas.
+
+Resultado
+
+La plataforma tendrá el modelo de negocio real sobre el cual construir todo lo demás.
+
+Fase 3 — Autenticación y usuarios
+
+Reconstruimos:
+
+Registro
+Login
+Logout
+Recuperación de contraseña
+Perfil
+
+Y definimos:
+
+CLIENTE
+ADMIN
+Resultado
+
+Sistema de usuarios completamente funcional y seguro.
+
+Fase 4 — Catálogo
+
+Acá empieza a aparecer la tienda.
+
+Construiremos:
+
+Página principal
+Hero
+categorías
+productos destacados
+ofertas
+productos recientes
+búsqueda
+Catálogo
+productos
+categorías
+marcas
+filtros
+ordenamiento
+paginación
+Producto
+imágenes
+descripción
+precio
+precio anterior
+variantes
+stock
+disponibilidad
+favoritos
+Resultado
+
+Ya tendremos una tienda online navegable, aunque todavía no podamos comprar.
+
+Fase 5 — Carrito
+
+Implementaremos:
+
+Agregar producto
+Agregar variante
+Modificar cantidad
+Eliminar
+Vaciar carrito
+Subtotal
+
+Y:
+
+Invitado
+   ↓
+Carrito local
+
+Login
+   ↓
+Sincronización
+   ↓
+Carrito del usuario
+Resultado
+
+El cliente podrá preparar su compra.
+
+Fase 6 — Checkout
+
+Construimos el proceso de compra.
+
+Carrito
+ ↓
+Login
+ ↓
+Dirección
+ ↓
+Envío
+ ↓
+Pago
+ ↓
+Resumen
+ ↓
+Confirmación
+
+Se implementarán las validaciones necesarias.
+
+Resultado
+
+El sistema podrá generar una intención real de compra.
+
+Fase 7 — Mercado Pago
+
+Ahora integramos el pago.
+
+Checkout
+   ↓
+Mercado Pago
+   ↓
+Pago
+   ↓
+Webhook
+   ↓
+Edge Function
+   ↓
+Validación
+   ↓
+Pedido
+
+Acá debemos ser extremadamente cuidadosos con:
+
+seguridad
+webhooks
+estados
+idempotencia
+errores
+pagos rechazados
+pagos pendientes
+pagos aprobados
+Resultado
+
+Primer e-commerce realmente operativo.
+
+Fase 8 — Pedidos
+
+Construimos:
+
+Cliente
+Mis pedidos
+
+Podrá consultar:
+
+número
+fecha
+productos
+total
+pago
+envío
+estado
+Sistema
+
+Estados:
+
+PENDIENTE DE PAGO
+PAGADO
+EN PREPARACIÓN
+ENVIADO
+ENTREGADO
+CANCELADO
+Resultado
+
+El ciclo de compra queda completo.
+
+Fase 9 — Envíos
+
+Implementamos inicialmente:
+
+Vía Cargo
+Correo Argentino
+Crucero Express
+OCA
+
+Pero comenzaría con una arquitectura de proveedores:
+
+ShippingProvider
+      │
+ ┌────┼────┬────┐
+ ↓    ↓    ↓    ↓
+VC   CA    CE   OCA
+
+Inicialmente pueden manejarse mediante configuración manual.
+
+Después podremos integrar APIs.
+
+Resultado
+
+El cliente puede elegir transporte y el pedido conserva esa información.
+
+Fase 10 — Dashboard administrativo
+
+Ahora construimos tu centro de operaciones.
+
+/admin
+Dashboard
+ventas
+pedidos
+clientes
+productos
+stock
+Productos
+crear
+editar
+desactivar
+imágenes
+variantes
+precios
+stock
+Categorías
+crear
+editar
+desactivar
+Pedidos
+consultar
+cambiar estado
+pago
+envío
+seguimiento
+Clientes
+consultar
+historial de pedidos
+Resultado
+
+Vos podés administrar completamente el negocio sin tocar Supabase.
+
+Fase 11 — Seguridad y QA
+
+Acá hacemos una auditoría completa antes de lanzar.
+
+Seguridad
+RLS
+Auth
+permisos
+Edge Functions
+webhooks
+variables de entorno
+validaciones
+inputs
+acceso administrativo
+QA
+
+Probar:
+
+Registro
+Login
+Logout
+Favoritos
+Carrito
+Variantes
+Stock
+Checkout
+Pago
+Pedido
+Envío
+Admin
+
+Y especialmente casos extremos:
+
+Stock = 0
+Stock insuficiente
+Pago rechazado
+Pago duplicado
+Usuario sin permisos
+Producto eliminado
+Producto desactivado
+Dos compras simultáneas
+Fase 12 — SEO + Performance
+
+Una vez que la funcionalidad principal esté estable:
+
+SEO
+metadata
+sitemap
+robots
+Open Graph
+Schema.org
+URLs
+indexación
+Performance
+imágenes
+lazy loading
+code splitting
+caching
+queries
+índices
+paginación
+Fase 13 — Lanzamiento
+
+Antes de producción:
+
+Development
+      ↓
+Staging
+      ↓
+QA
+      ↓
+Production
+
+Checklist:
+
+dominio
+HTTPS
+Vercel
+Supabase production
+variables de entorno
+Auth URLs
+Mercado Pago
+Storage
+emails
+SEO
+analytics
+backups
+monitoreo
+Resultado
+
+🚀 Iguazú Marketplace MVP en producción.
+
+Fase 14 — Evolución
+
+Una vez que haya usuarios reales, recién ahí decidimos qué desarrollar después basándonos en datos reales.
+
+Posibles funcionalidades:
+
+Reviews
+Cupones
+Promociones
+Wishlist avanzada
+Notificaciones
+Emails automáticos
+Tracking de envíos
+Integraciones de APIs
+Facturación
+Analytics avanzado
+
+Y cuando realmente tengamos volumen:
+
+Multi-vendedor
+Roles administrativos
+Comisiones
+Panel de vendedores
+Sistema de reputación
+Publicidad interna
+
+		📌 Roadmap visual
+
+			Resumen:
+
+                    IGUAZÚ MARKETPLACE
+                           │
+                           ▼
+                 FASE 0 — AUDITORÍA
+                           │
+                           ▼
+               FASE 1 — FUNDACIÓN
+                           │
+                           ▼
+              FASE 2 — BASE DE DATOS
+                           │
+                           ▼
+             FASE 3 — USUARIOS / AUTH
+                           │
+                           ▼
+                FASE 4 — CATÁLOGO
+                           │
+                           ▼
+                 FASE 5 — CARRITO
+                           │
+                           ▼
+                FASE 6 — CHECKOUT
+                           │
+                           ▼
+              FASE 7 — MERCADO PAGO
+                           │
+                           ▼
+                 FASE 8 — PEDIDOS
+                           │
+                           ▼
+                  FASE 9 — ENVÍOS
+                           │
+                           ▼
+               FASE 10 — ADMIN
+                           │
+                           ▼
+                FASE 11 — QA / 🔒
+                           │
+                           ▼
+             FASE 12 — SEO / PERFORMANCE
+                           │
+                           ▼
+               FASE 13 — 🚀 LANZAMIENTO
+                           │
+                           ▼
+                FASE 14 — EVOLUCIÓN
