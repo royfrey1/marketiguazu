@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { AlertTriangle, Bug, Paintbrush, Lightbulb, HelpCircle, Send, ArrowLeft, CheckCircle2, Shield } from 'lucide-react'
 import useAuth from '../../hooks/useAuth'
 import { reportService } from '../../services/report.service'
 
@@ -11,32 +12,35 @@ interface ReportForm {
   seguridad_val: string
 }
 
+const TIPOS_ERROR = [
+  { value: 'bug', label: 'Algo no funciona', icon: Bug, desc: 'Error de código / Bug' },
+  { value: 'visual', label: 'Detalle visual', icon: Paintbrush, desc: 'Imágenes rotas / Desalineado' },
+  { value: 'producto', label: 'Problema con un producto', icon: AlertTriangle, desc: 'Info incorrecta / Precio / Stock' },
+  { value: 'sugerencia', label: 'Idea para la plataforma', icon: Lightbulb, desc: 'Sugerencia de mejora' },
+  { value: 'otro', label: 'Otro motivo', icon: HelpCircle, desc: 'Otro tipo de problema' },
+]
+
 export default function ReportarProblema() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [enviando, setEnviando] = useState(false)
   const [exito, setExito] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  
-  const [checkingAuth] = useState(false)
 
   const [form, setForm] = useState<ReportForm>({
     nombre: '',
     email: user?.email || '',
     tipo_error: 'bug',
     descripcion: '',
-    seguridad_val: '' // 🍯 CAMPO TRAMPA (HONEYPOT)
+    seguridad_val: '',
   })
 
-  // Limpieza de memoria para el redireccionamiento
   useEffect(() => {
-    let tiempoRedireccion: ReturnType<typeof setTimeout>;
+    let t: ReturnType<typeof setTimeout>
     if (exito) {
-      tiempoRedireccion = setTimeout(() => {
-        navigate('/')
-      }, 3500)
+      t = setTimeout(() => navigate('/'), 3500)
     }
-    return () => clearTimeout(tiempoRedireccion)
+    return () => clearTimeout(t)
   }, [exito, navigate])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -48,203 +52,273 @@ export default function ReportarProblema() {
     setEnviando(true)
     setError(null)
 
-    // 🍯 VALIDACIÓN HONEYPOT: Si este campo tiene algo, es un BOT.
     if (form.seguridad_val !== '') {
-      // Lo engañamos simulando éxito instantáneo, pero frenamos el proceso sin tocar Supabase
       setExito(true)
       setEnviando(false)
       return
     }
 
-    // Doble verificación: Que no intenten saltearse el bloqueo visual
     if (!user) {
-      setError('⚠️ Debés iniciar sesión para enviar un reporte.')
+      setError('Debés iniciar sesión para enviar un reporte.')
       setEnviando(false)
       return
     }
 
-    // Freno por longitud mínima (Evita reportes vacíos o de una sola letra)
     if (form.descripcion.trim().length < 15) {
-      setError('⚠️ Por favor, sé un poco más específico en la descripción (mínimo 15 caracteres).')
+      setError('Por favor, sé un poco más específico en la descripción (mínimo 15 caracteres).')
       setEnviando(false)
       return
     }
 
     try {
-      // Insertamos el reporte vinculándolo al ID real del usuario de Supabase
       const { error: insertError } = await reportService.create({
-            nombre: form.nombre.trim().substring(0, 100) || 'Usuario Registrado',
-            email: form.email.trim().substring(0, 100),
-            tipo_error: form.tipo_error,
-            descripcion: form.descripcion.trim(),
-            user_id: user.id
-          })
+        nombre: form.nombre.trim().substring(0, 100) || 'Usuario',
+        email: form.email.trim().substring(0, 100) || null,
+        tipo_error: form.tipo_error,
+        descripcion: form.descripcion.trim(),
+        user_id: user.id,
+      })
 
       if (insertError) throw insertError
 
       setExito(true)
-      setForm({ nombre: '', email: '', tipo_error: 'bug', descripcion: '', seguridad_val: '' })
-
+      setForm({ nombre: '', email: user?.email || '', tipo_error: 'bug', descripcion: '', seguridad_val: '' })
     } catch (err) {
-      setError('Hubo un problema al enviar el reporte. Por favor, intentá de nuevo.')
-      console.error(err)
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error('Report submission error:', msg)
+      if (msg.includes('row-level security') || msg.includes('RLS') || msg.includes('policy')) {
+        setError('No se pudo enviar el reporte por una restricción de seguridad. Contactanos directamente a contacto@iguazumarketplace.com')
+      } else {
+        setError('No se pudo enviar el reporte. Si el problema persiste, escribinos a contacto@iguazumarketplace.com')
+      }
     } finally {
       setEnviando(false)
     }
   }
 
-  if (checkingAuth) {
+  if (!user) {
     return (
-      <div className="min-h-screen bg-[#1b382f] flex items-center justify-center">
-        <p className="text-[#B5E3D4] animate-pulse font-bold tracking-widest">VERIFICANDO CREDENCIALES...</p>
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-lg mx-auto px-4 pt-24 md:pt-32 pb-16">
+          <div className="text-center mb-10">
+            <div className="w-14 h-14 rounded-2xl bg-primary-light/30 flex items-center justify-center mx-auto mb-5">
+              <Shield className="w-7 h-7 text-primary" />
+            </div>
+            <h1 className="text-h2 text-2xl sm:text-3xl text-primary-dark mb-2">
+              Reportar un problema
+            </h1>
+            <p className="text-body text-gray-500">
+              Para enviar reportes necesitás tener una cuenta activa.
+            </p>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center">
+            <p className="text-gray-600 text-sm mb-6">
+              Iniciá sesión o create una cuenta para poder reportar problemas encontrados en la tienda.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Link
+                to="/login"
+                className="flex-1 inline-flex items-center justify-center gap-2 bg-accent hover:bg-accent/90 text-white font-bold py-3 px-6 rounded-xl text-sm transition-colors no-underline"
+              >
+                Iniciar sesión
+              </Link>
+              <Link
+                to="/register"
+                className="flex-1 inline-flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 font-bold py-3 px-6 rounded-xl text-sm transition-colors no-underline"
+              >
+                Crear cuenta
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (exito) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-lg mx-auto px-4 pt-24 md:pt-32 pb-16">
+          <div className="bg-white rounded-2xl border border-gray-200 p-10 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-secondary/10 flex items-center justify-center mx-auto mb-5">
+              <CheckCircle2 className="w-7 h-7 text-secondary" />
+            </div>
+            <h2 className="text-h2 text-xl text-primary-dark mb-2">Reporte enviado</h2>
+            <p className="text-body text-gray-500 text-sm">
+              Gracias por tu aviso. Lo revisaremos pronto. Volviendo al inicio...
+            </p>
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#1b382f] text-white">
-      <div className="max-w-3xl mx-auto pt-20 md:pt-28 lg:pt-36 pb-12 px-4">
-        
-        {/* Cabecera común */}
-        <div className="text-center mb-8">
-          <span className="text-4xl">🛠️</span>
-          <h1 className="text-3xl font-black tracking-tighter mt-2 text-[#B5E3D4]">Reportar un Problema</h1>
-          <p className="text-white/60 text-sm mt-2 max-w-md mx-auto">
-            Ayudanos a mantener Iguazú Marketplace funcionando al 100%.
-          </p>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-2xl mx-auto px-4 pt-24 md:pt-32 pb-16">
+        {/* Header */}
+        <div className="mb-8">
+          <button
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-primary transition-colors mb-4 cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Volver
+          </button>
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-6 h-6 text-accent" />
+            </div>
+            <div>
+              <h1 className="text-h2 text-2xl sm:text-3xl text-primary-dark">
+                Reportar un problema
+              </h1>
+              <p className="text-body text-gray-500 mt-1">
+                Contanos qué encontraste para que lo resolvamos lo antes posible.
+              </p>
+            </div>
+          </div>
         </div>
 
-        {/* CONDICIONAL: SI NO ESTÁ LOGUEADO, MURO DE LOGIN */}
-        {!user ? (
-          <div className="bg-white/5 backdrop-blur-xl border-2 border-red-500/20 rounded-[2.5rem] p-8 md:p-12 text-center shadow-2xl space-y-5 max-w-xl mx-auto">
-            <span className="text-4xl block">🔒</span>
-            <h3 className="text-xl font-bold text-[#B5E3D4]">Acceso Restringido</h3>
-            <p className="text-white/70 text-sm leading-relaxed">
-              Para evitar ataques de spam y proteger la estabilidad del servidor en Iguazú, necesitás tener una cuenta activa para enviar reportes de errores.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 pt-2">
-              <Link 
-                to="/login" 
-                className="flex-1 bg-[#1CAAA8] hover:bg-[#15807e] text-white font-bold py-3 rounded-xl text-xs transition-all uppercase tracking-wider text-center no-underline flex items-center justify-center"
-              >
-                Iniciar Sesión
-              </Link>
-              <Link 
-                to="/register" 
-                className="flex-1 bg-transparent hover:bg-white/5 text-white/80 border border-white/20 font-bold py-3 rounded-xl text-xs transition-all text-center no-underline flex items-center justify-center"
-              >
-                Registrarme Gratis ✨
-              </Link>
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8 space-y-6">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl" role="alert">
+              {error}
             </div>
-          </div>
-        ) : exito ? (
-          /* PANTALLA DE ÉXITO */
-          <div className="bg-[#B5E3D4]/20 border-2 border-[#B5E3D4] rounded-[2rem] p-8 text-center shadow-2xl">
-            <span className="text-4xl block mb-2">🎉</span>
-            <h3 className="text-xl font-bold text-[#B5E3D4]">¡Reporte enviado!</h3>
-            <p className="text-white/80 text-sm mt-2">
-              Muchas gracias por tu aviso. Lo revisaremos enseguida. Volviendo al inicio...
-            </p>
-          </div>
-        ) : (
-          /* FORMULARIO BLINDADO PARA USUARIOS LOGUEADOS */
-          <form onSubmit={handleSubmit} className="space-y-6 bg-white/5 backdrop-blur-xl border-2 border-[#B5E3D4]/20 rounded-[2.5rem] p-6 md:p-10 shadow-2xl">
-            
-            {error && (
-              <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm px-4 py-3 rounded-xl">
-                {error}
-              </div>
-            )}
+          )}
 
-            {/* 🍯 CAMPO TRAMPA (HONEYPOT) - TOTALMENTE OCULTO PARA HUMANOS */}
-            <div className="hidden" aria-hidden="true">
+          {/* Honeypot */}
+          <div className="hidden" aria-hidden="true">
+            <input
+              type="text"
+              name="seguridad_val"
+              value={form.seguridad_val}
+              onChange={handleChange}
+              tabIndex={-1}
+              autoComplete="off"
+            />
+          </div>
+
+          {/* Name + Email */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="report-nombre" className="text-sm font-bold text-gray-700 block mb-1.5">
+                Tu nombre
+                <span className="font-normal text-gray-400 ml-1">(opcional)</span>
+              </label>
               <input
+                id="report-nombre"
                 type="text"
-                name="seguridad_val"
-                value={form.seguridad_val}
+                name="nombre"
+                maxLength={70}
+                value={form.nombre}
                 onChange={handleChange}
-                tabIndex="-1"
-                autoComplete="off"
+                placeholder="Juan"
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-900 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors placeholder:text-gray-400"
               />
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm text-white/60 mb-1 block font-medium">Tu Nombre (Opcional)</label>
-                <input
-                  type="text"
-                  name="nombre"
-                  maxLength={70}
-                  value={form.nombre}
-                  onChange={handleChange}
-                  placeholder="Ej: Juan de Iguazú"
-                  className="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#1CAAA8] transition-all placeholder:text-white/20"
-                />
-              </div>
-
-              <div>
-                <label className="text-sm text-white/40 mb-1 block font-medium">Email Asociado (Bloqueado)</label>
-                <input
-                  type="email"
-                  disabled
-                  value={form.email}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white/40 text-sm cursor-not-allowed select-none"
-                />
-              </div>
-            </div>
-
             <div>
-              <label className="text-sm text-white/60 mb-1 block font-medium">¿Dónde se produce el error?</label>
-              <select
-                name="tipo_error"
-                value={form.tipo_error}
-                onChange={handleChange}
-                className="w-full bg-[#1b382f] border border-white/20 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#1CAAA8] transition-all cursor-pointer"
-              >
-                <option value="bug">🐛 Algo no funciona (Error de código / Bug)</option>
-                <option value="visual">🎨 Detalle visual (Imágenes rotas / Desalineado)</option>
-                <option value="publicacion">⚠️ Denunciar publicación o estafa</option>
-                <option value="sugerencia">💡 Idea para la plataforma</option>
-                <option value="otro">❓ Otro motivo</option>
-              </select>
-            </div>
-
-            <div>
-              <div className="flex justify-between items-center mb-1">
-                <label className="text-sm text-white/60 block font-medium">Detalle del error *</label>
-                <span className="text-[10px] text-white/40">{form.descripcion.length} / 1500</span>
-              </div>
-              <textarea
-                name="descripcion"
-                value={form.descripcion}
-                onChange={handleChange}
-                required
-                maxLength={1500}
-                rows={5}
-                placeholder="Describí lo más detallado posible el problema que encontraste..."
-                className="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#1CAAA8] transition-all resize-none placeholder:text-white/20 leading-relaxed"
+              <label htmlFor="report-email" className="text-sm font-bold text-gray-700 block mb-1.5">
+                Email asociado
+              </label>
+              <input
+                id="report-email"
+                type="email"
+                disabled
+                value={form.email}
+                className="w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-3 text-gray-500 text-sm cursor-not-allowed select-none"
               />
             </div>
+          </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 pt-4">
-              <Link
-                to="/"
-                className="flex-1 bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 py-3 rounded-xl font-bold transition-all text-center text-sm no-underline flex items-center justify-center"
-              >
-                Cancelar
-              </Link>
-
-              <button
-                type="submit"
-                disabled={enviando}
-                className="flex-[2] bg-[#B5E3D4] hover:bg-[#1CAAA8] disabled:opacity-50 text-slate-900 font-bold py-3 rounded-xl transition-all cursor-pointer disabled:cursor-not-allowed text-sm"
-              >
-                {enviando ? 'Enviando...' : 'Enviar Reporte Oficial 🚀'}
-              </button>
+          {/* Tipo de error */}
+          <div>
+            <label className="text-sm font-bold text-gray-700 block mb-2">
+              Tipo de problema
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {TIPOS_ERROR.map((tipo) => {
+                const Icon = tipo.icon
+                const active = form.tipo_error === tipo.value
+                return (
+                  <button
+                    key={tipo.value}
+                    type="button"
+                    onClick={() => setForm({ ...form, tipo_error: tipo.value })}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-left text-sm transition-all cursor-pointer ${
+                      active
+                        ? 'border-primary bg-primary/5 text-primary-dark'
+                        : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-primary' : 'text-gray-400'}`} />
+                    <div>
+                      <div className={`font-bold ${active ? 'text-primary-dark' : 'text-gray-700'}`}>{tipo.label}</div>
+                      <div className="text-xs text-gray-400">{tipo.desc}</div>
+                    </div>
+                  </button>
+                )
+              })}
             </div>
+          </div>
 
-          </form>
-        )}
+          {/* Descripción */}
+          <div>
+            <div className="flex justify-between items-center mb-1.5">
+              <label htmlFor="report-desc" className="text-sm font-bold text-gray-700">
+                Descripción del problema
+                <span className="text-red-500 ml-0.5">*</span>
+              </label>
+              <span className={`text-xs ${form.descripcion.length > 1400 ? 'text-red-500' : 'text-gray-400'}`}>
+                {form.descripcion.length} / 1500
+              </span>
+            </div>
+            <textarea
+              id="report-desc"
+              name="descripcion"
+              value={form.descripcion}
+              onChange={handleChange}
+              required
+              minLength={15}
+              maxLength={1500}
+              rows={5}
+              placeholder="Describe el problema lo más detallado posible..."
+              className="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-900 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors resize-none placeholder:text-gray-400 leading-relaxed"
+            />
+            {form.descripcion.length > 0 && form.descripcion.length < 15 && (
+              <p className="text-xs text-red-500 mt-1">Mínimo 15 caracteres</p>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="flex flex-col sm:flex-row gap-3 pt-2">
+            <Link
+              to="/"
+              className="flex-1 inline-flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 font-bold py-3 px-6 rounded-xl text-sm transition-colors no-underline"
+            >
+              Cancelar
+            </Link>
+            <button
+              type="submit"
+              disabled={enviando || form.descripcion.trim().length < 15}
+              className="flex-[2] inline-flex items-center justify-center gap-2 bg-accent hover:bg-accent/90 disabled:opacity-50 text-white font-bold py-3 px-6 rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed text-sm"
+            >
+              {enviando ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Enviando...
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4" />
+                  Enviar reporte
+                </>
+              )}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   )
