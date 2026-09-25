@@ -253,15 +253,13 @@ Carrito
         ↓
      Checkout
         ↓
- Datos de entrega
+  Envío (datos de contacto + dirección + método de envío)
         ↓
- Método de envío
+  Pago (método de pago + confirmación)
         ↓
- Método de pago
+  Resumen
         ↓
- Resumen
-        ↓
- Confirmar compra
+  Confirmar compra
 
 El checkout deberá recopilar únicamente la información necesaria.
 
@@ -1510,11 +1508,9 @@ Carrito
  ↓
 Login
  ↓
-Dirección
+Envío (datos de contacto + dirección + método de envío)
  ↓
-Envío
- ↓
-Pago
+Pago (método de pago + confirmación)
  ↓
 Resumen
  ↓
