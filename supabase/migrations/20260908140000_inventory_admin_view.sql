@@ -1,0 +1,10 @@
+-- ============================================================
+-- FIX F8 T4.4.3 — Vista para listado admin de inventario
+-- ============================================================
+-- NOTA: Esta migración fue reemplazada por:
+--   20260908_inventory_admin_view_security.sql
+-- que crea la vista con security_invoker = true y grants seguros.
+--
+-- Esta archivo se mantiene por integridad de migration history.
+-- La definición final de la vista está en la migración _security.
+-- ============================================================
