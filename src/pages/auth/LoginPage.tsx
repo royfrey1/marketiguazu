@@ -1,6 +1,10 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { LogIn, ArrowRight } from 'lucide-react'
+import { sileo } from 'sileo'
 import { supabase } from '../../lib/supabase/client'
+import Input from '../../components/ui/Input'
+import Button from '../../components/ui/Button'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -39,7 +43,7 @@ export default function Login() {
   const recuperarContrasena = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.email) {
-      alert("Por favor, ingresá tu correo electrónico primero.")
+      sileo.warning({ title: "Correo requerido", description: "Por favor, ingresá tu correo electrónico primero." })
       return
     }
 
@@ -49,82 +53,84 @@ export default function Login() {
       })
 
       if (error) throw error
-      alert("¡Email de recuperación enviado! Revisá tu casilla de correo (y la carpeta de spam).")
+      sileo.success({ title: "Correo enviado", description: "Revisá tu casilla de correo (y la carpeta de spam)." })
     } catch (error) {
-      alert("Error al enviar el correo: " + (error as Error).message)
+      sileo.error({ title: "No se pudo enviar el correo", description: (error as Error).message })
     }
   }
 
   return (
-      <div className="mt-24 md:mt-32 lg:mt-36 w-full max-w-md bg-white/5 backdrop-blur-xl border-2 border-[#B5E3D4]/20
-            rounded-[2rem] md:rounded-[2.5rem]
-            p-6 md:p-10
-            shadow-2xl relative z-10">
-        <h2 className="text-2xl md:text-3xl font-black text-white mb-2 text-center tracking-tighter">
-          Bienvenido de nuevo
-        </h2>
-        <p className="text-center text-[#B5E3D4] text-xs font-bold uppercase tracking-widest mb-8">
-          Iguazú Marketplace
+    <>
+      <div className="mb-8 lg:mb-10">
+        <h1 className="text-h2 text-2xl sm:text-3xl text-primary-dark">
+          Ingresá a tu cuenta
+        </h1>
+        <p className="text-body text-gray-500 mt-2">
+          Comprá en Iguazú Marketplace
         </p>
+      </div>
 
-        {error && (
-          <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-xs px-4 py-3 rounded-2xl mb-6 text-center">
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-xl mb-6" role="alert">
           {error === 'Invalid login credentials' ? 'Credenciales incorrectas' : error}
-          </div>
-        )}
+        </div>
+      )}
 
-        <form onSubmit={handleSubmit} className="space-y-4 md:space-y-5">
-          <div>
-            <label className="text-sm font-black text-[#B5E3D4] uppercase tracking-widest ml-4 mb-2 block">Email</label>
-            <input
-              type="email"
-              name="email"
-              value={form.email}
-              onChange={handleChange}
-              required
-              className="w-full bg-white/5 border border-white/10 rounded-full px-5 py-2.5 md:py-3.5 text-white text-sm focus:outline-none focus:border-[#B5E3D4] transition-all placeholder:text-white/20"
-              placeholder="tu@email.com"
-            />
-          </div>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <Input
+          label="Email"
+          type="email"
+          name="email"
+          value={form.email}
+          onChange={handleChange}
+          required
+          placeholder="tu@email.com"
+          autoComplete="email"
+        />
 
-          <div>
-            <label className="text-sm font-black text-[#B5E3D4] uppercase tracking-widest ml-4 mb-2 block">Contraseña</label>
-            <input
-              type="password"
-              name="password"
-              value={form.password}
-              onChange={handleChange}
-              required
-              className="w-full bg-white/5 border border-white/10 rounded-full px-5 py-2.5 md:py-3.5 text-white text-sm focus:outline-none focus:border-[#B5E3D4] transition-all placeholder:text-white/20"
-              placeholder="••••••••"
-            />
-          </div>
+        <Input
+          label="Contraseña"
+          type="password"
+          name="password"
+          value={form.password}
+          onChange={handleChange}
+          required
+          placeholder="••••••••"
+          autoComplete="current-password"
+        />
 
-          <div className="text-left">
-            <button
-              type="button"
-              onClick={recuperarContrasena}
-              className="text-xs text-[#B5E3D4] hover:text-[#1CAAA8] transition-colors uppercase tracking-widest cursor-pointer"
-            >
-              ¿Olvidaste tu contraseña?
-            </button>
-          </div>
-
+        <div className="text-right">
           <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-[#B5E3D4] hover:bg-white disabled:opacity-50 text-[#050810] font-black py-3 md:py-4 rounded-full transition-all duration-300 mt-4 uppercase tracking-widest text-xs shadow-lg shadow-[#B5E3D4]/20 cursor-pointer disabled:cursor-not-allowed"
+            type="button"
+            onClick={recuperarContrasena}
+            className="text-sm text-accent hover:text-accent/80 font-medium transition-colors cursor-pointer"
           >
-            {loading ? 'Ingresando...' : 'Ingresar'}
+            ¿Olvidaste tu contraseña?
           </button>
-        </form>
+        </div>
 
-        <p className="text-center text-slate-400 text-sm mt-6">
+        <Button
+          type="submit"
+          variant="primary"
+          size="lg"
+          className="w-full"
+          loading={loading}
+          disabled={loading}
+        >
+          {!loading && <LogIn className="w-4 h-4" />}
+          {loading ? 'Ingresando...' : 'Iniciar sesión'}
+        </Button>
+      </form>
+
+      <div className="mt-8 pt-6 border-t border-gray-100 text-center">
+        <p className="text-sm text-gray-500">
           ¿No tenés cuenta?{' '}
-          <Link to="/register" className="text-cyan-400 hover:text-cyan-300">
-            Crear nueva cuenta
+          <Link to="/register" className="text-accent hover:text-accent/80 font-bold transition-colors inline-flex items-center gap-1">
+            Crear cuenta
+            <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </p>
       </div>
+    </>
   )
 }
