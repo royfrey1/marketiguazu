@@ -27,15 +27,4 @@ export const profileService = {
 
     return { data, error }
   },
-
-  async getVerifiedSellers(limit: number) {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, nombre, avatar_url')
-      .eq('es_vendedor', true)
-      .eq('verificado', true)
-      .limit(limit)
-
-    return { data, error }
-  },
 }
