@@ -29,3 +29,6 @@ backup/
 
 # Supabase CLI temp files (may contain connection URLs)
 supabase/.temp/
+
+# OpenCode internal planning files (not project code)
+.opencode/plans/
