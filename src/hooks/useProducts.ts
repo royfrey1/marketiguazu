@@ -40,16 +40,31 @@ export function useCatalog(options: UseCatalogOptions = {}) {
 
     const run = async () => {
       setState(s => ({ ...s, loading: true, error: null }))
-      const { data, total, error } = await productsService.getCatalog(currentPage, pageSize, filters)
-      if (!cancelled) {
-        setState({
-          data: data || [],
-          total,
-          page: currentPage,
-          pageSize,
-          loading: false,
-          error: error?.message ?? null,
-        })
+      try {
+        const { data, total, error } = await productsService.getCatalog(currentPage, pageSize, filters)
+        if (!cancelled) {
+          setState(s => ({
+            ...s,
+            data: data || [],
+            total,
+            page: currentPage,
+            pageSize,
+            error: error?.message ?? null,
+          }))
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setState(s => ({
+            ...s,
+            data: [],
+            total: 0,
+            page: currentPage,
+            pageSize,
+            error: err instanceof Error ? err.message : 'No se pudo cargar el catálogo',
+          }))
+        }
+      } finally {
+        if (!cancelled) setState(s => ({ ...s, loading: false }))
       }
     }
 
@@ -86,9 +101,14 @@ export function useBrands() {
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      const data = await productsService.getBrands()
-      if (!cancelled) setBrands(data)
-      if (!cancelled) setLoading(false)
+      try {
+        const data = await productsService.getBrands()
+        if (!cancelled) setBrands(data)
+      } catch {
+        if (!cancelled) setBrands([])
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
     })()
     return () => { cancelled = true }
   }, [])
