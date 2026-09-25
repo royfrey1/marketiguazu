@@ -1,65 +1,97 @@
-import { useState, useEffect, useCallback } from 'react'
-import { productsService, type Publicacion } from '../services/products.service'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { productsService, type ProductWithPrimaryImage, type CatalogFilters } from '../services/products.service'
 
-interface UseProductsState {
-  data: Publicacion[] | null
+interface UseCatalogState {
+  data: ProductWithPrimaryImage[]
+  total: number
+  page: number
+  pageSize: number
   loading: boolean
   error: string | null
 }
 
-export function useProducts() {
-  const [state, setState] = useState<UseProductsState>({ data: null, loading: true, error: null })
-
-  const fetchAll = useCallback(async () => {
-    setState(s => ({ ...s, loading: true, error: null }))
-    const { data, error } = await productsService.getActivePublications()
-    setState({ data, loading: false, error: error?.message ?? null })
-  }, [])
-
-  useEffect(() => {
-    let cancelled = false
-    const run = async () => {
-      setState(s => ({ ...s, loading: true, error: null }))
-      const { data, error } = await productsService.getActivePublications()
-      if (!cancelled) setState({ data, loading: false, error: error?.message ?? null })
-    }
-    run()
-    return () => { cancelled = true }
-  }, [])
-
-  return { ...state, refetch: fetchAll }
+interface UseCatalogOptions {
+  page?: number
+  pageSize?: number
+  filters?: CatalogFilters
+  enabled?: boolean
 }
 
-export function useProductById(id: number | null) {
-  const [state, setState] = useState<{ data: Publicacion | null; loading: boolean; error: string | null }>({
-    data: null, loading: true, error: null,
+export function useCatalog(options: UseCatalogOptions = {}) {
+  const { page = 1, pageSize = 24, filters = {}, enabled = true } = options
+
+  const [state, setState] = useState<UseCatalogState>({
+    data: [],
+    total: 0,
+    page,
+    pageSize,
+    loading: true,
+    error: null,
   })
 
-  useEffect(() => {
-    if (!id) return
-    let cancelled = false
-    ;(async () => {
-      const { data, error } = await productsService.getById(id)
-      if (!cancelled) setState({ data, loading: false, error: error?.message ?? null })
-    })()
-    return () => { cancelled = true }
-  }, [id])
+  const [currentPage, setCurrentPage] = useState(page)
+  const prevFiltersRef = useRef<string>('')
 
-  return state
+  const filtersKey = JSON.stringify(filters)
+
+  useEffect(() => {
+    if (!enabled) return
+    let cancelled = false
+
+    const run = async () => {
+      setState(s => ({ ...s, loading: true, error: null }))
+      const { data, total, error } = await productsService.getCatalog(currentPage, pageSize, filters)
+      if (!cancelled) {
+        setState({
+          data: data || [],
+          total,
+          page: currentPage,
+          pageSize,
+          loading: false,
+          error: error?.message ?? null,
+        })
+      }
+    }
+
+    run()
+    return () => { cancelled = true }
+  }, [currentPage, pageSize, filtersKey, enabled])
+
+  useEffect(() => {
+    if (prevFiltersRef.current !== '' && prevFiltersRef.current !== filtersKey) {
+      setCurrentPage(1)
+    }
+    prevFiltersRef.current = filtersKey
+  }, [filtersKey])
+
+  const goToPage = useCallback((newPage: number) => {
+    setCurrentPage(newPage)
+  }, [])
+
+  const totalPages = Math.ceil(state.total / pageSize)
+
+  return {
+    ...state,
+    totalPages,
+    goToPage,
+    hasNext: currentPage < totalPages,
+    hasPrev: currentPage > 1,
+  }
 }
 
-export function useProductsByUserId(userId: string | null) {
-  const [state, setState] = useState<UseProductsState>({ data: null, loading: true, error: null })
+export function useBrands() {
+  const [brands, setBrands] = useState<string[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!userId) return
     let cancelled = false
     ;(async () => {
-      const { data, error } = await productsService.getByUserId(userId)
-      if (!cancelled) setState({ data, loading: false, error: error?.message ?? null })
+      const data = await productsService.getBrands()
+      if (!cancelled) setBrands(data)
+      if (!cancelled) setLoading(false)
     })()
     return () => { cancelled = true }
-  }, [userId])
+  }, [])
 
-  return state
+  return { brands, loading }
 }

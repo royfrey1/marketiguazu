@@ -1,69 +1,149 @@
 import { Link } from 'react-router-dom'
+import { MapPin, Mail, ShoppingBag, HelpCircle, ArrowUpRight, Flag } from 'lucide-react'
 import logo from '../../assets/images/iguazu1.png'
 
-interface FooterProps {
-  className?: string
-}
-
-export default function Footer({ className = '' }: FooterProps) {
+export default function Footer() {
   return (
-    <footer className={`bg-gray-900 text-gray-400 mt-20 border-t border-gray-800 ${className}`.trim()}>
-      <div className="max-w-7xl mx-auto px-6 py-12">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
-          <div className="space-y-3">
+    <footer className="bg-primary-dark">
+      <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 pt-16 pb-10">
+        {/* ── Main grid ── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-10 mb-14">
+          {/* ── Col 1: Identity ── */}
+          <div className="space-y-5 lg:col-span-1">
+            <Link to="/" className="inline-block">
+              <img src={logo} alt="Iguazú Marketplace" className="h-18 sm:h-22 object-contain" />
+            </Link>
+            <p className="text-white/50 text-sm leading-relaxed max-w-xs">
+              Tu tienda de confianza. Tecnologia en tendencia, ultimos lanzamientos de Smartphones, consolas, accesorios y más.
+            </p>
+            <div className="space-y-2.5">
+              <div className="flex items-center gap-2.5 text-white/40 text-sm">
+                <MapPin className="w-4 h-4 text-accent shrink-0" />
+                Puerto Iguazú, Misiones
+              </div>
+              <div className="flex items-center gap-2.5 text-white/40 text-sm">
+                <Mail className="w-4 h-4 text-accent shrink-0" />
+                <a
+                  href="mailto:contacto@iguazumarketplace.com"
+                  className="hover:text-white/70 transition-colors"
+                >
+                  contacto@iguazumarketplace.com
+                </a>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Col 2: Comprar ── */}
+          <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <Link to="/" className="flex-shrink-0 flex items-center">
-                <img src={logo} alt="Iguazú Marketplace" className="transition-all duration-300 object-contain h-22 md:h-24" />
-              </Link>
+              <ShoppingBag className="w-4 h-4 text-accent" />
+              <h4 className="text-white font-bold text-xs uppercase tracking-wider">
+                Comprar
+              </h4>
             </div>
-            <p className="text-xs text-gray-500 leading-relaxed">
-              La plataforma de comercio local que conecta a compradores y vendedores de Puerto Iguazú y ciudades cercanas de forma directa, rápida y transparente.
-            </p>
-          </div>
-          <div className="space-y-3 border-t md:border-t-0 md:border-x border-gray-800 pt-4 md:pt-0 md:px-6">
-            <h4 className="pt-6 text-white font-bold text-xs uppercase tracking-wider">Navegación</h4>
-            <ul className="space-y-2 text-xs">
-              <li><Link to="/" className="hover:text-[#1CAAA8] transition-colors">Inicio</Link></li>
-              <li><Link to="/register" className="hover:text-[#1CAAA8] transition-colors">Crear Cuenta</Link></li>
-              <li><span className="text-gray-600 cursor-not-allowed">Categorías populares</span></li>
+            <ul className="space-y-2.5">
+              <FooterLink to="/busqueda?category=smartphones">Smartphones</FooterLink>
+              <FooterLink to="/busqueda?category=hardware">Hardware</FooterLink>
+              <FooterLink to="/busqueda?category=audio">Audio</FooterLink>
+              <FooterLink to="/busqueda?category=monitores">Monitores</FooterLink>
+              <FooterLink to="/busqueda?category=perifericos">Periféricos</FooterLink>
+              <FooterLink to="/busqueda" accent>Todos los productos</FooterLink>
             </ul>
           </div>
-          <div className="space-y-3 border-t md:border-t-0 pt-4 md:pt-0 md:px-6 border-gray-800 md:border-l">
-            <h4 className="pt-6 text-white font-bold text-xs uppercase tracking-wider">Soporte y Legales</h4>
-            <ul className="space-y-2 text-xs">
-              <li><span className="hover:text-[#1CAAA8] transition-colors cursor-pointer">Preguntas Frecuentes</span></li>
-              <li><span className="hover:text-[#1CAAA8] transition-colors cursor-pointer">Términos y Condiciones</span></li>
-              <li><span className="hover:text-[#1CAAA8] transition-colors cursor-pointer">Políticas de Privacidad</span></li>
+
+          {/* ── Col 3: Iguazú Marketplace ── */}
+          <div className="space-y-4">
+            <h4 className="text-white font-bold text-xs uppercase tracking-wider">
+              Iguazú Marketplace
+            </h4>
+            <ul className="space-y-2.5">
+              <FooterSpan>Nosotros</FooterSpan>
+              <FooterSpan>Contacto</FooterSpan>
+              <FooterSpan>Preguntas frecuentes</FooterSpan>
+              <FooterSpan>Política de privacidad</FooterSpan>
+              <FooterSpan>Términos y condiciones</FooterSpan>
             </ul>
           </div>
-          <div className="space-y-3 bg-gray-800 p-4 rounded-xl border border-gray-800">
-            <div className="flex items-center gap-2 text-amber-500 font-bold text-xs uppercase tracking-wider">
-              <span>⚠️</span> Consejos de Seguridad
+
+          {/* ── Col 4: Ayuda ── */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <HelpCircle className="w-4 h-4 text-accent" />
+              <h4 className="text-white font-bold text-xs uppercase tracking-wider">
+                Ayuda
+              </h4>
             </div>
-            <p className="text-[11px] text-gray-300 leading-normal">
-              Recordá coordinar tus entregas en lugares públicos y concurridos de la ciudad. No realices transferencias bancarias adelantadas sin verificar la identidad del vendedor.
-            </p>
+            <ul className="space-y-2.5">
+              <FooterSpan>Envíos</FooterSpan>
+              <FooterSpan>Medios de pago</FooterSpan>
+              <FooterSpan>Garantías</FooterSpan>
+              <FooterSpan>Cambios y devoluciones</FooterSpan>
+              <FooterLink to="/report" accent icon={<Flag className="w-3.5 h-3.5" />}>Reportar un problema</FooterLink>
+            </ul>
           </div>
         </div>
-        <div className="pt-8 border-t border-gray-600 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-gray-300">
+
+        {/* ── Divider ── */}
+        <div className="border-t border-white/10" />
+
+        {/* ── Bottom bar ── */}
+        <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-white/30">
           <p>© {new Date().getFullYear()} Iguazú Marketplace. Todos los derechos reservados.</p>
-          <Link to="/report" className="p-2 border border-dashed border-gray-200 text-gray-200 hover:text-red-500 hover:border-red-500 transition-colors">
-            ⚠️ REPORTAR UN PROBLEMA
-          </Link>
-          <p className="font-medium">
+          <p>
             Desarrollado por{' '}
             <a
               href="https://portfolio-royf.vercel.app/"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[#389C52] hover:text-[#389C52]/50 font-black underline underline-offset-3 decoration-gray-700 hover:decoration-[#15807e] transition-all"
+              className="inline-flex items-center gap-1 text-accent hover:text-accent/80 font-bold transition-colors"
             >
               Roy Frey
+              <ArrowUpRight className="w-3 h-3" />
             </a>
-            {' '}en <span className="text-gray-400">Iguazu, Misiones, Argentina</span>
+            {' '}en Puerto Iguazú, Misiones, Argentina
           </p>
         </div>
       </div>
     </footer>
+  )
+}
+
+/* ── Internal components ── */
+
+function FooterLink({
+  to,
+  children,
+  accent = false,
+  icon,
+}: {
+  to: string
+  children: React.ReactNode
+  accent?: boolean
+  icon?: React.ReactNode
+}) {
+  return (
+    <li>
+      <Link
+        to={to}
+        className={`text-sm transition-colors inline-flex items-center gap-1.5 ${
+          accent
+            ? 'text-accent/80 hover:text-accent font-medium'
+            : 'text-white/45 hover:text-white/80'
+        }`}
+      >
+        {icon}
+        {children}
+      </Link>
+    </li>
+  )
+}
+
+function FooterSpan({ children }: { children: React.ReactNode }) {
+  return (
+    <li>
+      <span className="text-sm text-white/45 hover:text-white/80 transition-colors cursor-pointer">
+        {children}
+      </span>
+    </li>
   )
 }

@@ -1,18 +1,23 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useState, useEffect, useMemo } from 'react'
+import { useParams, Link, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { SlidersHorizontal, X, ChevronDown, ChevronRight } from 'lucide-react'
-import { useCatalog, useBrands } from '../../hooks/useProducts'
+import { SlidersHorizontal, X } from 'lucide-react'
 import { categoriesService, type Category } from '../../services/categories.service'
+import { useCatalog, useBrands } from '../../hooks/useProducts'
 import type { SortOption } from '../../services/products.service'
 import ProductCard from '../../components/home/ProductCard'
 import { getCategoryIcon } from '../../lib/categoryIcons'
 
-export default function Busqueda() {
+export default function CategoryPage() {
+  const { slug } = useParams<{ slug: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
 
+  const [categoria, setCategoria] = useState<Category | null>(null)
+  const [subcategorias, setSubcategorias] = useState<Category[]>([])
+  const [loadingCat, setLoadingCat] = useState(true)
+  const [errorCat, setErrorCat] = useState<string | null>(null)
+
   const q = searchParams.get('q') || ''
-  const cat = searchParams.get('cat') || ''
   const min = searchParams.get('min') || ''
   const max = searchParams.get('max') || ''
   const marca = searchParams.get('marca') || ''
@@ -21,28 +26,15 @@ export default function Busqueda() {
 
   const [inputMin, setInputMin] = useState(min)
   const [inputMax, setInputMax] = useState(max)
-  const [categorias, setCategorias] = useState<Category[]>([])
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
   const [searchValue, setSearchValue] = useState(q)
-  const [manualExpanded, setManualExpanded] = useState<Set<number>>(() => new Set())
-  const [manualCollapsed, setManualCollapsed] = useState<Set<number>>(() => new Set())
 
   const { brands } = useBrands()
-
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      const { data } = await categoriesService.getActive()
-      if (!cancelled) setCategorias((data || []) as Category[])
-    })()
-    return () => { cancelled = true }
-  }, [])
 
   useEffect(() => { setInputMin(min) }, [min])
   useEffect(() => { setInputMax(max) }, [max])
   useEffect(() => { setSearchValue(q) }, [q])
 
-  // Lock body scroll when mobile filter panel is open
   useEffect(() => {
     if (!mobileFiltersOpen) return
     const prev = document.body.style.overflow
@@ -50,14 +42,38 @@ export default function Busqueda() {
     return () => { document.body.style.overflow = prev }
   }, [mobileFiltersOpen])
 
+  useEffect(() => {
+    let cancelled = false
+    async function cargar() {
+      if (!slug) return
+      setLoadingCat(true)
+      setErrorCat(null)
+      const { data } = await categoriesService.getBySlug(slug)
+      if (cancelled) return
+      if (!data) {
+        setErrorCat('Categoría no encontrada')
+        setLoadingCat(false)
+        return
+      }
+      setCategoria(data)
+
+      const { data: children } = await categoriesService.getChildren(data.id)
+      if (!cancelled && children) setSubcategorias(children)
+
+      setLoadingCat(false)
+    }
+    cargar()
+    return () => { cancelled = true }
+  }, [slug])
+
   const filters = useMemo(() => ({
     search: q || undefined,
-    category_id: cat ? Number(cat) : undefined,
+    category_id: categoria?.id,
     min_price: min ? Number(min) : undefined,
     max_price: max ? Number(max) : undefined,
     marca: marca || undefined,
     sort,
-  }), [q, cat, min, max, marca, sort])
+  }), [q, categoria, min, max, marca, sort])
 
   const {
     data: productos,
@@ -68,7 +84,12 @@ export default function Busqueda() {
     goToPage,
     hasNext,
     hasPrev,
-  } = useCatalog({ page, pageSize: 24, filters })
+  } = useCatalog({
+    page,
+    pageSize: 24,
+    filters,
+    enabled: !!categoria,
+  })
 
   const updateParams = (updates: Record<string, string>) => {
     const next = new URLSearchParams(searchParams)
@@ -109,163 +130,51 @@ export default function Busqueda() {
     updateParams({ sort: value })
   }
 
-  const handleCategoryFilter = (categoryId: number | null) => {
-    updateParams({ cat: categoryId ? String(categoryId) : '' })
+  const handlePageChange = (newPage: number) => {
+    goToPage(newPage)
+    updateParams({ page: newPage > 1 ? String(newPage) : '' })
   }
 
   const handleClearFilters = () => {
     setSearchParams({}, { replace: true })
     setInputMin('')
     setInputMax('')
+    setSearchValue('')
   }
 
-  const handlePageChange = (newPage: number) => {
-    goToPage(newPage)
-    updateParams({ page: newPage > 1 ? String(newPage) : '' })
-  }
+  const hasActiveFilters = q || min || max || marca
 
-  const hasActiveFilters = q || cat || min || max || marca
-
-  const childrenByParent = useMemo(() => {
-    const map = new Map<number, Category[]>()
-    for (const item of categorias) {
-      if (item.parent_id == null) continue
-      const list = map.get(item.parent_id)
-      if (list) list.push(item)
-      else map.set(item.parent_id, [item])
-    }
-    return map
-  }, [categorias])
-
-  const rootCategories = useMemo(
-    () =>
-      categorias.filter(
-        item =>
-          item.parent_id == null ||
-          !categorias.some(parent => parent.id === item.parent_id)
-      ),
-    [categorias]
-  )
-
-  const autoExpandedParents = useMemo(() => {
-    const ids = new Set<number>()
-    if (!cat) return ids
-    const selectedId = Number(cat)
-    let current = categorias.find(item => item.id === selectedId)
-    while (current?.parent_id != null) {
-      ids.add(current.parent_id)
-      current = categorias.find(item => item.id === current.parent_id)
-    }
-    return ids
-  }, [cat, categorias])
-
-  const isCategoryExpanded = useCallback((categoryId: number) => {
-    if (manualCollapsed.has(categoryId)) return false
-    if (manualExpanded.has(categoryId)) return true
-    return autoExpandedParents.has(categoryId)
-  }, [manualCollapsed, manualExpanded, autoExpandedParents])
-
-  const toggleCategoryExpanded = useCallback(
-    (categoryId: number) => {
-      const wasOpen = isCategoryExpanded(categoryId)
-      setManualExpanded(prev => {
-        const next = new Set(prev)
-        if (wasOpen) next.delete(categoryId)
-        else next.add(categoryId)
-        return next
-      })
-      setManualCollapsed(prev => {
-        const next = new Set(prev)
-        if (wasOpen) next.add(categoryId)
-        else next.delete(categoryId)
-        return next
-      })
-    },
-    [isCategoryExpanded]
-  )
-
-  const renderCategoryNode = (catItem: Category, depth: number): React.ReactNode => {
-    const children = childrenByParent.get(catItem.id) ?? []
-    const hasChildren = children.length > 0
-    const isActive = cat === String(catItem.id)
-    const expanded = hasChildren && isCategoryExpanded(catItem.id)
-    const catIconUrl = getCategoryIcon(catItem.slug)
-    const childrenId = `category-children-${catItem.id}`
-    const indent =
-      depth === 0
-        ? ''
-        : 'ml-3 pl-2.5 border-l border-gray-100'
-
-    if (!hasChildren) {
-      return (
-        <button
-          key={catItem.id}
-          onClick={() => handleCategoryFilter(catItem.id)}
-          className={`filter-option ${isActive ? 'filter-option-active' : 'filter-option-default'} ${indent}`}
-        >
-          {catIconUrl ? (
-            <img src={catIconUrl} alt="" className="w-4 h-4 object-contain inline-block mr-1" />
-          ) : null}
-          {catItem.nombre}
-        </button>
-      )
-    }
-
+  if (loadingCat) {
     return (
-      <div key={catItem.id} className={indent}>
-        <div
-          className={`rounded-lg ${
-            isActive ? 'filter-option-active' : 'filter-option-default'
-          }`}
-        >
-          <div className="flex items-stretch">
-            <button
-              type="button"
-              onClick={() => handleCategoryFilter(catItem.id)}
-              className="flex-1 min-w-0 text-left flex items-center gap-1.5 px-3 py-2 rounded-l-lg focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent"
-            >
-              {catIconUrl ? (
-                <img src={catIconUrl} alt="" className="w-4 h-4 object-contain shrink-0" />
-              ) : null}
-              <span className="truncate">{catItem.nombre}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => toggleCategoryExpanded(catItem.id)}
-              aria-expanded={expanded}
-              aria-controls={childrenId}
-              aria-label={
-                expanded
-                  ? `Contraer subcategorías de ${catItem.nombre}`
-                  : `Expandir subcategorías de ${catItem.nombre}`
-              }
-              className="shrink-0 px-2 flex items-center justify-center rounded-r-lg text-gray-500 hover:text-primary-dark hover:bg-black/5 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent cursor-pointer"
-            >
-              {expanded ? (
-                <ChevronDown
-                  className="w-4 h-4 transition-transform duration-150 ease-out motion-reduce:transition-none"
-                  aria-hidden="true"
-                />
-              ) : (
-                <ChevronRight
-                  className="w-4 h-4 transition-transform duration-150 ease-out motion-reduce:transition-none"
-                  aria-hidden="true"
-                />
-              )}
-            </button>
+      <div className="min-h-screen bg-white">
+        <div className="store-container py-8 sm:py-10">
+          <div className="breadcrumb">
+            <Link to="/" className="breadcrumb-link">Inicio</Link>
+            <span>/</span>
+            <span className="breadcrumb-current">Categorías</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
+              <div key={n} className="bg-gray-100 h-72 rounded-xl animate-pulse" />
+            ))}
           </div>
         </div>
+      </div>
+    )
+  }
 
-        <div
-          id={childrenId}
-          className={`grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none ${
-            expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
-          }`}
-        >
-          <div className="overflow-hidden min-h-0">
-            <div className={`py-1 space-y-1 ${expanded ? 'visible' : 'invisible'}`}>
-              {children.map(child => renderCategoryNode(child, depth + 1))}
-            </div>
+  if (errorCat || !categoria) {
+    return (
+      <div className="min-h-screen bg-white">
+        <div className="store-container py-8 sm:py-10">
+          <div className="breadcrumb">
+            <Link to="/" className="breadcrumb-link">Inicio</Link>
+            <span>/</span>
+            <span className="breadcrumb-current">Categorías</span>
+          </div>
+          <div className="text-center py-20">
+            <p className="text-h3 text-lg mb-2">{errorCat || 'Categoría no encontrada'}</p>
+            <Link to="/" className="btn-primary-sm mt-4 inline-flex">Volver al inicio</Link>
           </div>
         </div>
       </div>
@@ -284,26 +193,12 @@ export default function Busqueda() {
           </div>
           <div className="flex flex-wrap gap-2 mt-3">
             {q && <span className="filter-chip">Búsqueda: {q}</span>}
-            {cat && <span className="filter-chip">Categoría: {categorias.find(c => c.id === Number(cat))?.nombre}</span>}
             {min && <span className="filter-chip">Mín: ${Number(min).toLocaleString('es-AR')}</span>}
             {max && <span className="filter-chip">Máx: ${Number(max).toLocaleString('es-AR')}</span>}
             {marca && <span className="filter-chip">Marca: {marca}</span>}
           </div>
         </div>
       )}
-
-      <div className="filter-section">
-        <h3 className="filter-title">Categorías</h3>
-        <div className="space-y-1">
-          <button
-            onClick={() => handleCategoryFilter(null)}
-            className={`filter-option ${!cat ? 'filter-option-active' : 'filter-option-default'}`}
-          >
-            Todas
-          </button>
-          {rootCategories.map(catItem => renderCategoryNode(catItem, 0))}
-        </div>
-      </div>
 
       <div className="filter-section">
         <h3 className="filter-title">Precio</h3>
@@ -359,7 +254,7 @@ export default function Busqueda() {
         <nav className="breadcrumb">
           <Link to="/" className="breadcrumb-link">Inicio</Link>
           <span>/</span>
-          <span className="breadcrumb-current">Productos</span>
+          <span className="breadcrumb-current">{categoria.nombre}</span>
         </nav>
 
         {/* Search bar */}
@@ -371,7 +266,7 @@ export default function Busqueda() {
                 name="q"
                 value={searchValue}
                 onChange={(e) => setSearchValue(e.target.value)}
-                placeholder="Buscar productos..."
+                placeholder={`Buscar en ${categoria.nombre}...`}
                 className="search-input w-full pr-10"
               />
               {searchValue && (
@@ -398,13 +293,33 @@ export default function Busqueda() {
           transition={{ duration: 0.5 }}
           className="mb-8"
         >
-          <h1 className="text-h2 text-2xl sm:text-3xl">
-            {q ? `Resultados para "${q}"` : 'Todos los productos'}
+          <h1 className="text-h2 text-2xl sm:text-3xl flex items-center gap-3">
+            {(() => { const iconUrl = getCategoryIcon(categoria.slug); return iconUrl ? <img src={iconUrl} alt="" className="w-8 h-8 object-contain" /> : null })()}
+            {categoria.nombre}
           </h1>
           <p className="text-body mt-1">
             {total} producto{total !== 1 ? 's' : ''} encontrado{total !== 1 ? 's' : ''}
           </p>
         </motion.div>
+
+        {/* Subcategories */}
+        {subcategorias.length > 0 && (
+          <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+            {subcategorias.map((sub) => {
+              const subIconUrl = getCategoryIcon(sub.slug)
+              return (
+                <Link
+                  key={sub.id}
+                  to={`/categoria/${sub.slug}`}
+                  className="whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium border border-gray-200 text-gray-600 hover:border-accent hover:text-accent transition-all inline-flex items-center gap-1.5"
+                >
+                  {subIconUrl ? <img src={subIconUrl} alt="" className="w-4 h-4 object-contain" /> : null}
+                  {sub.nombre}
+                </Link>
+              )
+            })}
+          </div>
+        )}
 
         {/* Mobile filter toggle */}
         <button
@@ -466,8 +381,8 @@ export default function Busqueda() {
 
             {/* Product grid */}
             {loading && productos.length === 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-                {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                {[1, 2, 3, 4, 5, 6].map(n => (
                   <div key={n} className="bg-gray-100 h-72 rounded-xl animate-pulse" />
                 ))}
               </div>
@@ -477,8 +392,8 @@ export default function Busqueda() {
               </div>
             ) : productos.length === 0 ? (
               <div className="text-center py-20">
-                <p className="text-4xl mb-4">🔍</p>
-                <p className="text-h3 text-lg mb-2">No se encontraron productos</p>
+                {(() => { const iconUrl = getCategoryIcon(categoria.slug); return iconUrl ? <img src={iconUrl} alt="" className="w-16 h-16 object-contain mx-auto mb-4" /> : <p className="text-4xl mb-4">📦</p> })()}
+                <p className="text-h3 text-lg mb-2">No se encontraron productos en {categoria.nombre}</p>
                 <p className="text-body">Intentá con otros filtros o términos de búsqueda</p>
                 {hasActiveFilters && (
                   <button
@@ -491,7 +406,7 @@ export default function Busqueda() {
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                   {productos.map((prod) => (
                     <motion.div
                       key={prod.id}

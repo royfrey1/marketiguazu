@@ -1,23 +1,53 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import useAuth from '../../hooks/useAuth'
+import useCart from '../../hooks/useCart'
+import CategoryMegaMenu from './CategoryMegaMenu'
 import logo from '../../assets/images/iguazu1.png'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faSignOutAlt, faUserGear, faDollarSign } from '@fortawesome/free-solid-svg-icons'
+import { ShoppingCart, User, Search, Menu, X, LogOut, ChevronDown } from 'lucide-react'
 
 export default function NavBar() {
   const { user, signOut } = useAuth()
+  const { itemCount } = useCart()
   const [menuOpen, setMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const [busqueda, setBusqueda] = useState('')
+  const [desktopOpen, setDesktopOpen] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
+  const prevPathRef = useRef(location.pathname)
 
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 40)
-    window.addEventListener('scroll', handleScroll)
+    const handleScroll = () => setIsScrolled(window.scrollY > 50)
+    window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
+
+  // Close desktop dropdown on route change
+  useEffect(() => {
+    if (prevPathRef.current !== location.pathname) {
+      prevPathRef.current = location.pathname
+      setDesktopOpen(false)
+    }
+  }, [location.pathname])
+
+  // Close on Escape
+  useEffect(() => {
+    if (!desktopOpen) return
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setDesktopOpen(false)
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [desktopOpen])
+
+  // Lock body scroll when any menu is open
+  useEffect(() => {
+    if (!desktopOpen && !menuOpen) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [desktopOpen, menuOpen])
 
   const handleLogout = async () => {
     await signOut()
@@ -28,125 +58,203 @@ export default function NavBar() {
   if (location.pathname === '/login' || location.pathname === '/register') {
     const isLogin = location.pathname === '/login'
     return (
-      <header className="fixed top-0 left-0 right-0 z-50 flex justify-center p-2 md:p-4">
-        <nav className="w-[95%] md:w-[85%] max-w-7xl flex items-center justify-between px-4 md:px-6 py-2 bg-[#1CAAA8]/10 backdrop-blur-md rounded-full border-2 border-[#B5E3D4]/30 gap-2">
+      <header className="sticky top-0 left-0 right-0 z-50 bg-white border-b border-gray-100 shadow-sm">
+        <div className="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 py-3">
           <Link to="/" className="flex-shrink-0">
-            <img src={logo} alt="Logo" className="h-12 md:h-20 w-auto object-contain" />
+            <img src={logo} alt="Logo" className="h-10 md:h-12 w-auto object-contain" />
           </Link>
           <Link
             to={isLogin ? "/register" : "/login"}
-            className="shadow-lg shadow-[#1CAAA8]/10 transition-all duration-300 hover:scale-105 text-[#B5E3D4] font-bold text-xs md:text-lg hover:text-white px-3 py-2 md:px-5 md:py-2 rounded-full border border-[#B5E3D4]/30 hover:border-white/50 text-center leading-tight"
+            className="bg-accent hover:bg-accent/90 text-white font-bold text-xs md:text-sm px-4 py-2 md:px-6 md:py-2.5 rounded-lg transition-all"
           >
-            {isLogin ? (
-              <>
-                <span className="md:hidden">Crear cuenta</span>
-                <span className="hidden md:inline">Crear nueva cuenta</span>
-              </>
-            ) : (
-              "Iniciar sesión"
-            )}
+            {isLogin ? 'Crear cuenta' : 'Iniciar sesión'}
           </Link>
-        </nav>
+        </div>
       </header>
     )
   }
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 flex justify-center p-2 md:p-4 transition-all duration-500">
-      <nav className={`
-        flex items-center justify-between px-4 md:px-6 transition-all duration-500
-        rounded-full border-2 border-[#B5E3D4] gap-2
-        ${isScrolled
-          ? 'w-[98%] lg:w-[90%] bg-[#B5E3D4]/95 backdrop-blur-md shadow-2xl py-1.5'
-          : 'w-full bg-[#B5E3D4]/50 backdrop-blur-sm shadow-none py-2 md:py-3'
-        }
+    <header className="relative sticky top-0 left-0 right-0 z-50 bg-white border-b border-gray-100 shadow-sm transition-all duration-300">
+      <div className={`
+        max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 transition-all duration-300
+        ${isScrolled ? 'py-2' : 'py-3'}
       `}>
+        {/* Logo */}
         <Link to="/" className="flex-shrink-0">
           <img
             src={logo}
-            alt="Logo"
-            className={`transition-all duration-300 object-contain ${
-              isScrolled ? 'h-10 md:h-14' : 'h-14 md:h-20'
+            alt="Iguazú Marketplace"
+            className={`transition-all duration-500 object-contain ${
+              isScrolled ? 'h-11 md:h-12' : 'h-14 md:h-18'
             }`}
           />
         </Link>
 
-        <div className="hidden lg:flex flex-1 max-w-md mx-4 relative">
+        {/* Categorías - Desktop */}
+        <div className="hidden lg:flex items-center gap-1 ml-8 relative">
+          <button
+            onClick={() => setDesktopOpen(!desktopOpen)}
+            data-category-toggle
+            className={`flex items-center gap-1.5 text-sm font-bold transition-all duration-200 px-3 py-2 rounded-lg ${
+              desktopOpen
+                ? 'text-accent bg-accent/5'
+                : 'text-primary-dark hover:text-accent hover:bg-primary-light/15'
+            }`}
+            aria-haspopup="true"
+            aria-expanded={desktopOpen}
+          >
+            Categorías
+            <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${desktopOpen ? 'rotate-180' : ''}`} />
+          </button>
+          <CategoryMegaMenu
+            mode="desktop"
+            isOpen={desktopOpen}
+            onClose={() => setDesktopOpen(false)}
+          />
+        </div>
+
+        {/* Buscador - Desktop */}
+        <div className="hidden lg:flex flex-1 max-w-xl mx-6 relative">
           <input
             type="text"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && navigate(`/busqueda?q=${encodeURIComponent(busqueda)}`)}
-            placeholder="Buscar productos..."
-            className={`w-full rounded-full px-6 py-3 text-sm outline-none transition-all ${
-              isScrolled ? 'bg-white text-emerald-900 shadow-inner' : 'bg-white/30 text-white placeholder:text-black/40 border border-emerald-900/20'
-            }`}
+            placeholder="Buscar productos, marcas y más..."
+            className="w-full rounded-lg pl-4 pr-12 py-3 text-sm outline-none bg-gray-50 text-primary-dark placeholder:text-gray-400 border border-gray-200 focus:border-accent focus:bg-white focus:ring-2 focus:ring-accent/20 transition-all"
           />
           <button
             onClick={() => navigate(`/busqueda?q=${encodeURIComponent(busqueda)}`)}
-            className="cursor-pointer absolute right-1 top-1/2 -translate-y-1/2 bg-[#1CAAA8] text-white text-md font-bold px-4 py-2 rounded-full hover:brightness-110"
+            className="cursor-pointer absolute right-2 top-1/2 -translate-y-1/2 bg-accent text-white p-2.5 rounded-lg hover:bg-accent/90 transition-colors"
           >
-            Buscar
+            <Search className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="flex items-center gap-2 md:gap-3">
-          <div className="hidden md:flex items-center gap-3">
+        {/* Actions */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Carrito */}
+          <Link
+            to="/carrito"
+            className="relative flex items-center justify-center p-2.5 rounded-lg text-primary-dark hover:bg-primary-light/15 transition-colors"
+            aria-label={`Carrito (${itemCount} productos)`}
+          >
+            <ShoppingCart className="w-5 h-5" />
+            {itemCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-accent text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                {itemCount > 99 ? '99+' : itemCount}
+              </span>
+            )}
+          </Link>
+
+          {/* Cuenta - Desktop */}
+          <div className="hidden md:flex items-center gap-2">
             {user ? (
               <>
-                <Link to="/dashboard" className={`flex items-center gap-2 font-bold bg-[#1CAAA8] p-2.5 md:px-5 md:py-2 rounded-full transition-all hover:brightness-110 border border-[#185749]/20 ${isScrolled ? 'text-emerald-900' : 'text-white'}`}>
-                  <FontAwesomeIcon icon={faDollarSign} />
-                  <span className="hidden md:inline">Vender</span>
+                <Link
+                  to="/perfil"
+                  className="flex items-center gap-2 text-sm font-bold text-primary-dark px-3 py-2 rounded-lg hover:bg-primary-light/15 transition-colors"
+                >
+                  <User className="w-4 h-4" />
+                  Mi cuenta
                 </Link>
-                <Link to="/miperfil" className={`flex items-center gap-2 font-bold bg-[#1CAAA8] p-2.5 md:px-5 md:py-2 rounded-full transition-all hover:brightness-110 border border-[#185749]/20 ${isScrolled ? 'text-emerald-900' : 'text-white'}`}>
-                  <FontAwesomeIcon icon={faUserGear} />
-                  <span className="hidden md:inline">Perfil</span>
-                </Link>
-                <button onClick={handleLogout} className="cursor-pointer flex items-center gap-2 bg-white/50 p-2.5 md:px-5 md:py-2 rounded-full font-bold hover:bg-red-500 hover:text-white transition-all">
-                  <FontAwesomeIcon icon={faSignOutAlt} className="text-red-600 group-hover:text-white" />
-                  <span className="hidden md:inline">Salir</span>
+                <button
+                  onClick={handleLogout}
+                  className="cursor-pointer flex items-center gap-2 text-sm text-gray-400 hover:text-red-500 px-3 py-2 rounded-lg hover:bg-red-50 transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
                 </button>
               </>
             ) : (
-              <Link to="/register" className="bg-[#B5E3D4] px-6 py-2 rounded-full font-bold text-emerald-900 shadow-md">
-                Ingresar
+              <Link
+                to="/register"
+                className="bg-accent hover:bg-accent/90 text-white font-bold text-sm px-5 py-2.5 rounded-lg transition-colors"
+              >
+                Iniciar Sesión
               </Link>
             )}
           </div>
 
+          {/* Menú Mobile */}
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className={`md:hidden p-2 w-10 h-10 rounded-full flex items-center justify-center bg-white/20 ${isScrolled ? 'text-emerald-900' : 'text-white'}`}
+            className="lg:hidden p-2.5 rounded-lg text-primary-dark hover:bg-primary-light/15 transition-colors"
+            aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'}
+            aria-expanded={menuOpen}
           >
-            {menuOpen ? '✕' : '☰'}
+            {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
-      </nav>
+      </div>
 
+      {/* Menú Mobile */}
       <div className={`
-        absolute top-24 left-1/2 -translate-x-1/2 w-[92%] lg:hidden
-        bg-white rounded-[2rem] shadow-2xl p-6 transition-all duration-300 origin-top border border-[#B5E3D4]
-        ${menuOpen ? 'scale-100 opacity-100' : 'scale-90 opacity-0 pointer-events-none'}
+        lg:hidden overflow-hidden transition-all duration-300 origin-top
+        ${menuOpen ? 'max-h-[80vh] opacity-100' : 'max-h-0 opacity-0'}
       `}>
-        <div className="flex flex-col gap-4">
-          <div className="relative">
+        <div className="px-4 pb-4 border-t border-gray-100 max-h-[calc(80vh-60px)] overflow-y-auto">
+          {/* Buscador Mobile */}
+          <div className="relative mt-3 mb-4">
             <input
               type="text"
               placeholder="¿Qué buscás hoy?"
-              className="w-full bg-gray-100 p-4 rounded-2xl text-sm outline-none"
+              className="w-full bg-gray-50 border border-gray-200 p-3 rounded-lg text-sm outline-none text-primary-dark focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && navigate(`/busqueda?q=${encodeURIComponent(busqueda)}`)}
             />
-            <button onClick={() => { navigate(`/busqueda?q=${encodeURIComponent(busqueda)}`); setMenuOpen(false); }} className="absolute right-2 top-2 bg-[#1CAAA8] text-white px-4 py-2 rounded-xl text-xs">Buscar</button>
+            <button
+              onClick={() => { navigate(`/busqueda?q=${encodeURIComponent(busqueda)}`); setMenuOpen(false); }}
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-accent text-white p-2 rounded-lg"
+            >
+              <Search className="w-4 h-4" />
+            </button>
           </div>
+
+          {/* Categorías Mobile */}
+          <div className="mb-3">
+            <div className="flex items-center gap-2 px-3 py-2 mb-1">
+              <span className="text-xs font-bold uppercase tracking-wider text-gray-400">Categorías</span>
+            </div>
+            <CategoryMegaMenu
+              mode="mobile"
+              isOpen={menuOpen}
+              onClose={() => setMenuOpen(false)}
+            />
+          </div>
+
           {user ? (
-            <div className="grid grid-cols-2 gap-2">
-              <Link to="/dashboard" onClick={() => setMenuOpen(false)} className="bg-emerald-50 text-emerald-900 p-4 rounded-2xl text-center font-bold text-sm">Vender 🚀</Link>
-              <Link to="/miperfil" onClick={() => setMenuOpen(false)} className="bg-gray-50 text-gray-700 p-4 rounded-2xl text-center font-bold text-sm">Mi Perfil</Link>
-              <button onClick={handleLogout} className="col-span-2 text-red-500 font-bold py-2">Cerrar Sesión</button>
+            <div className="space-y-2">
+              <Link to="/perfil" onClick={() => setMenuOpen(false)} className="block bg-primary-light/15 text-primary-dark p-3 rounded-lg text-center font-bold text-sm">
+                Mi Perfil
+              </Link>
+              <Link to="/carrito" onClick={() => setMenuOpen(false)} className="block bg-primary-light/15 text-primary-dark p-3 rounded-lg text-center font-bold text-sm relative">
+                Carrito
+                {itemCount > 0 && (
+                  <span className="absolute top-2 right-4 w-5 h-5 bg-accent text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                    {itemCount > 99 ? '99+' : itemCount}
+                  </span>
+                )}
+              </Link>
+              <button onClick={handleLogout} className="w-full text-red-500 font-bold py-3 rounded-lg hover:bg-red-50 transition-colors">
+                Cerrar Sesión
+              </button>
             </div>
           ) : (
-            <Link to="/register" onClick={() => setMenuOpen(false)} className="bg-[#B5E3D4] text-emerald-900 py-4 rounded-2xl text-center font-bold">Iniciar Sesión</Link>
+            <div className="space-y-2">
+              <Link to="/carrito" onClick={() => setMenuOpen(false)} className="block bg-primary-light/15 text-primary-dark p-3 rounded-lg text-center font-bold text-sm relative">
+                Carrito
+                {itemCount > 0 && (
+                  <span className="absolute top-2 right-4 w-5 h-5 bg-accent text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                    {itemCount > 99 ? '99+' : itemCount}
+                  </span>
+                )}
+              </Link>
+              <Link to="/register" onClick={() => setMenuOpen(false)} className="block bg-accent text-white py-3 rounded-lg text-center font-bold">
+                Iniciar Sesión
+              </Link>
+            </div>
           )}
         </div>
       </div>
