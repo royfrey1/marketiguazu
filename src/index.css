@@ -1,6 +1,107 @@
+@import "sileo/styles.css";
 @import "tailwindcss";
+@import "./design/tokens.css";
 @variant dark (&:where(.dark, .dark *));
 
+@theme {
+  --color-primary: #185749;
+  --color-primary-dark: #0D3732;
+  --color-primary-light: #B5E3D4;
+  --color-secondary: #389C52;
+  --color-accent: #1CAAA8;
+  --color-sale: #8E00FF;
+
+  --font-sans: 'MarkPro', sans-serif;
+  --font-display: 'MarkPro-Narrow', sans-serif;
+  --font-extlight: 'MarkPro-Extlight', sans-serif;
+
+  --spacing-30: 7.5rem;
+
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  @keyframes accordion-down {
+    from { height: 0; }
+    to { height: var(--radix-accordion-content-height); }
+  }
+  @keyframes accordion-up {
+    from { height: var(--radix-accordion-content-height); }
+    to { height: 0; }
+  }
+}
+
+@font-face {
+  font-family: 'MarkPro';
+  src: url('./assets/fonts/MarkPro.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'MarkPro';
+  src: url('./assets/fonts/MarkPro.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'MarkPro-Narrow';
+  src: url('./assets/fonts/MarkPro-NarrowBold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'MarkPro-Narrow';
+  src: url('./assets/fonts/MarkPro-NarrowHeavy.ttf') format('truetype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'MarkPro-Extlight';
+  src: url('./assets/fonts/MarkPro-Extlight.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+.dark select {
+  color-scheme: dark;
+}
+
 * {
-  font-family: 'Montserrat', sans-serif;
+  font-family: 'MarkPro', sans-serif;
+}
+
+/* ── Sileo: brand integration ─────────────────────────────────────────── */
+
+:root {
+  --sileo-state-success: #389C52;
+  --sileo-state-error: #DC2626;
+  --sileo-state-warning: #D97706;
+  --sileo-state-info: #1CAAA8;
+  --sileo-width: 350px;
+}
+
+@media (max-width: 640px) {
+  :root {
+    --sileo-width: min(320px, calc(100vw - 2rem));
+  }
+
+  [data-sileo-viewport] {
+    overflow: hidden;
+  }
+}
+
+@media (max-width: 340px) {
+  .variant-price-actions {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
 }

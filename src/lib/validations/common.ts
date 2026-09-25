@@ -35,16 +35,8 @@ export const password = z
   .min(8, 'La contraseña debe tener al menos 8 caracteres')
   .max(128, 'La contraseña no puede superar 128 caracteres')
 
-export const confirmPassword = (passwordField: string) =>
-  z.string().min(1, 'Confirmá tu contraseña').superRefine((val, ctx) => {
-    const parent = ctx.path.length > 0 ? ctx.parent : undefined
-    if (parent && parent[passwordField] !== val) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Las contraseñas no coinciden',
-      })
-    }
-  })
+export const confirmPassword = (_passwordField: string) =>
+  z.string().min(1, 'Confirmá tu contraseña')
 
 // --- Teléfono ---
 

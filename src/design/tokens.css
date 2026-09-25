@@ -1,0 +1,264 @@
+@layer components {
+  /* ──────────────────────────────────────────────
+     TOKENS: Contenedor compartido
+     ────────────────────────────────────────────── */
+  .store-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6;
+  }
+
+  /* ──────────────────────────────────────────────
+     TOKENS: Sección base
+     ────────────────────────────────────────────── */
+  .section-spacing {
+    @apply py-16 sm:py-20;
+  }
+
+  /* ──────────────────────────────────────────────
+     TOKENS: Tipografía semántica
+     ────────────────────────────────────────────── */
+  .text-display {
+    @apply font-display font-black leading-[1.05] text-primary-dark;
+  }
+
+  .text-h1 {
+    @apply font-display font-black text-primary-dark;
+  }
+
+  .text-h2 {
+    @apply font-display font-black text-primary-dark;
+  }
+
+  .text-h3 {
+    @apply font-display font-bold text-primary-dark;
+  }
+
+  .text-body {
+    @apply text-sm text-gray-500 leading-relaxed;
+  }
+
+  .text-body-dark {
+    @apply text-sm text-primary-dark/70 leading-relaxed;
+  }
+
+  .text-small {
+    @apply text-xs text-gray-400;
+  }
+
+  .text-meta {
+    @apply text-xs font-bold uppercase tracking-widest text-accent;
+  }
+
+  .text-price {
+    @apply font-black text-lg text-primary;
+  }
+
+  .text-price-strike {
+    @apply font-bold text-xs text-gray-400 line-through;
+  }
+
+  .text-category {
+    @apply text-[11px] text-primary font-medium uppercase tracking-wide;
+  }
+
+  /* ──────────────────────────────────────────────
+     TOKENS: Botones
+     ────────────────────────────────────────────── */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2
+           bg-accent hover:bg-accent/90 text-white
+           font-bold text-sm px-8 py-3.5 rounded-lg
+           transition-all duration-300 shadow-lg hover:shadow-xl;
+  }
+  .btn-sale {
+    @apply inline-flex items-center justify-center gap-2
+           bg-sale hover:bg-sale/90 text-white
+           font-bold text-sm px-8 py-3.5 rounded-lg
+           transition-all duration-300 shadow-lg hover:shadow-xl;
+  }
+
+  .btn-primary-sm {
+    @apply inline-flex items-center justify-center gap-2
+           bg-accent hover:bg-accent/90 text-white
+           font-bold text-xs px-6 py-2.5 rounded-lg
+           transition-all duration-300 shadow-sm;
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2
+           border-2 border-primary text-primary-dark
+           font-bold text-sm px-8 py-3.5 rounded-lg
+           transition-all duration-300 hover:bg-primary-light/20;
+  }
+
+  .btn-card {
+    @apply w-full flex items-center justify-center gap-2
+           bg-primary hover:bg-primary-dark text-white
+           font-bold text-xs py-2.5 rounded-lg
+           transition-all duration-300;
+  }
+
+  /* ──────────────────────────────────────────────
+     TOKENS: Cards
+     ────────────────────────────────────────────── */
+  .card {
+    @apply bg-white rounded-xl overflow-hidden border border-gray-100
+           hover:border-primary-light hover:shadow-lg
+           transition-all duration-300;
+  }
+
+  .card-benefit {
+    @apply text-center p-6 rounded-xl bg-white border border-primary-light/20
+           hover:border-primary-light hover:shadow-md
+           transition-all duration-300;
+  }
+
+  .card-category {
+    @apply flex flex-col items-center gap-3 p-4 sm:p-5
+           bg-primary-light/20 rounded-xl border border-primary-light/30
+           hover:border-accent hover:bg-primary-light/40 hover:shadow-md
+           transition-all duration-300;
+  }
+
+  .card-benefit-icon {
+    @apply w-14 h-14 rounded-xl bg-primary flex items-center justify-center mx-auto mb-4;
+  }
+
+  .card-category-icon {
+    @apply w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-white flex items-center justify-center
+           transition-colors shadow-sm;
+  }
+
+  /* ──────────────────────────────────────────────
+     TOKENS: Badges
+     ────────────────────────────────────────────── */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full
+           text-[10px] font-black uppercase tracking-wider;
+  }
+
+  .badge-product {
+    @apply absolute top-3 left-3 z-10 text-white
+           font-black text-[10px] px-2.5 py-1 rounded-lg
+           uppercase tracking-wider shadow-sm;
+  }
+
+  /* ──────────────────────────────────────────────
+     TOKENS: Trust bar
+     ────────────────────────────────────────────── */
+  .trust-icon {
+    @apply w-10 h-10 rounded-xl bg-accent/20 flex items-center justify-center shrink-0;
+  }
+
+  /* ──────────────────────────────────────────────
+     TOKENS: Sections de fondo
+     ────────────────────────────────────────────── */
+  .bg-hero {
+    @apply bg-primary-light/30;
+  }
+
+  .bg-section-alt {
+    @apply bg-primary-light/20;
+  }
+
+  /* ──────────────────────────────────────────────
+     TOKENS: Animaciones compartidas
+     ────────────────────────────────────────────── */
+  .animate-fade-in-up {
+    @apply opacity-0 translate-y-5;
+  }
+
+  .animate-fade-in-up-active {
+    @apply opacity-100 translate-y-0;
+  }
+
+  /* ──────────────────────────────────────────────
+     TOKENS: Breadcrumb
+     ────────────────────────────────────────────── */
+  .breadcrumb {
+    @apply flex items-center gap-2 text-sm text-gray-400 mb-6;
+  }
+
+  .breadcrumb-link {
+    @apply hover:text-accent transition-colors;
+  }
+
+  .breadcrumb-current {
+    @apply text-primary-dark font-medium;
+  }
+
+  /* ──────────────────────────────────────────────
+     TOKENS: Filtros Storefront
+     ────────────────────────────────────────────── */
+  .filter-section {
+    @apply bg-white rounded-xl p-5 border border-gray-100;
+  }
+
+  .filter-title {
+    @apply text-xs font-bold uppercase tracking-wider text-gray-400 mb-3;
+  }
+
+  .filter-option {
+    @apply w-full text-left px-3 py-2 rounded-lg text-sm transition-colors cursor-pointer;
+  }
+
+  .filter-option-active {
+    @apply bg-accent/10 text-accent font-bold;
+  }
+
+  .filter-option-default {
+    @apply text-gray-600 hover:bg-gray-50;
+  }
+
+  /* ──────────────────────────────────────────────
+     TOKENS: Paginación
+     ────────────────────────────────────────────── */
+  .pagination-btn {
+    @apply px-4 py-2 rounded-lg text-sm font-medium border border-gray-200
+           bg-white text-gray-600 hover:bg-gray-50
+           disabled:opacity-40 disabled:cursor-not-allowed
+           transition-colors cursor-pointer;
+  }
+
+  .pagination-info {
+    @apply text-sm text-gray-400 px-4;
+  }
+
+  /* ──────────────────────────────────────────────
+     TOKENS: Sort select
+     ────────────────────────────────────────────── */
+  .sort-select {
+    @apply border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-700
+           bg-white cursor-pointer outline-none focus:border-accent transition-colors;
+  }
+
+  /* ──────────────────────────────────────────────
+     TOKENS: Search input Storefront
+     ────────────────────────────────────────────── */
+  .search-input {
+    @apply flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm
+           outline-none transition-all
+           focus:border-accent bg-white text-gray-800
+           placeholder:text-gray-400;
+  }
+
+  .search-btn {
+    @apply px-6 py-3 bg-accent hover:bg-accent/90 text-white
+           font-bold text-sm rounded-xl transition-colors cursor-pointer;
+  }
+
+  /* ──────────────────────────────────────────────
+     TOKENS: Active filter chips
+     ────────────────────────────────────────────── */
+  .filter-chip {
+    @apply text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-lg;
+  }
+
+  /* ──────────────────────────────────────────────
+     TOKENS: Sidebar mobile toggle
+     ────────────────────────────────────────────── */
+  .filter-toggle-btn {
+    @apply lg:hidden inline-flex items-center gap-2 px-4 py-2.5
+           border border-gray-200 rounded-xl text-sm font-medium text-gray-700
+           bg-white hover:bg-gray-50 transition-colors cursor-pointer mb-4;
+  }
+}

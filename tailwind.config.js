@@ -3,14 +3,16 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: '#185749',
+        'primary': '#185749',
         'primary-dark': '#0D3732',
         'primary-light': '#B5E3D4',
-        secondary: '#389C52',
-        accent: '#1CAAA8',
+        'secondary': '#389C52',
+        'accent': '#1CAAA8',
       },
       fontFamily: {
-        sans: ['Montserrat', 'sans-serif'],
+        sans: ['MarkPro', 'sans-serif'],
+        display: ['MarkPro-Narrow', 'sans-serif'],
+        light: ['MarkPro-Extlight', 'sans-serif'],
       },
       spacing: {
         '30': '7.5rem',

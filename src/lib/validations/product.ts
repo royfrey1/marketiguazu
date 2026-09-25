@@ -9,6 +9,16 @@ import { requiredText, optionalText, positiveNumber, nonNegativeNumber } from '.
  * esos schemas se crearán cuando esas entidades se implementen.
  */
 
+const shippingDimensionField = (label: string, max: number) =>
+  z.coerce
+    .number({ message: `${label} debe ser un número` })
+    .int(`${label} debe ser un número entero`)
+    .positive(`${label} debe ser mayor a 0`)
+    .max(max, `${label} no puede superar ${max}`)
+    .optional()
+    .or(z.literal(''))
+    .transform((val) => (val === '' || val === undefined ? null : val))
+
 export const productSchema = z.object({
   titulo: requiredText('El título', 3, 150),
   descripcion: optionalText(2000),
@@ -25,6 +35,10 @@ export const productSchema = z.object({
   sku: optionalText(50),
   activo: z.boolean().default(true),
   destacado: z.boolean().default(false),
+  peso_envio_gramos: shippingDimensionField('El peso', 25000),
+  alto_paquete_cm: shippingDimensionField('El alto', 150),
+  ancho_paquete_cm: shippingDimensionField('El ancho', 150),
+  largo_paquete_cm: shippingDimensionField('El largo', 150),
 })
 
 export type ProductFormData = z.infer<typeof productSchema>

@@ -12,7 +12,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary:
-    'bg-[#1CAAA8] hover:bg-[#15807e] text-white shadow-sm active:bg-[#0f6b69]',
+    'bg-accent hover:bg-accent/90 text-white shadow-sm active:bg-[#0f6b69]',
   secondary:
     'bg-gray-100 hover:bg-gray-200 text-gray-800 active:bg-gray-300',
   outline:
@@ -46,7 +46,7 @@ export default function Button({
         inline-flex items-center justify-center gap-2 font-bold
         transition-all duration-150 cursor-pointer
         disabled:opacity-50 disabled:cursor-not-allowed
-        focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1CAAA8]
+        focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent
         ${variantStyles[variant]}
         ${sizeStyles[size]}
         ${className}
