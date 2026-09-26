@@ -1,9 +1,14 @@
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { CheckCircle, ArrowRight, Home } from 'lucide-react'
 import Button from '../../components/ui/Button'
+import PaymentOrderSummary from './PaymentOrderSummary'
 
 export default function PaymentSuccessPage() {
+  const [searchParams] = useSearchParams()
+  const orderParam = searchParams.get('order')
+  const orderId = orderParam && /^\d+$/.test(orderParam) ? Number(orderParam) : null
+
   return (
     <div className="bg-white min-h-screen">
       <div className="store-container section-spacing">
@@ -11,7 +16,7 @@ export default function PaymentSuccessPage() {
           <ol className="flex items-center gap-2 text-sm">
             <li><Link to="/" className="breadcrumb-link">Inicio</Link></li>
             <li className="text-gray-300">/</li>
-            <li className="breadcrumb-current">Compra aprobada</li>
+            <li className="breadcrumb-current">Pedido recibido</li>
           </ol>
         </nav>
 
@@ -26,14 +31,16 @@ export default function PaymentSuccessPage() {
           </div>
 
           <h1 className="text-h2 text-2xl sm:text-3xl text-primary-dark mb-3">
-            ¡Compra aprobada!
+            ¡Pedido recibido!
           </h1>
 
           <p className="text-body text-gray-500 mb-5 max-w-md leading-relaxed">
-            Tu pago fue procesado correctamente. Pronto recibirás un email con los detalles de tu pedido.
+            ¡Listo! Estamos confirmando tu pago, te vamos a avisar por email cuando se acredite.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center gap-3">
+          <PaymentOrderSummary orderId={orderId} />
+
+          <div className="flex flex-col sm:flex-row items-center gap-3 mt-6">
             <Link to="/">
               <Button variant="primary" size="lg">
                 <Home className="w-4 h-4" />

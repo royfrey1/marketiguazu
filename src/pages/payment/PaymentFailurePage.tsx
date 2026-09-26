@@ -1,9 +1,14 @@
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { XCircle, RefreshCw, ArrowRight } from 'lucide-react'
 import Button from '../../components/ui/Button'
+import PaymentOrderSummary from './PaymentOrderSummary'
 
 export default function PaymentFailurePage() {
+  const [searchParams] = useSearchParams()
+  const orderParam = searchParams.get('order')
+  const orderId = orderParam && /^\d+$/.test(orderParam) ? Number(orderParam) : null
+
   return (
     <div className="bg-white min-h-screen">
       <div className="store-container section-spacing">
@@ -34,7 +39,9 @@ export default function PaymentFailurePage() {
             o elegir otro método de pago.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center gap-3">
+          <PaymentOrderSummary orderId={orderId} />
+
+          <div className="flex flex-col sm:flex-row items-center gap-3 mt-6">
             <Link to="/checkout">
               <Button variant="primary" size="lg">
                 <RefreshCw className="w-4 h-4" />
