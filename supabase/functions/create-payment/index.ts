@@ -4,6 +4,11 @@
 // Crea o reutiliza una order pending, reserva stock, genera
 // una Preferencia de Mercado Pago y devuelve init_point.
 //
+// Envío: siempre gratis y fijo a Correo Argentino.
+//   envio_costo = 0, total = subtotal,
+//   metodo_envio = 'correo_argentino' (server-side, sin depender del body).
+//   No se llama a create-quote (cuenta de Correo Argentino sin habilitar).
+//
 // NO implementa webhook ni confirmación de pago.
 // ============================================================
 
@@ -23,6 +28,9 @@ const CORS_HEADERS: Record<string, string> = {
 
 const MP_API_URL = "https://api.mercadopago.com/checkout/preferences";
 
+// Envío fijo: único transportista y costo absorcido por el precio de producto.
+const SHIPMENT_METHOD = "correo_argentino";
+
 // ============================================================
 // tipos
 // ============================================================
@@ -35,7 +43,8 @@ interface CheckoutItem {
 
 interface CreatePaymentPayload {
   addressId: number;
-  shippingMethodId: string;
+  // Se ignora: el envío siempre queda 'correo_argentino' server-side.
+  shippingMethodId?: string;
   items: CheckoutItem[];
 }
 
@@ -48,8 +57,6 @@ type ErrorCode =
   | "INVALID_QUANTITY"
   | "PRICE_CHANGED"
   | "ADDRESS_NOT_FOUND"
-  | "SHIPPING_METHOD_REQUIRED"
-  | "SHIPPING_QUOTE_REQUIRED"
   | "STOCK_UNAVAILABLE"
   | "ORDER_CREATION_FAILED"
   | "PAYMENT_CREATION_FAILED"
@@ -140,12 +147,6 @@ serve(async (req: Request): Promise<Response> => {
     if (!payload.addressId || !Number.isInteger(payload.addressId)) {
       return errResp("INVALID_PAYLOAD", "addressId inválido");
     }
-    if (
-      !payload.shippingMethodId ||
-      typeof payload.shippingMethodId !== "string"
-    ) {
-      return errResp("SHIPPING_METHOD_REQUIRED", "Método de envío requerido");
-    }
     if (!Array.isArray(payload.items) || payload.items.length === 0) {
       return errResp("EMPTY_CART", "El carrito está vacío");
     }
@@ -184,24 +185,11 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     // ----------------------------------------------------------
-    // 4. SHIPPING_QUOTE_REQUIRED
-    //     No hay cotización real de envío todavía.
-    //     Rechazar para no crear orden inconsistente.
-    // ----------------------------------------------------------
-    return errResp(
-      "SHIPPING_QUOTE_REQUIRED",
-      "No se puede generar el pago sin una cotización de envío válida. La integración de cotización está pendiente.",
-      422
-    );
-
-    // ----------------------------------------------------------
-    // NOTA: el código debajo de esta línea NO se ejecuta
-    // mientras SHIPPING_QUOTE_REQUIRED esté activo.
-    // Se mantiene completo para cuando se implemente la
-    // cotización de envío en una tarea futura.
+    // 4. Envío fijo (sin cotización):
+    //    envio_costo = 0, total = subtotal,
+    //    metodo_envio = 'correo_argentino' (server-side).
     // ----------------------------------------------------------
 
-    /*
     // ----------------------------------------------------------
     // 5. validar productos, precios y stock
     // ----------------------------------------------------------
@@ -296,6 +284,22 @@ serve(async (req: Request): Promise<Response> => {
     if (existingOrder) {
       orderId = existingOrder.id;
 
+      // Liberar reservas de los items anteriores antes de re-armar la orden
+      // (release_reservation es idempotente).
+      const { data: oldItems } = await supabase
+        .from("order_items")
+        .select("product_id, variant_id, cantidad")
+        .eq("order_id", orderId);
+
+      for (const old of oldItems ?? []) {
+        await supabase.rpc("release_reservation", {
+          p_product_id: old.product_id,
+          p_variant_id: old.variant_id,
+          p_cantidad: old.cantidad,
+          p_order_id: orderId,
+        });
+      }
+
       await supabase.from("order_items").delete().eq("order_id", orderId);
 
       await supabase
@@ -316,7 +320,7 @@ serve(async (req: Request): Promise<Response> => {
           total: subtotal,
           envio_costo: 0,
           direccion_envio: address as unknown as Record<string, unknown>,
-          metodo_envio: payload.shippingMethodId,
+          metodo_envio: SHIPMENT_METHOD,
           payment_status: "pending",
           updated_at: new Date().toISOString(),
         })
@@ -335,7 +339,7 @@ serve(async (req: Request): Promise<Response> => {
           total: subtotal,
           envio_costo: 0,
           direccion_envio: address as unknown as Record<string, unknown>,
-          metodo_envio: payload.shippingMethodId,
+          metodo_envio: SHIPMENT_METHOD,
           status: "pending",
           payment_status: "pending",
         })
@@ -492,6 +496,8 @@ serve(async (req: Request): Promise<Response> => {
         order_id: String(orderId),
         payment_id: String(paymentId),
       },
+      notification_url:
+        `${supabaseUrl}/functions/v1/mp-webhook?source_news=webhooks`,
       back_urls: {
         success: `${siteUrl}/pago/exito?order=${orderId}`,
         failure: `${siteUrl}/pago/fallo?order=${orderId}`,
@@ -555,7 +561,6 @@ serve(async (req: Request): Promise<Response> => {
       orderNumber: null,
       initPoint: preference.init_point,
     });
-    */
   } catch (error) {
     console.error("Error interno:", error);
     return errResp("INTERNAL_ERROR", "Error interno del servidor", 500);
