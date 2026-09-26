@@ -7,7 +7,7 @@ import logo from '../../assets/images/iguazu1.png'
 import { ShoppingCart, User, Search, Menu, X, LogOut, ChevronDown } from 'lucide-react'
 
 export default function NavBar() {
-  const { user, signOut } = useAuth()
+  const { user, loading, signOut } = useAuth()
   const { itemCount } = useCart()
   const [menuOpen, setMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
@@ -150,7 +150,7 @@ export default function NavBar() {
 
           {/* Cuenta - Desktop */}
           <div className="hidden md:flex items-center gap-2">
-            {user ? (
+            {loading ? null : user ? (
               <>
                 <Link
                   to="/perfil"
@@ -224,7 +224,7 @@ export default function NavBar() {
             />
           </div>
 
-          {user ? (
+          {!loading && user ? (
             <div className="space-y-2">
               <Link to="/perfil" onClick={() => setMenuOpen(false)} className="block bg-primary-light/15 text-primary-dark p-3 rounded-lg text-center font-bold text-sm">
                 Mi Perfil
@@ -251,9 +251,11 @@ export default function NavBar() {
                   </span>
                 )}
               </Link>
-              <Link to="/register" onClick={() => setMenuOpen(false)} className="block bg-accent text-white py-3 rounded-lg text-center font-bold">
-                Iniciar Sesión
-              </Link>
+              {!loading && (
+                <Link to="/register" onClick={() => setMenuOpen(false)} className="block bg-accent text-white py-3 rounded-lg text-center font-bold">
+                  Iniciar Sesión
+                </Link>
+              )}
             </div>
           )}
         </div>

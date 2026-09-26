@@ -1,15 +1,18 @@
 import { useEffect, useState } from 'react'
 import { orderService, type OrderDetail } from '../../services/order.service'
+import useAuth from '../../hooks/useAuth'
 
 interface PaymentOrderSummaryProps {
   orderId: number | null
 }
 
 export default function PaymentOrderSummary({ orderId }: PaymentOrderSummaryProps) {
+  const { user, loading } = useAuth()
   const [outcome, setOutcome] = useState<{ orderId: number; order: OrderDetail | null } | null>(null)
+  const userId = user?.id
 
   useEffect(() => {
-    if (!orderId) return
+    if (!orderId || loading || !userId) return
 
     let cancelled = false
     orderService.getMyOrderById(orderId).then(({ data, error }) => {
@@ -20,9 +23,11 @@ export default function PaymentOrderSummary({ orderId }: PaymentOrderSummaryProp
     return () => {
       cancelled = true
     }
-  }, [orderId])
+  }, [orderId, loading, userId])
 
   if (!orderId) return null
+
+  if (!loading && !userId) return null
 
   if (!outcome || outcome.orderId !== orderId) {
     return (
