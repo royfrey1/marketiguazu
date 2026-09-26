@@ -25,7 +25,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 // sigue siendo las back_urls de Mercado Pago.)
 const ALLOWED_ORIGINS: ReadonlySet<string> = new Set(
   [
-    "https://marketplace-iguazu.vercel.app", // producción (Vercel)
+    "https://market-iguazu.vercel.app", // producción (Vercel)
     "http://localhost:5173", // Vite dev server
     "http://127.0.0.1:5173",
     Deno.env.get("SITE_URL"),
@@ -129,7 +129,7 @@ serve(async (req: Request): Promise<Response> => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const mpAccessToken = Deno.env.get("MERCADOPAGO_ACCESS_TOKEN");
-    const siteUrl = Deno.env.get("SITE_URL") || "https://marketplace-iguazu.vercel.app";
+    const siteUrl = Deno.env.get("SITE_URL") || "https://market-iguazu.vercel.app";
 
     if (!mpAccessToken) {
       return errResp(
