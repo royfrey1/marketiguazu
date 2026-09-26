@@ -124,13 +124,15 @@ serve(async (req: Request): Promise<Response> => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    // verificar JWT y obtener usuario
+    // verificar JWT y obtener usuario (token explícito)
+    const token = authHeader.replace(/^Bearer\s+/i, "");
     const {
       data: { user },
       error: authError,
-    } = await supabase.auth.getUser();
+    } = await supabase.auth.getUser(token);
 
     if (authError || !user) {
+      console.error("auth error:", authError?.message);
       return errResp("AUTH_REQUIRED", "Usuario no autenticado", 401);
     }
 
