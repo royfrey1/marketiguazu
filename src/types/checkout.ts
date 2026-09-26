@@ -20,6 +20,37 @@ export const CHECKOUT_ERROR_MESSAGES: Record<CheckoutErrorCode, string> = {
   CHECKOUT_NOT_READY: 'El checkout no está listo para continuar.',
 }
 
+export type PaymentErrorCode =
+  | 'AUTH_REQUIRED'
+  | 'INVALID_PAYLOAD'
+  | 'EMPTY_CART'
+  | 'INVALID_PRODUCT'
+  | 'INVALID_VARIANT'
+  | 'INVALID_QUANTITY'
+  | 'PRICE_CHANGED'
+  | 'ADDRESS_NOT_FOUND'
+  | 'STOCK_UNAVAILABLE'
+  | 'ORDER_CREATION_FAILED'
+  | 'PAYMENT_CREATION_FAILED'
+  | 'MERCADOPAGO_ERROR'
+  | 'INTERNAL_ERROR'
+
+export const PAYMENT_ERROR_MESSAGES: Record<PaymentErrorCode, string> = {
+  AUTH_REQUIRED: 'Tu sesión expiró. Iniciá sesión nuevamente para continuar.',
+  INVALID_PAYLOAD: 'Los datos del checkout son inválidos. Volvé al carrito y revisá el pedido.',
+  EMPTY_CART: 'Tu carrito está vacío.',
+  INVALID_PRODUCT: 'Uno de los productos del carrito ya no está disponible.',
+  INVALID_VARIANT: 'Una de las variantes del carrito ya no está disponible.',
+  INVALID_QUANTITY: 'Las cantidades del carrito son inválidas.',
+  PRICE_CHANGED: 'El precio de un producto cambió. Revisá tu carrito antes de continuar.',
+  ADDRESS_NOT_FOUND: 'La dirección de envío seleccionada ya no existe. Elegí una nueva.',
+  STOCK_UNAVAILABLE: 'No hay stock suficiente para uno de los productos. Ajustá las cantidades.',
+  ORDER_CREATION_FAILED: 'No pudimos crear tu pedido. Intentá nuevamente en unos minutos.',
+  PAYMENT_CREATION_FAILED: 'No pudimos iniciar el pago. Intentá nuevamente en unos minutos.',
+  MERCADOPAGO_ERROR: 'Mercado Pago no pudo procesar la operación. Intentá nuevamente.',
+  INTERNAL_ERROR: 'Ocurrió un error inesperado. Intentá nuevamente.',
+}
+
 export interface CheckoutCartItem {
   id: number
   productId: number

@@ -7,13 +7,9 @@ import { productImagesService } from '../../services/productImages.service'
 
 interface CheckoutReviewProps {
   onEditAddress: () => void
-  onEditShipping: () => void
 }
 
-export default function CheckoutReview({
-  onEditAddress,
-  onEditShipping,
-}: CheckoutReviewProps) {
+export default function CheckoutReview({ onEditAddress }: CheckoutReviewProps) {
   const { items, subtotal } = useCart()
   const { selectedAddress, selectedShippingMethodId } = useCheckout()
   const shippingMethod = selectedShippingMethodId ? getShippingMethodById(selectedShippingMethodId) : null
@@ -131,21 +127,11 @@ export default function CheckoutReview({
 
       {/* 3. Método de envío */}
       <section className="rounded-2xl border border-gray-100 p-5 sm:p-6 overflow-hidden">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary-light/20 flex items-center justify-center shrink-0">
-              <Truck className="w-5 h-5 text-primary" />
-            </div>
-            <h2 className="text-sm sm:text-base font-bold text-primary-dark">Método de envío</h2>
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 rounded-xl bg-primary-light/20 flex items-center justify-center shrink-0">
+            <Truck className="w-5 h-5 text-primary" />
           </div>
-          <button
-            type="button"
-            onClick={onEditShipping}
-            className="inline-flex items-center gap-1 text-xs font-semibold text-accent hover:text-accent/80 transition-colors"
-          >
-            <Pencil className="w-3 h-3" />
-            Editar
-          </button>
+          <h2 className="text-sm sm:text-base font-bold text-primary-dark">Método de envío</h2>
         </div>
 
         {shippingMethod ? (
@@ -155,7 +141,7 @@ export default function CheckoutReview({
             <p className="text-xs text-gray-400">{shippingMethod.estimatedDays}</p>
           </div>
         ) : (
-          <p className="ml-[3.25rem] text-sm text-gray-400">No hay método de envío seleccionado.</p>
+          <p className="ml-[3.25rem] text-sm text-gray-400">Envío gratis con Correo Argentino.</p>
         )}
       </section>
 
@@ -172,12 +158,12 @@ export default function CheckoutReview({
           </div>
           <div className="flex justify-between gap-2">
             <span className="text-gray-400">Envío</span>
-            <span className="text-gray-400">A confirmar</span>
+            <span className="text-gray-400">Gratis</span>
           </div>
           <div className="border-t border-primary-light/30 pt-2.5 mt-2.5">
             <div className="flex justify-between items-baseline gap-2">
               <span className="text-sm font-bold text-primary-dark">Total</span>
-              <span className="text-sm font-bold text-gray-400">A confirmar</span>
+              <span className="text-sm font-bold text-primary-dark">${subtotal.toLocaleString('es-AR')}</span>
             </div>
           </div>
         </div>

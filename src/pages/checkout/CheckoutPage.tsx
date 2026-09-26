@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { CreditCard, AlertTriangle, ArrowLeft, Truck } from 'lucide-react'
+import { FunctionsHttpError } from '@supabase/supabase-js'
+import { sileo } from 'sileo'
 import useCart from '../../hooks/useCart'
 import { CheckoutProvider } from '../../components/checkout/CheckoutContext'
 import useCheckout from '../../hooks/useCheckout'
@@ -10,14 +12,37 @@ import CheckoutStepEnvio from '../../components/checkout/CheckoutStepEnvio'
 import CheckoutReview from '../../components/checkout/CheckoutReview'
 import Button from '../../components/ui/Button'
 import CartLoading from '../../components/cart/CartLoading'
-import { CHECKOUT_ERROR_MESSAGES } from '../../types/checkout'
+import { CHECKOUT_ERROR_MESSAGES, PAYMENT_ERROR_MESSAGES, type PaymentErrorCode } from '../../types/checkout'
+import { supabase } from '../../lib/supabase/client'
 import type { AddressRow } from '../../services/address.service'
 
+interface CreatePaymentSuccess {
+  success: true
+  orderId: number
+  orderNumber: string | null
+  initPoint: string
+}
+
+async function extractPaymentError(error: unknown): Promise<{ code: PaymentErrorCode; message: string }> {
+  if (error instanceof FunctionsHttpError) {
+    try {
+      const body = await error.context.json() as { error?: { code?: string; message?: string } }
+      if (body?.error?.code && body.error.code in PAYMENT_ERROR_MESSAGES) {
+        return { code: body.error.code as PaymentErrorCode, message: body.error.message ?? '' }
+      }
+    } catch {
+      // la respuesta no tenía JSON válido
+    }
+  }
+  return { code: 'INTERNAL_ERROR', message: '' }
+}
+
 function CheckoutContent() {
-  const { itemCount, loading, syncPending, error, unavailableItems, availabilityChecked } = useCart()
-  const { setSelectedAddress, selectedShippingMethodId, setSelectedShippingMethodId, canProceedToPayment, validationError } = useCheckout()
+  const { itemCount, loading, syncPending, error, unavailableItems, availabilityChecked, clearCart } = useCart()
+  const { setSelectedAddress, selectedShippingMethodId, canProceedToPayment, validationError, buildSnapshot } = useCheckout()
   const navigate = useNavigate()
   const [currentStep, setCurrentStep] = useState<1 | 2>(1)
+  const [isPaying, setIsPaying] = useState(false)
 
   useEffect(() => {
     if (!loading && !syncPending && itemCount === 0) {
@@ -44,8 +69,58 @@ function CheckoutContent() {
     setCurrentStep(1)
   }
 
-  const handleEditShipping = () => {
-    setCurrentStep(1)
+  const handlePay = async () => {
+    if (isPaying || !canProceedToPayment) return
+
+    const snapshot = buildSnapshot()
+    if (!snapshot) {
+      sileo.error({
+        title: 'No pudimos preparar el pago',
+        description: CHECKOUT_ERROR_MESSAGES[validationError ?? 'CHECKOUT_NOT_READY'],
+      })
+      return
+    }
+
+    setIsPaying(true)
+    try {
+      const body = {
+        addressId: snapshot.selectedAddress.id,
+        items: snapshot.items.map(item => ({
+          productId: item.productId,
+          variantId: item.variantId,
+          quantity: item.cantidad,
+        })),
+      }
+
+      const { data, error: invokeError } = await supabase.functions.invoke<CreatePaymentSuccess>('create-payment', { body })
+
+      if (invokeError) {
+        const failure = await extractPaymentError(invokeError)
+        sileo.error({
+          title: 'No pudimos procesar el pago',
+          description: PAYMENT_ERROR_MESSAGES[failure.code] ?? PAYMENT_ERROR_MESSAGES.INTERNAL_ERROR,
+        })
+        return
+      }
+
+      if (!data?.success || !data.initPoint) {
+        sileo.error({
+          title: 'No pudimos procesar el pago',
+          description: PAYMENT_ERROR_MESSAGES.INTERNAL_ERROR,
+        })
+        return
+      }
+
+      await clearCart()
+      window.location.href = data.initPoint
+    } catch {
+      sileo.error({
+        title: 'No pudimos procesar el pago',
+        description: PAYMENT_ERROR_MESSAGES.INTERNAL_ERROR,
+      })
+    } finally {
+      setIsPaying(false)
+    }
   }
 
   if (loading || syncPending) {
@@ -112,25 +187,23 @@ function CheckoutContent() {
                 </span>
                 <div className="min-w-0">
                   <h2 className="text-sm sm:text-base font-bold text-primary-dark">Envío</h2>
-                  <p className="text-xs text-gray-400 mt-0.5">Dirección y método de envío</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Dirección de entrega</p>
                 </div>
               </div>
               <CheckoutStepEnvio
                 onComplete={handleAddressComplete}
-                selectedShippingMethodId={selectedShippingMethodId}
-                onShippingMethodChange={setSelectedShippingMethodId}
               />
             </div>
 
-            {/* Step 03 - Pago (disabled) */}
-            <div className="rounded-2xl border border-gray-100 p-4 sm:p-6 space-y-3 sm:space-y-4 opacity-50 overflow-hidden">
+            {/* Step 03 - Pago */}
+            <div className="rounded-2xl border border-gray-100 p-4 sm:p-6 space-y-3 sm:space-y-4 overflow-hidden">
               <div className="flex items-center gap-3">
-                <span className="w-9 h-9 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center shrink-0">
+                <span className="w-9 h-9 rounded-full bg-accent text-white flex items-center justify-center shrink-0">
                   <CreditCard className="w-4 h-4" />
                 </span>
                 <div className="min-w-0">
-                  <h2 className="text-sm sm:text-base font-bold text-gray-400">Pago</h2>
-                  <p className="text-xs text-gray-300 mt-0.5">Próximamente</p>
+                  <h2 className="text-sm sm:text-base font-bold text-primary-dark">Pago</h2>
+                  <p className="text-xs text-gray-400 mt-0.5">En el último paso te redirigimos a Mercado Pago</p>
                 </div>
               </div>
             </div>
@@ -206,10 +279,7 @@ function CheckoutContent() {
             </p>
           </div>
 
-          <CheckoutReview
-            onEditAddress={handleEditAddress}
-            onEditShipping={handleEditShipping}
-          />
+          <CheckoutReview onEditAddress={handleEditAddress} />
 
           {/* Actions */}
           <div className="mt-6 sm:mt-8 space-y-3">
@@ -217,9 +287,11 @@ function CheckoutContent() {
               variant="primary"
               size="lg"
               className="w-full"
-              disabled
+              disabled={!canProceedToPayment || isPaying}
+              loading={isPaying}
+              onClick={handlePay}
             >
-              Ir a pagar (próximamente)
+              {isPaying ? 'Procesando…' : 'Ir a pagar'}
             </Button>
 
             <Button

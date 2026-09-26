@@ -42,7 +42,8 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
   const { items, itemCount, subtotal, loading, syncPending } = useCart()
 
   const [selectedAddress, setSelectedAddress] = useState<AddressRow | null>(null)
-  const [selectedShippingMethodId, setSelectedShippingMethodId] = useState<string | null>(null)
+  // Envío fijo: Correo Argentino es el único transportista (no es elección del usuario).
+  const [selectedShippingMethodId, setSelectedShippingMethodId] = useState<string | null>('correo_argentino')
   const [isPreparingPayment, setIsPreparingPayment] = useState(false)
   const [shippingQuote, setShippingQuote] = useState<ShippingQuote | null>(null)
   const [shippingQuoteError, setShippingQuoteError] = useState<ShippingQuoteErrorCode | null>(null)

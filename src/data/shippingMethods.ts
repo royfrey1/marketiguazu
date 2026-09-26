@@ -9,7 +9,7 @@ export const shippingMethods: ShippingMethod[] = [
   {
     id: 'correo_argentino',
     name: 'Correo Argentino',
-    description: 'Envío estándar por Correo Argentino.',
+    description: 'Envío gratis a todo el país por Correo Argentino.',
     estimatedDays: '5–8 días hábiles',
   },
 ]

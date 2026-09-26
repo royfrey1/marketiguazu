@@ -1,12 +1,10 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { MapPin, Plus, Check, Pencil, Trash2, Star, Loader2 } from 'lucide-react'
+import { MapPin, Plus, Check, Pencil, Trash2, Star, Loader2, Truck } from 'lucide-react'
 import useAuth from '../../hooks/useAuth'
 import { addressService, type AddressRow, type AddressInsert } from '../../services/address.service'
 import { addressSchema, type AddressFormData } from '../../lib/validations/address'
-import { shippingMethods } from '../../data/shippingMethods'
-import ShippingMethodCard from './ShippingMethodCard'
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '../ui/accordion'
 import Input from '../ui/Input'
 import Button from '../ui/Button'
@@ -15,11 +13,9 @@ import Modal from '../ui/Modal'
 
 interface CheckoutStepEnvioProps {
   onComplete?: (address: AddressRow) => void
-  selectedShippingMethodId: string | null
-  onShippingMethodChange: (methodId: string) => void
 }
 
-export default function CheckoutStepEnvio({ onComplete, selectedShippingMethodId, onShippingMethodChange }: CheckoutStepEnvioProps) {
+export default function CheckoutStepEnvio({ onComplete }: CheckoutStepEnvioProps) {
   const { user } = useAuth()
   const [addresses, setAddresses] = useState<AddressRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -164,14 +160,13 @@ export default function CheckoutStepEnvio({ onComplete, selectedShippingMethodId
   }
 
   const selectedAddress = addresses.find(a => a.id === selectedId) || null
-  const selectedShippingMethod = selectedShippingMethodId ? shippingMethods.find(m => m.id === selectedShippingMethodId) : null
 
   if (onComplete && selectedAddress) {
     onComplete(selectedAddress)
   }
 
   const addressCompleted = !!selectedAddress
-  const shippingCompleted = !!selectedShippingMethodId
+  const shippingCompleted = addressCompleted
 
   const defaultAccordionValue = !addressCompleted ? ['address'] : ['shipping']
 
@@ -193,8 +188,6 @@ export default function CheckoutStepEnvio({ onComplete, selectedShippingMethodId
   const addressSummary = selectedAddress
     ? `${selectedAddress.nombre} · ${selectedAddress.calle} ${selectedAddress.numero} · ${selectedAddress.ciudad}`
     : null
-
-  const shippingSummary = selectedShippingMethod?.name ?? null
 
   return (
     <div className="space-y-0">
@@ -292,31 +285,20 @@ export default function CheckoutStepEnvio({ onComplete, selectedShippingMethodId
                 <span className={`text-xs sm:text-sm font-bold block ${addressCompleted ? 'text-primary-dark' : 'text-gray-300'}`}>
                   Método de envío
                 </span>
-                {shippingSummary ? (
-                  <span className="text-[10px] sm:text-xs text-gray-400 block mt-0.5">{shippingSummary}</span>
-                ) : (
-                  <span className="text-[10px] sm:text-xs text-gray-400 block mt-0.5">Seleccioná cómo recibir tu pedido</span>
-                )}
+                <span className="text-[10px] sm:text-xs text-gray-400 block mt-0.5">Gratis · Correo Argentino</span>
               </div>
             </div>
           </AccordionTrigger>
           <AccordionContent>
-            {addressCompleted ? (
-              <div className="space-y-2" role="radiogroup" aria-label="Método de envío">
-                {shippingMethods.map(method => (
-                  <ShippingMethodCard
-                    key={method.id}
-                    method={method}
-                    isSelected={method.id === selectedShippingMethodId}
-                    onSelect={() => onShippingMethodChange(method.id)}
-                  />
-                ))}
+            <div className="rounded-xl border border-primary-light/30 bg-primary-light/10 p-4 flex items-start gap-3">
+              <Truck className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-primary-dark">Envío gratis a todo el país</p>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  Entrega con Correo Argentino · 5–8 días hábiles. El costo está incluido en el precio de los productos.
+                </p>
               </div>
-            ) : (
-              <p className="text-xs text-gray-400 py-2">
-                Seleccioná una dirección de envío para ver los métodos disponibles.
-              </p>
-            )}
+            </div>
           </AccordionContent>
         </AccordionItem>
       </Accordion>
