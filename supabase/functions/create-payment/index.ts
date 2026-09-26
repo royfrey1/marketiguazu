@@ -119,10 +119,9 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    // cliente con service role (bypass RLS)
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
+    // cliente con service role puro (bypass RLS en todo el REST;
+    // el JWT del usuario se pasa explícito solo a getUser)
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // verificar JWT y obtener usuario (token explícito)
     const token = authHeader.replace(/^Bearer\s+/i, "");
