@@ -1,0 +1,7 @@
+project_id = "default"
+
+# mp-webhook es invocado por Mercado Pago (server-to-server, sin apikey
+# ni JWT de Supabase). La autenticación real es la firma HMAC con
+# MP_WEBHOOK_SECRET, validada dentro de la función.
+[functions.mp-webhook]
+verify_jwt = false
