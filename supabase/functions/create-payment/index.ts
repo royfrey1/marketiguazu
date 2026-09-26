@@ -19,12 +19,32 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 // constantes
 // ============================================================
 
-const CORS_HEADERS: Record<string, string> = {
-  "Access-Control-Allow-Origin": Deno.env.get("SITE_URL") || "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+// Orígenes permitidos para CORS. No se usa "*": la función maneja
+// headers de auth, por lo que cada origin debe estar en la lista blanca.
+// (SITE_URL solo se agrega acá como dominio configurado; su uso principal
+// sigue siendo las back_urls de Mercado Pago.)
+const ALLOWED_ORIGINS: ReadonlySet<string> = new Set(
+  [
+    "https://marketplace-iguazu.vercel.app", // producción (Vercel)
+    "http://localhost:5173", // Vite dev server
+    "http://127.0.0.1:5173",
+    Deno.env.get("SITE_URL"),
+  ].filter((origin): origin is string => !!origin)
+);
+
+function buildCorsHeaders(req: Request): Record<string, string> {
+  const headers: Record<string, string> = {
+    "Access-Control-Allow-Headers":
+      "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    Vary: "Origin",
+  };
+  const origin = req.headers.get("Origin");
+  if (origin && ALLOWED_ORIGINS.has(origin)) {
+    headers["Access-Control-Allow-Origin"] = origin;
+  }
+  return headers;
+}
 
 const MP_API_URL = "https://api.mercadopago.com/checkout/preferences";
 
@@ -69,28 +89,28 @@ interface FunctionError {
 }
 
 // ============================================================
-// helpers
-// ============================================================
-
-function jsonResp(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json", ...CORS_HEADERS },
-  });
-}
-
-function errResp(code: ErrorCode, message: string, status = 400): Response {
-  return jsonResp({ success: false, error: { code, message } }, status);
-}
-
-// ============================================================
 // handler principal
 // ============================================================
 
 serve(async (req: Request): Promise<Response> => {
+  // CORS por request: refleja el Origin SOLO si está en la lista blanca.
+  // Todas las respuestas (éxito, error y preflight) salen por acá.
+  const cors = buildCorsHeaders(req);
+
+  function jsonResp(body: unknown, status = 200): Response {
+    return new Response(JSON.stringify(body), {
+      status,
+      headers: { "Content-Type": "application/json", ...cors },
+    });
+  }
+
+  function errResp(code: ErrorCode, message: string, status = 400): Response {
+    return jsonResp({ success: false, error: { code, message } }, status);
+  }
+
   // preflight
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: CORS_HEADERS });
+    return new Response("ok", { headers: cors });
   }
 
   if (req.method !== "POST") {
