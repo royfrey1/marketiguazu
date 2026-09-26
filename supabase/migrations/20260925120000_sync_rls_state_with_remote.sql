@@ -292,8 +292,8 @@ DROP POLICY IF EXISTS profiles_insert_own ON profiles;
 CREATE POLICY profiles_insert_own
   ON profiles
   AS PERMISSIVE
-  TO authenticated
   FOR INSERT
+  TO authenticated
   WITH CHECK (auth.uid() = id);
 
 DROP POLICY IF EXISTS profiles_update_own ON profiles;
@@ -307,8 +307,8 @@ DROP POLICY IF EXISTS profiles_delete_own ON profiles;
 CREATE POLICY profiles_delete_own
   ON profiles
   AS PERMISSIVE
-  TO authenticated
   FOR DELETE
+  TO authenticated
   USING (auth.uid() = id);
 
 DROP POLICY IF EXISTS profiles_admin_select ON profiles;
