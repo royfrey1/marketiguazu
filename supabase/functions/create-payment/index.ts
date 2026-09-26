@@ -273,7 +273,7 @@ serve(async (req: Request): Promise<Response> => {
     // ----------------------------------------------------------
     const { data: existingOrder } = await supabase
       .from("orders")
-      .select("id")
+      .select("id, numero_pedido")
       .eq("user_id", user.id)
       .eq("status", "pending")
       .order("created_at", { ascending: false })
@@ -281,9 +281,11 @@ serve(async (req: Request): Promise<Response> => {
       .maybeSingle();
 
     let orderId: number;
+    let numeroPedido: string | null = null;
 
     if (existingOrder) {
       orderId = existingOrder.id;
+      numeroPedido = existingOrder.numero_pedido;
 
       // Liberar reservas de los items anteriores antes de re-armar la orden
       // (release_reservation es idempotente).
@@ -344,7 +346,7 @@ serve(async (req: Request): Promise<Response> => {
           status: "pending",
           payment_status: "pending",
         })
-        .select("id")
+        .select("id, numero_pedido")
         .single();
 
       if (orderErr || !newOrder) {
@@ -355,6 +357,7 @@ serve(async (req: Request): Promise<Response> => {
         );
       }
       orderId = newOrder.id;
+      numeroPedido = newOrder.numero_pedido;
     }
 
     // ----------------------------------------------------------
@@ -559,7 +562,7 @@ serve(async (req: Request): Promise<Response> => {
     return jsonResp({
       success: true,
       orderId,
-      orderNumber: null,
+      orderNumber: numeroPedido,
       initPoint: preference.init_point,
     });
   } catch (error) {
