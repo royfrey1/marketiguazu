@@ -520,8 +520,6 @@ serve(async (req: Request): Promise<Response> => {
         order_id: String(orderId),
         payment_id: String(paymentId),
       },
-      notification_url:
-        `${supabaseUrl}/functions/v1/mp-webhook?source_news=webhooks`,
       back_urls: {
         success: `${siteUrl}/pago/exito?order=${orderId}`,
         failure: `${siteUrl}/pago/fallo?order=${orderId}`,
