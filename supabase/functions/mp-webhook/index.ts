@@ -99,7 +99,7 @@ function normalizeDataId(dataId: string): string {
 }
 
 async function verifySignature(req: Request, dataId: string | null): Promise<boolean> {
-  const secret = Deno.env.get("MP_WEBHOOK_SECRET");
+  const secret = Deno.env.get("MP_WEBHOOK_SECRET")?.trim();
   if (!secret) return false;
 
   const xSignature = req.headers.get("x-signature");
