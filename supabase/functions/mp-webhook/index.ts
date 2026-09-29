@@ -1,5 +1,10 @@
 import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+import {
+  applyMpPaymentStatus,
+  fetchMpPaymentById,
+  mapMpStatus,
+} from "../_shared/mp-payment.ts";
 
 // ============================================================
 // mp-webhook — notificaciones de Mercado Pago (topic: payment)
@@ -7,6 +12,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 // Flujo: validar firma HMAC (MP_WEBHOOK_SECRET) → GET al pago a la
 // API de MP (estado real, nunca el body de la notificación) →
 // mapear estado → RPC apply_mp_payment_status (service_role).
+// El fetch/mapeo/RPC viven en _shared/mp-payment.ts (también lo usa
+// admin-verify-payment).
 //
 // Respuestas: 200 = procesado o no aplicable; 401 = firma inválida;
 // 5xx = fallo transitorio → MP reintenta (15 min, 30 min, 6 h, …).
@@ -15,30 +22,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 // verify_jwt = false (supabase/config.toml): MP no envía apikey ni
 // JWT de Supabase; la autenticación real es la firma HMAC.
 // ============================================================
-
-const MP_PAYMENTS_URL = "https://api.mercadopago.com/v1/payments";
-const FETCH_TIMEOUT_MS = 8000;
-
-// Estado crudo de MP → estado canónico de nuestro CHECK (5 valores).
-// in_mediation con pago ya aprobado lo ignora la RPC (no degradar).
-const MP_STATUS_MAP: Record<string, string> = {
-  pending: "pending",
-  in_process: "pending",
-  authorized: "pending",
-  in_mediation: "pending",
-  approved: "approved",
-  rejected: "rejected",
-  cancelled: "cancelled",
-  refunded: "refunded",
-  charged_back: "refunded",
-};
-
-interface MpPayment {
-  id: string | number;
-  status: string;
-  external_reference?: string | null;
-  transaction_amount?: number | null;
-}
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL") ?? "",
@@ -117,10 +100,29 @@ async function verifySignature(req: Request, dataId: string | null): Promise<boo
   const manifest = segments.join(";") + ";";
 
   const expected = await hmacSha256Hex(secret, manifest);
-  return timingSafeEqualHex(expected, parts.v1);
+  const signatureOk = timingSafeEqualHex(expected, parts.v1);
+
+  // DEBUG TEMPORAL (firmas): eliminar tras diagnosticar
+  console.log("mp-webhook debug firma", {
+    xSignature,
+    ts: parts.ts,
+    v1: parts.v1,
+    requestId,
+    manifest,
+    expected,
+    match: signatureOk,
+  });
+
+  return signatureOk;
 }
 
 serve(async (req: Request): Promise<Response> => {
+  console.log("mp-webhook RAW REQUEST", {
+    url: req.url,
+    method: req.method,
+    headers: Object.fromEntries(req.headers.entries()),
+  });
+
   if (req.method !== "POST") {
     return jsonResp({ received: false, error: "method not allowed" }, 405);
   }
@@ -133,12 +135,21 @@ serve(async (req: Request): Promise<Response> => {
   }
 
   const url = new URL(req.url);
-  let body: { type?: string; data?: { id?: string } } = {};
+  let body: {
+    type?: string;
+    action?: string;
+    user_id?: string | number;
+    live_mode?: boolean;
+    data?: { id?: string };
+  } = {};
   try {
     body = await req.json();
   } catch {
     // puede no traer body JSON: los datos vienen en la query
   }
+
+  // DEBUG TEMPORAL (body): eliminar tras diagnosticar
+  console.log("mp-webhook RAW BODY", body);
 
   const dataId = url.searchParams.get("data.id") ?? body.data?.id ?? null;
   const type = url.searchParams.get("type") ?? body.type ?? null;
@@ -169,62 +180,45 @@ serve(async (req: Request): Promise<Response> => {
     return jsonResp({ received: false, error: "mp token not configured" }, 500);
   }
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-  let mpPayment: MpPayment;
-  try {
-    const mpRes = await fetch(`${MP_PAYMENTS_URL}/${encodeURIComponent(dataId)}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-      signal: controller.signal,
-    });
-    if (mpRes.status === 404) {
+  const fetchResult = await fetchMpPaymentById(accessToken, dataId);
+  if (!fetchResult.ok) {
+    if (fetchResult.notFound) {
       console.warn("mp-webhook: pago MP no encontrado", { dataId });
       return jsonResp({ received: true, skipped: "payment not found" });
     }
-    if (!mpRes.ok) {
-      console.error("mp-webhook: GET payment MP falló", { status: mpRes.status, dataId });
-      return jsonResp({ received: false, error: "mp fetch failed" }, 502);
-    }
-    mpPayment = await mpRes.json();
-  } catch (err) {
-    console.error("mp-webhook: error consultando MP", err);
-    return jsonResp({ received: false, error: "mp fetch error" }, 500);
-  } finally {
-    clearTimeout(timer);
+    console.error("mp-webhook: GET payment MP falló", {
+      status: fetchResult.status,
+      error: fetchResult.error,
+      dataId,
+    });
+    return jsonResp(
+      { received: false, error: "mp fetch failed" },
+      fetchResult.status === undefined ? 500 : 502,
+    );
   }
+  const mpPayment = fetchResult.payment;
 
   // 4. mapear estado crudo → canónico
   const rawStatus = String(mpPayment.status);
-  const mappedStatus = MP_STATUS_MAP[rawStatus];
+  const mappedStatus = mapMpStatus(rawStatus);
   if (!mappedStatus) {
     console.warn("mp-webhook: status MP desconocido", { rawStatus });
     return jsonResp({ received: true, skipped: `unknown status: ${rawStatus}` });
   }
 
   // 5. aplicar en BD (RPC idempotente, solo service_role)
-  const { data: result, error: rpcError } = await supabase.rpc(
-    "apply_mp_payment_status",
-    {
-      p_provider_payment_id: String(mpPayment.id),
-      p_external_reference:
-        mpPayment.external_reference != null
-          ? String(mpPayment.external_reference)
-          : null,
-      p_new_status: mappedStatus,
-      p_raw_status: rawStatus,
-      p_mp_amount:
-        typeof mpPayment.transaction_amount === "number"
-          ? mpPayment.transaction_amount
-          : null,
-    },
+  const { result, error: rpcError } = await applyMpPaymentStatus(
+    supabase,
+    mpPayment,
+    mappedStatus,
   );
 
   if (rpcError) {
-    console.error("mp-webhook: RPC falló", rpcError.message);
+    console.error("mp-webhook: RPC falló", rpcError);
     return jsonResp({ received: false, error: "rpc failed" }, 500);
   }
 
-  const outcome = result as { reason?: string } | null;
+  const outcome = result;
   if (outcome?.reason === "amount_mismatch" || outcome?.reason === "order_cancelled_late_payment") {
     console.error("mp-webhook: requiere atención manual", JSON.stringify(result));
   } else {

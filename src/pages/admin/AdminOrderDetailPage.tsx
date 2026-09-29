@@ -6,6 +6,7 @@ import {
   ChevronRight, XCircle, Plus, Edit,
 } from 'lucide-react'
 import AdminSubpageHeader from '../../components/admin/AdminSubpageHeader'
+import { supabase } from '../../lib/supabase/client'
 import { useAdminOrder } from '../../hooks/useAdminOrder'
 import { useAdminOrderMutations } from '../../hooks/useAdminOrderMutations'
 import {
@@ -404,6 +405,45 @@ export default function AdminOrderDetailPage() {
   const [cancelReason, setCancelReason] = useState('')
   const [cancelError, setCancelError] = useState<string | null>(null)
 
+  // --- Manual payment verification (plan B while MP webhooks fail) ---
+  const [verifyLoading, setVerifyLoading] = useState(false)
+  const [verifyResult, setVerifyResult] = useState<{ ok: boolean; message: string } | null>(null)
+
+  const handleVerifyPayment = useCallback(async () => {
+    if (!order) return
+    setVerifyLoading(true)
+    setVerifyResult(null)
+    try {
+      const { data: session } = await supabase.auth.getSession()
+      const token = session?.session?.access_token
+      if (!token) {
+        setVerifyResult({ ok: false, message: 'Necesitás iniciar sesión.' })
+        return
+      }
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
+      const resp = await fetch(`${supabaseUrl}/functions/v1/admin-verify-payment`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ orderId: order.id }),
+      })
+      const body = await resp.json().catch(() => null)
+      if (!resp.ok || body?.success !== true) {
+        const message = body?.error?.message ?? body?.message ?? 'No se pudo verificar el pago.'
+        setVerifyResult({ ok: false, message })
+      } else {
+        setVerifyResult({ ok: true, message: body.message ?? 'Verificación completada.' })
+        await refetch()
+      }
+    } catch {
+      setVerifyResult({ ok: false, message: 'Error de red al verificar el pago.' })
+    } finally {
+      setVerifyLoading(false)
+    }
+  }, [order, refetch])
+
   const handleCancelOrder = useCallback(async () => {
     if (!order) return
 
@@ -498,6 +538,7 @@ export default function AdminOrderDetailPage() {
   // --- Data ---
   const statusInfo = STATUS_MAP[order.status] ?? { label: order.status, variant: 'default' as const }
   const paymentInfo = PAYMENT_STATUS_MAP[order.payment_status] ?? { label: order.payment_status, variant: 'default' as const }
+  const canVerifyPayment = order.payment_status === 'pending' && order.payments.length > 0
   const address = order.direccion_envio as Record<string, string | undefined> | null
 
   return (
@@ -838,6 +879,30 @@ export default function AdminOrderDetailPage() {
                 Pagos {order.payments.length > 0 && <span className="text-gray-400 font-normal">({order.payments.length})</span>}
               </h3>
             </div>
+            {canVerifyPayment && (
+              <div className="mb-4">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="w-full"
+                  onClick={handleVerifyPayment}
+                  loading={verifyLoading}
+                  disabled={verifyLoading}
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Verificar pago con Mercado Pago
+                </Button>
+                {verifyResult && (
+                  <p
+                    className={`mt-2 text-xs rounded-lg p-2 ${
+                      verifyResult.ok ? 'text-green-700 bg-green-50' : 'text-red-600 bg-red-50'
+                    }`}
+                  >
+                    {verifyResult.message}
+                  </p>
+                )}
+              </div>
+            )}
             {order.payments.length > 0 ? (
               <div className="space-y-4">
                 {order.payments.map(payment => {
