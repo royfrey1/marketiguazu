@@ -3,11 +3,15 @@ import { motion } from 'framer-motion'
 import { Clock, Home, ArrowRight } from 'lucide-react'
 import Button from '../../components/ui/Button'
 import PaymentOrderSummary from './PaymentOrderSummary'
+import useClearCartOnOrder from '../../hooks/useClearCartOnOrder'
 
 export default function PaymentPendingPage() {
   const [searchParams] = useSearchParams()
   const orderParam = searchParams.get('order')
   const orderId = orderParam && /^\d+$/.test(orderParam) ? Number(orderParam) : null
+
+  // Pago pendiente (ej. efectivo): el pedido ya quedó registrado, se vacía el carrito igual
+  useClearCartOnOrder(orderId)
 
   return (
     <div className="bg-white min-h-screen">

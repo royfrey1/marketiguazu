@@ -38,7 +38,7 @@ async function extractPaymentError(error: unknown): Promise<{ code: PaymentError
 }
 
 function CheckoutContent() {
-  const { itemCount, loading, syncPending, error, unavailableItems, availabilityChecked, clearCart } = useCart()
+  const { itemCount, loading, syncPending, error, unavailableItems, availabilityChecked } = useCart()
   const { setSelectedAddress, selectedShippingMethodId, canProceedToPayment, validationError, buildSnapshot } = useCheckout()
   const navigate = useNavigate()
   const [currentStep, setCurrentStep] = useState<1 | 2>(1)
@@ -111,7 +111,6 @@ function CheckoutContent() {
         return
       }
 
-      await clearCart()
       window.location.href = data.initPoint
     } catch {
       sileo.error({

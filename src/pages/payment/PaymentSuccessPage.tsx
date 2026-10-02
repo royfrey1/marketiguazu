@@ -3,11 +3,15 @@ import { motion } from 'framer-motion'
 import { CheckCircle, ArrowRight, Home } from 'lucide-react'
 import Button from '../../components/ui/Button'
 import PaymentOrderSummary from './PaymentOrderSummary'
+import useClearCartOnOrder from '../../hooks/useClearCartOnOrder'
 
 export default function PaymentSuccessPage() {
   const [searchParams] = useSearchParams()
   const orderParam = searchParams.get('order')
   const orderId = orderParam && /^\d+$/.test(orderParam) ? Number(orderParam) : null
+
+  // El pedido ya quedó registrado: recién ahora se vacía el carrito
+  useClearCartOnOrder(orderId)
 
   return (
     <div className="bg-white min-h-screen">
