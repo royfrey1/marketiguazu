@@ -36,6 +36,7 @@ export interface AdminProductFilters {
 export interface CatalogFilters {
   search?: string
   category_id?: number
+  category_ids?: number[]
   min_price?: number
   max_price?: number
   marca?: string
@@ -215,7 +216,9 @@ export const productsService = {
       }
     }
 
-    if (filters.category_id) {
+    if (filters.category_ids && filters.category_ids.length > 0) {
+      query = query.in('category_id', filters.category_ids)
+    } else if (filters.category_id) {
       query = query.eq('category_id', filters.category_id)
     }
 

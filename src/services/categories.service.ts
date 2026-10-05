@@ -12,6 +12,41 @@ export interface CategoryWithChildren extends Category {
   _count?: { products: number; children: number }
 }
 
+type CategoryNode = Pick<Category, 'id' | 'parent_id'>
+
+// Índice padre → hijos directos en UNA pasada (sin N+1 queries).
+export function buildChildrenMap<T extends CategoryNode>(categories: T[]): Map<number, T[]> {
+  const map = new Map<number, T[]>()
+  for (const cat of categories) {
+    if (cat.parent_id == null) continue
+    const list = map.get(cat.parent_id)
+    if (list) list.push(cat)
+    else map.set(cat.parent_id, [cat])
+  }
+  return map
+}
+
+// Raíz + TODOS los descendientes a cualquier profundidad, resueltos
+// en memoria sobre el set de categorías (BFS con visited: seguro ante
+// ciclos). Devuelve [rootId, ...descendantIds].
+export function collectSubtreeIds<T extends CategoryNode>(categories: T[], rootId: number): number[] {
+  const childrenMap = buildChildrenMap(categories)
+  const result: number[] = []
+  const visited = new Set<number>()
+  const stack: number[] = [rootId]
+  while (stack.length > 0) {
+    const id = stack.pop() as number
+    if (visited.has(id)) continue
+    visited.add(id)
+    result.push(id)
+    const kids = childrenMap.get(id)
+    if (kids) {
+      for (const kid of kids) stack.push(kid.id)
+    }
+  }
+  return result
+}
+
 export const categoriesService = {
   async getAll() {
     const { data, error } = await supabase

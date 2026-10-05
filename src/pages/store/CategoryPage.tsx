@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, type ReactNode } from 'react'
 import { useParams, Link, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { SlidersHorizontal, X } from 'lucide-react'
-import { categoriesService, type Category } from '../../services/categories.service'
+import { categoriesService, buildChildrenMap, collectSubtreeIds, type Category } from '../../services/categories.service'
 import { useCatalog, useBrands } from '../../hooks/useProducts'
 import type { SortOption } from '../../services/products.service'
 import ProductCard from '../../components/home/ProductCard'
@@ -14,6 +14,7 @@ export default function CategoryPage() {
 
   const [categoria, setCategoria] = useState<Category | null>(null)
   const [subcategorias, setSubcategorias] = useState<Category[]>([])
+  const [todasLasCategorias, setTodasLasCategorias] = useState<Category[]>([])
   const [loadingCat, setLoadingCat] = useState(true)
   const [errorCat, setErrorCat] = useState<string | null>(null)
 
@@ -21,6 +22,7 @@ export default function CategoryPage() {
   const min = searchParams.get('min') || ''
   const max = searchParams.get('max') || ''
   const marca = searchParams.get('marca') || ''
+  const subcat = searchParams.get('subcat') || ''
   const sort = (searchParams.get('sort') || 'recent') as SortOption
   const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
 
@@ -57,8 +59,11 @@ export default function CategoryPage() {
       }
       setCategoria(data)
 
-      const { data: children } = await categoriesService.getChildren(data.id)
-      if (!cancelled && children) setSubcategorias(children)
+      const { data: todas } = await categoriesService.getActive()
+      if (cancelled) return
+      const list = todas ?? []
+      setTodasLasCategorias(list)
+      setSubcategorias(list.filter(c => c.parent_id === data.id))
 
       setLoadingCat(false)
     }
@@ -66,14 +71,41 @@ export default function CategoryPage() {
     return () => { cancelled = true }
   }, [slug])
 
+  // --- Jerarquía de categorías (resuelta en memoria, sin N+1) ---
+  const childrenMap = useMemo(
+    () => buildChildrenMap(todasLasCategorias),
+    [todasLasCategorias],
+  )
+
+  // Raíz + todos los descendientes de la categoría actual (cualquier profundidad)
+  const subtreeIds = useMemo(
+    () => (categoria ? collectSubtreeIds(todasLasCategorias, categoria.id) : []),
+    [categoria, todasLasCategorias],
+  )
+
+  const subcatCategory = useMemo(
+    () => (subcat ? todasLasCategorias.find(c => c.slug === subcat) ?? null : null),
+    [subcat, todasLasCategorias],
+  )
+
+  // Conjunto final a mostrar: si hay subcategoría filtrada, su subárbol
+  // (validado para que NUNCA salga de la categoría padre), si no, el
+  // subárbol completo de la categoría actual.
+  const categoryIds = useMemo(() => {
+    if (!subcatCategory) return subtreeIds
+    const ids = collectSubtreeIds(todasLasCategorias, subcatCategory.id)
+    const padreSet = new Set(subtreeIds)
+    return ids.every(id => padreSet.has(id)) ? ids : subtreeIds
+  }, [subcatCategory, todasLasCategorias, subtreeIds])
+
   const filters = useMemo(() => ({
     search: q || undefined,
-    category_id: categoria?.id,
+    category_ids: categoria ? categoryIds : undefined,
     min_price: min ? Number(min) : undefined,
     max_price: max ? Number(max) : undefined,
     marca: marca || undefined,
     sort,
-  }), [q, categoria, min, max, marca, sort])
+  }), [q, categoria, categoryIds, min, max, marca, sort])
 
   const {
     data: productos,
@@ -126,6 +158,10 @@ export default function CategoryPage() {
     updateParams({ marca: brand === marca ? '' : brand })
   }
 
+  const handleSubcategoryFilter = (subcatSlug: string) => {
+    updateParams({ subcat: subcat === subcatSlug ? '' : subcatSlug })
+  }
+
   const handleSortChange = (value: string) => {
     updateParams({ sort: value })
   }
@@ -142,7 +178,7 @@ export default function CategoryPage() {
     setSearchValue('')
   }
 
-  const hasActiveFilters = q || min || max || marca
+  const hasActiveFilters = q || min || max || marca || subcat
 
   if (loadingCat) {
     return (
@@ -181,6 +217,31 @@ export default function CategoryPage() {
     )
   }
 
+  // Nodos de subcategoría del sidebar, jerárquicos (hijos anidados
+  // con indentación). Botones nativos: accesibles por teclado, con
+  // aria-pressed para el estado seleccionado.
+  const renderSubcategoryNode = (cat: Category, depth: number): ReactNode => {
+    const nested = childrenMap.get(cat.id) ?? []
+    const isActive = subcat === cat.slug
+    return (
+      <div key={cat.id}>
+        <button
+          type="button"
+          onClick={() => handleSubcategoryFilter(cat.slug)}
+          aria-pressed={isActive}
+          className={`filter-option ${isActive ? 'filter-option-active' : 'filter-option-default'}`}
+        >
+          {cat.nombre}
+        </button>
+        {nested.length > 0 && depth < 5 && (
+          <div className="ml-3 mt-1 space-y-1 border-l border-gray-100 pl-2">
+            {nested.map(child => renderSubcategoryNode(child, depth + 1))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
   const sidebarContent = (
     <>
       {hasActiveFilters && (
@@ -196,6 +257,16 @@ export default function CategoryPage() {
             {min && <span className="filter-chip">Mín: ${Number(min).toLocaleString('es-AR')}</span>}
             {max && <span className="filter-chip">Máx: ${Number(max).toLocaleString('es-AR')}</span>}
             {marca && <span className="filter-chip">Marca: {marca}</span>}
+            {subcat && <span className="filter-chip">Subcategoría: {subcatCategory?.nombre ?? subcat}</span>}
+          </div>
+        </div>
+      )}
+
+      {subcategorias.length > 0 && (
+        <div className="filter-section">
+          <h3 className="filter-title">Subcategorías</h3>
+          <div className="space-y-1">
+            {subcategorias.map((sub) => renderSubcategoryNode(sub, 0))}
           </div>
         </div>
       )}
@@ -300,6 +371,11 @@ export default function CategoryPage() {
           <p className="text-body mt-1">
             {total} producto{total !== 1 ? 's' : ''} encontrado{total !== 1 ? 's' : ''}
           </p>
+          {subtreeIds.length > 1 && (
+            <p className="text-body text-sm mt-1 text-gray-500">
+              Mostrando productos de {categoria.nombre} y sus subcategorías.
+            </p>
+          )}
         </motion.div>
 
         {/* Subcategories */}
