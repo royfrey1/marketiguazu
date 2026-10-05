@@ -4,6 +4,11 @@
 // Crea o reutiliza una order pending, reserva stock, genera
 // una Preferencia de Mercado Pago y devuelve init_point.
 //
+// Los pasos 1-8 (auth, validaciones, orden, order_items y
+// reserva de stock) viven en _shared/order-creation.ts y son
+// compartidos con create-payment-usdt. Acá se agrega lo propio
+// de Mercado Pago: registro de pago + Preferencia.
+//
 // Envío: siempre gratis y fijo a Correo Argentino.
 //   envio_costo = 0, total = subtotal,
 //   metodo_envio = 'correo_argentino' (server-side, sin depender del body).
@@ -14,6 +19,12 @@
 
 import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+import {
+  createPendingOrder,
+  releaseReservedItems,
+  type CreateOrderPayload,
+  type OrderErrorCode,
+} from "../_shared/order-creation.ts";
 
 // ============================================================
 // constantes
@@ -48,45 +59,15 @@ function buildCorsHeaders(req: Request): Record<string, string> {
 
 const MP_API_URL = "https://api.mercadopago.com/checkout/preferences";
 
-// Envío fijo: único transportista y costo absorcido por el precio de producto.
-const SHIPMENT_METHOD = "correo_argentino";
-
 // ============================================================
 // tipos
 // ============================================================
 
-interface CheckoutItem {
-  productId: number;
-  variantId: number | null;
-  quantity: number;
-}
-
-interface CreatePaymentPayload {
-  addressId: number;
-  // Se ignora: el envío siempre queda 'correo_argentino' server-side.
-  shippingMethodId?: string;
-  items: CheckoutItem[];
-}
-
 type ErrorCode =
-  | "AUTH_REQUIRED"
-  | "INVALID_PAYLOAD"
-  | "EMPTY_CART"
-  | "INVALID_PRODUCT"
-  | "INVALID_VARIANT"
-  | "INVALID_QUANTITY"
-  | "PRICE_CHANGED"
-  | "ADDRESS_NOT_FOUND"
-  | "STOCK_UNAVAILABLE"
-  | "ORDER_CREATION_FAILED"
+  | OrderErrorCode
   | "PAYMENT_CREATION_FAILED"
   | "MERCADOPAGO_ERROR"
   | "INTERNAL_ERROR";
-
-interface FunctionError {
-  code: ErrorCode;
-  message: string;
-}
 
 // ============================================================
 // handler principal
@@ -119,7 +100,7 @@ serve(async (req: Request): Promise<Response> => {
 
   try {
     // ----------------------------------------------------------
-    // 1. autenticación
+    // 1. autenticación (presencia del header) + env
     // ----------------------------------------------------------
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
@@ -142,319 +123,42 @@ serve(async (req: Request): Promise<Response> => {
     // cliente con service role puro (bypass RLS en todo el REST;
     // el JWT del usuario se pasa explícito solo a getUser)
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // verificar JWT y obtener usuario (token explícito)
     const token = authHeader.replace(/^Bearer\s+/i, "");
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser(token);
-
-    if (authError || !user) {
-      console.error("auth error:", authError?.message);
-      return errResp("AUTH_REQUIRED", "Usuario no autenticado", 401);
-    }
 
     // ----------------------------------------------------------
     // 2. validar payload
     // ----------------------------------------------------------
-    let payload: CreatePaymentPayload;
+    let payload: CreateOrderPayload;
     try {
       payload = await req.json();
     } catch {
       return errResp("INVALID_PAYLOAD", "Body de request inválido");
     }
 
-    if (!payload.addressId || !Number.isInteger(payload.addressId)) {
-      return errResp("INVALID_PAYLOAD", "addressId inválido");
-    }
-    if (!Array.isArray(payload.items) || payload.items.length === 0) {
-      return errResp("EMPTY_CART", "El carrito está vacío");
-    }
-
-    for (const item of payload.items) {
-      if (!item.productId || !Number.isInteger(item.productId)) {
-        return errResp("INVALID_PAYLOAD", "productId inválido");
-      }
-      if (
-        item.variantId !== null &&
-        item.variantId !== undefined &&
-        !Number.isInteger(item.variantId)
-      ) {
-        return errResp("INVALID_PAYLOAD", "variantId inválido");
-      }
-      if (!item.quantity || !Number.isInteger(item.quantity) || item.quantity <= 0) {
-        return errResp("INVALID_QUANTITY", "Cantidad inválida");
-      }
-    }
-
     // ----------------------------------------------------------
-    // 3. validar dirección
+    // 3-8. orden pending + order_items + reserva de stock
+    //      (compartido con create-payment-usdt)
     // ----------------------------------------------------------
-    const { data: address, error: addrError } = await supabase
-      .from("addresses")
-      .select("*")
-      .eq("id", payload.addressId)
-      .eq("user_id", user.id)
-      .single();
-
-    if (addrError || !address) {
-      return errResp(
-        "ADDRESS_NOT_FOUND",
-        "Dirección no encontrada o no pertenece al usuario"
-      );
-    }
-
-    // ----------------------------------------------------------
-    // 4. Envío fijo (sin cotización):
-    //    envio_costo = 0, total = subtotal,
-    //    metodo_envio = 'correo_argentino' (server-side).
-    // ----------------------------------------------------------
-
-    // ----------------------------------------------------------
-    // 5. validar productos, precios y stock
-    // ----------------------------------------------------------
-    const validatedItems: Array<{
-      productId: number;
-      variantId: number | null;
-      quantity: number;
-      unitPrice: number;
-      title: string;
-      sku: string | null;
-      variantName: string | null;
-    }> = [];
-
-    for (const item of payload.items) {
-      if (item.variantId != null) {
-        const { data: variant, error: vErr } = await supabase
-          .from("product_variants")
-          .select("id, product_id, precio, nombre, sku, activo")
-          .eq("id", item.variantId)
-          .eq("product_id", item.productId)
-          .single();
-
-        if (vErr || !variant) {
-          return errResp("INVALID_VARIANT", `Variante ${item.variantId} no encontrada`);
-        }
-        if (!variant.activo) {
-          return errResp("INVALID_VARIANT", `Variante ${item.variantId} inactiva`);
-        }
-
-        const { data: product, error: pErr } = await supabase
-          .from("products")
-          .select("id, titulo, activo, precio")
-          .eq("id", item.productId)
-          .single();
-
-        if (pErr || !product) {
-          return errResp("INVALID_PRODUCT", `Producto ${item.productId} no encontrado`);
-        }
-        if (!product.activo) {
-          return errResp("INVALID_PRODUCT", `Producto ${item.productId} inactivo`);
-        }
-
-        validatedItems.push({
-          productId: item.productId,
-          variantId: item.variantId,
-          quantity: item.quantity,
-          unitPrice: variant.precio,
-          title: `${product.titulo} - ${variant.nombre}`,
-          sku: variant.sku,
-          variantName: variant.nombre,
-        });
-      } else {
-        const { data: product, error: pErr } = await supabase
-          .from("products")
-          .select("id, titulo, activo, precio")
-          .eq("id", item.productId)
-          .single();
-
-        if (pErr || !product) {
-          return errResp("INVALID_PRODUCT", `Producto ${item.productId} no encontrado`);
-        }
-        if (!product.activo) {
-          return errResp("INVALID_PRODUCT", `Producto ${item.productId} inactivo`);
-        }
-
-        validatedItems.push({
-          productId: item.productId,
-          variantId: null,
-          quantity: item.quantity,
-          unitPrice: product.precio,
-          title: product.titulo,
-          sku: null,
-          variantName: null,
-        });
-      }
-    }
-
-    // ----------------------------------------------------------
-    // 6. crear/reutilizar order pending
-    // ----------------------------------------------------------
-    const { data: existingOrder } = await supabase
-      .from("orders")
-      .select("id, numero_pedido")
-      .eq("user_id", user.id)
-      .eq("status", "pending")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    let orderId: number;
-    let numeroPedido: string | null = null;
-
-    if (existingOrder) {
-      orderId = existingOrder.id;
-      numeroPedido = existingOrder.numero_pedido;
-
-      // Liberar reservas de los items anteriores antes de re-armar la orden
-      // (release_reservation es idempotente).
-      const { data: oldItems } = await supabase
-        .from("order_items")
-        .select("product_id, variant_id, cantidad")
-        .eq("order_id", orderId);
-
-      for (const old of oldItems ?? []) {
-        await supabase.rpc("release_reservation", {
-          p_product_id: old.product_id,
-          p_variant_id: old.variant_id,
-          p_cantidad: old.cantidad,
-          p_order_id: orderId,
-        });
-      }
-
-      await supabase.from("order_items").delete().eq("order_id", orderId);
-
-      await supabase
-        .from("payments")
-        .delete()
-        .eq("order_id", orderId)
-        .eq("status", "pending");
-
-      const subtotal = validatedItems.reduce(
-        (sum, i) => sum + i.unitPrice * i.quantity,
-        0
-      );
-
-      await supabase
-        .from("orders")
-        .update({
-          subtotal,
-          total: subtotal,
-          envio_costo: 0,
-          direccion_envio: address as unknown as Record<string, unknown>,
-          metodo_envio: SHIPMENT_METHOD,
-          payment_status: "pending",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", orderId);
-    } else {
-      const subtotal = validatedItems.reduce(
-        (sum, i) => sum + i.unitPrice * i.quantity,
-        0
-      );
-
-      const { data: newOrder, error: orderErr } = await supabase
-        .from("orders")
-        .insert({
-          user_id: user.id,
-          subtotal,
-          total: subtotal,
-          envio_costo: 0,
-          direccion_envio: address as unknown as Record<string, unknown>,
-          metodo_envio: SHIPMENT_METHOD,
-          status: "pending",
-          payment_status: "pending",
-        })
-        .select("id, numero_pedido")
-        .single();
-
-      if (orderErr || !newOrder) {
-        return errResp(
-          "ORDER_CREATION_FAILED",
-          "Error al crear la orden",
-          500
+    const order = await createPendingOrder(supabase, token, payload);
+    if (!order.success) {
+      if (order.orderId != null) {
+        return jsonResp(
+          {
+            success: false,
+            error: { code: order.code, message: order.message },
+            orderId: order.orderId,
+          },
+          order.status
         );
       }
-      orderId = newOrder.id;
-      numeroPedido = newOrder.numero_pedido;
+      return errResp(order.code, order.message, order.status);
     }
 
-    // ----------------------------------------------------------
-    // 7. insertar order_items
-    // ----------------------------------------------------------
-    const orderItems = validatedItems.map((item) => ({
-      order_id: orderId,
-      product_id: item.productId,
-      variant_id: item.variantId,
-      nombre_producto: item.title,
-      variante_nombre: item.variantName,
-      sku: item.sku,
-      precio_unitario: item.unitPrice,
-      cantidad: item.quantity,
-      subtotal: item.unitPrice * item.quantity,
-    }));
-
-    const { error: itemsErr } = await supabase
-      .from("order_items")
-      .insert(orderItems);
-
-    if (itemsErr) {
-      return errResp(
-        "ORDER_CREATION_FAILED",
-        "Error al crear items de la orden",
-        500
-      );
-    }
-
-    // ----------------------------------------------------------
-    // 8. reservar stock
-    // ----------------------------------------------------------
-    const reservedItems: Array<{
-      productId: number;
-      variantId: number | null;
-      quantity: number;
-    }> = [];
-
-    for (const item of validatedItems) {
-      const { error: stockErr } = await supabase.rpc("reserve_stock", {
-        p_product_id: item.productId,
-        p_variant_id: item.variantId,
-        p_cantidad: item.quantity,
-        p_order_id: orderId,
-      });
-
-      if (stockErr) {
-        // liberar reservas previas
-        for (const prev of reservedItems) {
-          await supabase.rpc("release_reservation", {
-            p_product_id: prev.productId,
-            p_variant_id: prev.variantId,
-            p_cantidad: prev.quantity,
-            p_order_id: orderId,
-          });
-        }
-        return errResp(
-          "STOCK_UNAVAILABLE",
-          `Stock insuficiente para ${item.title}`
-        );
-      }
-
-      reservedItems.push({
-        productId: item.productId,
-        variantId: item.variantId,
-        quantity: item.quantity,
-      });
-    }
+    const { orderId, numeroPedido, total, validatedItems, reservedItems } = order;
 
     // ----------------------------------------------------------
     // 9. crear payment pendiente
     // ----------------------------------------------------------
-    const total = validatedItems.reduce(
-      (sum, i) => sum + i.unitPrice * i.quantity,
-      0
-    );
-
     const { data: existingPayment } = await supabase
       .from("payments")
       .select("id")
@@ -485,14 +189,7 @@ serve(async (req: Request): Promise<Response> => {
         .single();
 
       if (payErr || !payment) {
-        for (const prev of reservedItems) {
-          await supabase.rpc("release_reservation", {
-            p_product_id: prev.productId,
-            p_variant_id: prev.variantId,
-            p_cantidad: prev.quantity,
-            p_order_id: orderId,
-          });
-        }
+        await releaseReservedItems(supabase, orderId, reservedItems);
         return errResp(
           "PAYMENT_CREATION_FAILED",
           "Error al crear registro de pago",
@@ -545,14 +242,7 @@ serve(async (req: Request): Promise<Response> => {
     if (!mpResponse.ok) {
       const mpError = await mpResponse.text();
 
-      for (const prev of reservedItems) {
-        await supabase.rpc("release_reservation", {
-          p_product_id: prev.productId,
-          p_variant_id: prev.variantId,
-          p_cantidad: prev.quantity,
-          p_order_id: orderId,
-        });
-      }
+      await releaseReservedItems(supabase, orderId, reservedItems);
 
       console.error("Mercado Pago error:", mpResponse.status, mpError);
 
