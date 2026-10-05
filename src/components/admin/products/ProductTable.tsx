@@ -121,7 +121,7 @@ export default function ProductTable({ products, onToggleActive, onToggleDestaca
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100 dark:border-white/5">
-              <th className="text-left px-4 py-3 font-medium text-gray-400 dark:text-white/30 w-12"></th>
+              <th className="text-left px-4 py-3 font-medium text-gray-400 dark:text-white/30 w-18"></th>
               <th className="text-left px-4 py-3 font-medium text-gray-400 dark:text-white/30">Producto</th>
               <th className="text-left px-4 py-3 font-medium text-gray-400 dark:text-white/30">Categoría</th>
               <th className="text-right px-4 py-3 font-medium text-gray-400 dark:text-white/30">Precio</th>
@@ -138,13 +138,15 @@ export default function ProductTable({ products, onToggleActive, onToggleDestaca
               return (
                 <tr key={product.id} className="hover:bg-gray-50/50 dark:hover:bg-white/[0.02] transition-colors">
                   <td className="px-4 py-3">
-                    {imageUrl ? (
-                      <img src={imageUrl} alt={product.titulo} className="w-10 h-10 rounded-lg object-cover" />
-                    ) : (
-                      <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/5 flex items-center justify-center text-gray-400 dark:text-white/20 text-lg">
-                        {product.categories?.icono || '📦'}
-                      </div>
-                    )}
+                    <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-gray-100 dark:bg-white/5">
+                      {imageUrl ? (
+                        <img src={imageUrl} alt={product.titulo} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-400 dark:text-white/20 text-lg">
+                          {product.categories?.icono || '📦'}
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <div className="font-medium text-gray-800 dark:text-white/80 line-clamp-1">{product.titulo}</div>

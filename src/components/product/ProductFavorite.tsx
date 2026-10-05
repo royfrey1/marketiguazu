@@ -55,9 +55,9 @@ export default function BotonFavorito({ productId }: BotonFavoritoProps) {
   return (
     <button
       onClick={toggleFavorito}
-      className="absolute top-3 right-3 z-10 bg-white/80 backdrop-blur-sm p-2 rounded-full shadow-md hover:scale-110 transition-transform duration-200 cursor-pointer text-xl"
+      className="absolute top-2 right-2 z-10 bg-white/80 backdrop-blur-sm p-2 rounded-full shadow-md hover:scale-110 transition-transform duration-200 cursor-pointer text-xl"
     >
-      {esFavorito ? <FontAwesomeIcon icon={faHeart} style={{color: "#1caaa8"}} /> : <FontAwesomeIcon icon={faHeart} style={{color: "#ccc"}} />}
+      {esFavorito ? <FontAwesomeIcon icon={faHeart} style={{color: "#1caaa8"}} /> : <FontAwesomeIcon icon={faHeart} style={{color: "#9c9c9c"}} />}
     </button>
   )
 }
