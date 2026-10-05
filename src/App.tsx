@@ -40,6 +40,7 @@ const OrderDetailPage = lazy(() => import('./pages/account/OrderDetailPage'))
 const PaymentSuccessPage = lazy(() => import('./pages/payment/PaymentSuccessPage'))
 const PaymentPendingPage = lazy(() => import('./pages/payment/PaymentPendingPage'))
 const PaymentFailurePage = lazy(() => import('./pages/payment/PaymentFailurePage'))
+const PaymentUsdtPage = lazy(() => import('./pages/payment/PaymentUsdtPage'))
 
 function Loading() {
   return (
@@ -131,6 +132,7 @@ function App() {
               <Route path="pago/exito" element={<PaymentSuccessPage />} />
               <Route path="pago/pendiente" element={<PaymentPendingPage />} />
               <Route path="pago/fallo" element={<PaymentFailurePage />} />
+              <Route path="pago/usdt" element={<PaymentUsdtPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Route>
             </Routes>

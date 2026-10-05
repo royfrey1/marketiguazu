@@ -3,13 +3,16 @@ import { useParams, Link } from 'react-router-dom'
 import {
   ArrowLeft, AlertTriangle, RefreshCw, Package, Truck, MapPin,
   CreditCard, ShoppingBag, FileText, User, Hash,
-  ChevronRight, XCircle, Plus, Edit,
+  ChevronRight, XCircle, Plus, Edit, CheckCircle, MessageCircle,
 } from 'lucide-react'
+import { sileo } from 'sileo'
 import AdminSubpageHeader from '../../components/admin/AdminSubpageHeader'
 import { supabase } from '../../lib/supabase/client'
+import { whatsappLinkFromPhone } from '../../lib/phone'
 import { useAdminOrder } from '../../hooks/useAdminOrder'
 import { useAdminOrderMutations } from '../../hooks/useAdminOrderMutations'
 import {
+  orderService,
   type OrderStatus,
   type PaymentStatus,
   type ShipmentStatus,
@@ -444,6 +447,40 @@ export default function AdminOrderDetailPage() {
     }
   }, [order, refetch])
 
+  // --- Confirmación manual de pagos fuera de Mercado Pago (ej. USDT) ---
+  // admin-verify-payment consulta la API de MP y no sirve para estos pagos:
+  // el admin confirma a mano que recibió la transferencia.
+  const [manualConfirmPayment, setManualConfirmPayment] = useState<{ id: number; provider: string; amount: number; currency: string } | null>(null)
+  const [manualConfirmLoading, setManualConfirmLoading] = useState(false)
+
+  const handleConfirmManualPayment = useCallback(async () => {
+    if (!order || !manualConfirmPayment) return
+    setManualConfirmLoading(true)
+    try {
+      // update_payment_status valida por su cuenta que el usuario sea admin
+      const { error } = await orderService.updatePaymentStatus(manualConfirmPayment.id, 'approved')
+      if (error) {
+        sileo.error({ title: 'No se pudo confirmar el pago', description: error.message })
+        return
+      }
+
+      const { error: emailError } = await supabase.functions.invoke('send-order-email', { body: { orderId: order.id } })
+      if (emailError) {
+        sileo.warning({
+          title: 'Pago confirmado',
+          description: 'El pago quedó aprobado, pero no se pudo enviar el email al cliente.',
+        })
+      } else {
+        sileo.success({ title: 'Pago confirmado', description: 'Le enviamos el email de confirmación al cliente.' })
+      }
+
+      setManualConfirmPayment(null)
+      await refetch()
+    } finally {
+      setManualConfirmLoading(false)
+    }
+  }, [order, manualConfirmPayment, refetch])
+
   const handleCancelOrder = useCallback(async () => {
     if (!order) return
 
@@ -539,7 +576,26 @@ export default function AdminOrderDetailPage() {
   const statusInfo = STATUS_MAP[order.status] ?? { label: order.status, variant: 'default' as const }
   const paymentInfo = PAYMENT_STATUS_MAP[order.payment_status] ?? { label: order.payment_status, variant: 'default' as const }
   const canVerifyPayment = order.payment_status === 'pending' && order.payments.length > 0
+  const latestPayment = order.payments.reduce<(typeof order.payments)[number] | null>(
+    (latest, p) => (!latest || p.created_at > latest.created_at ? p : latest),
+    null
+  )
+  const isMercadoPagoOrder = latestPayment?.provider === 'mercadopago'
+  // Pago pendiente a confirmar a mano: el más reciente si está pendiente, si no otro pendiente del mismo método
+  const manualPendingPayment = !isMercadoPagoOrder && latestPayment
+    ? (latestPayment.status === 'pending'
+        ? latestPayment
+        : order.payments.find(p => p.status === 'pending' && p.provider === latestPayment.provider) ?? null)
+    : null
   const address = order.direccion_envio as Record<string, string | undefined> | null
+  // Mensaje precargado de WhatsApp según el estado del pago
+  const whatsappGreeting = `Hola! Te escribimos de Iguazú Marketplace por tu pedido ${order.numero_pedido}. `
+  const whatsappText = order.payment_status === 'approved'
+    ? `Hola! Confirmamos el pago de tu pedido ${order.numero_pedido}. ¡Gracias por tu compra!`
+    : whatsappGreeting // USDT pendiente y resto de los casos: saludo con el número de pedido
+  const customerPhone = address?.telefono?.trim() || null
+  // Sin teléfono o con uno inválido no hay botón (el teléfono se muestra tal cual está guardado)
+  const customerWhatsappUrl = customerPhone ? whatsappLinkFromPhone(customerPhone, whatsappText) : null
 
   return (
     <div>
@@ -718,6 +774,17 @@ export default function AdminOrderDetailPage() {
                 {address.codigo_postal && <p>CP {address.codigo_postal}</p>}
                 {address.pais && <p className="capitalize">{address.pais}</p>}
                 {address.telefono && <p className="text-gray-400 mt-2">Tel: {address.telefono}</p>}
+                {customerWhatsappUrl && (
+                  <a
+                    href={customerWhatsappUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-[#185749] hover:underline"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    Escribir por WhatsApp
+                  </a>
+                )}
               </div>
             ) : (
               <p className="text-sm text-gray-400">Sin dirección registrada</p>
@@ -879,7 +946,26 @@ export default function AdminOrderDetailPage() {
                 Pagos {order.payments.length > 0 && <span className="text-gray-400 font-normal">({order.payments.length})</span>}
               </h3>
             </div>
-            {canVerifyPayment && (
+            {canVerifyPayment && !isMercadoPagoOrder && manualPendingPayment && (
+              <div className="mb-4">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => setManualConfirmPayment({
+                    id: manualPendingPayment.id,
+                    provider: manualPendingPayment.provider,
+                    amount: manualPendingPayment.amount,
+                    currency: manualPendingPayment.currency,
+                  })}
+                  disabled={manualConfirmLoading}
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  Confirmar pago recibido
+                </Button>
+              </div>
+            )}
+            {canVerifyPayment && isMercadoPagoOrder && (
               <div className="mb-4">
                 <Button
                   variant="primary"
@@ -1047,6 +1133,48 @@ export default function AdminOrderDetailPage() {
               loading={updatePaymentStatus.loading}
             >
               Confirmar
+            </Button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Manual payment confirmation modal (USDT u otros métodos sin verificación automática) */}
+      {manualConfirmPayment && (
+        <Modal
+          open
+          onClose={() => { if (!manualConfirmLoading) setManualConfirmPayment(null) }}
+          title="Confirmar pago recibido"
+        >
+          <p className="text-sm text-gray-600 mb-4">
+            ¿Confirmás que recibiste el pago #{manualConfirmPayment.id} por{' '}
+            <span className="font-bold text-gray-800 uppercase">{manualConfirmPayment.provider.replace(/_/g, ' ')}</span>{' '}
+            ({formatCurrency(manualConfirmPayment.amount)} {manualConfirmPayment.currency})?
+          </p>
+          <p className="text-xs text-amber-600 bg-amber-50 rounded-lg p-3 mb-4">
+            Revisá que la transferencia esté acreditada en la wallet antes de confirmar. El pago pasa a
+            &ldquo;Aprobado&rdquo; y el pedido a &ldquo;Pagado&rdquo;.
+          </p>
+          <p className="text-xs text-gray-600 mb-4">
+            {customerPhone
+              ? 'Se intentará enviar un email de confirmación al cliente. Hasta que se verifique el dominio de envío, puede no llegarle: avisale también por WhatsApp.'
+              : 'Se intentará enviar un email de confirmación al cliente. Hasta que se verifique el dominio de envío, puede no llegarle. Este pedido no tiene teléfono: no hay forma de avisarle al cliente.'}
+          </p>
+          <div className="flex gap-3 justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setManualConfirmPayment(null)}
+              disabled={manualConfirmLoading}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleConfirmManualPayment}
+              loading={manualConfirmLoading}
+            >
+              Confirmar pago recibido
             </Button>
           </div>
         </Modal>

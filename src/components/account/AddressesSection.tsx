@@ -3,6 +3,10 @@ import { MapPin, Trash2, Check } from 'lucide-react'
 import { addressService, type AddressRow } from '../../services/address.service'
 import Button from '../ui/Button'
 import Input from '../ui/Input'
+import {
+  normalizeArPhone, phoneToInputValue,
+  PHONE_INVALID_MESSAGE, PHONE_HELP_TEXT, PHONE_PLACEHOLDER,
+} from '../../lib/phone'
 
 interface AddressesSectionProps {
   userId: string
@@ -19,6 +23,7 @@ export default function AddressesSection({ userId }: AddressesSectionProps) {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(emptyForm)
   const [feedback, setFeedback] = useState<Feedback>(null)
+  const [phoneError, setPhoneError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -35,8 +40,18 @@ export default function AddressesSection({ userId }: AddressesSectionProps) {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     setFeedback(null)
+
+    // Teléfono obligatorio: se guarda normalizado como +549XXXXXXXXXX
+    const telefono = normalizeArPhone(form.telefono)
+    if (!telefono) {
+      setPhoneError(PHONE_INVALID_MESSAGE)
+      return
+    }
+    setPhoneError(null)
+    const payload = { ...form, telefono }
+
     if (editing) {
-      const { data, error } = await addressService.update(editing, form)
+      const { data, error } = await addressService.update(editing, payload)
       if (error) {
         setFeedback({ type: 'error', message: error.message })
         return
@@ -45,7 +60,7 @@ export default function AddressesSection({ userId }: AddressesSectionProps) {
       setEditing(null)
       setFeedback({ type: 'success', message: 'Dirección actualizada.' })
     } else {
-      const { data, error } = await addressService.create({ ...form, user_id: userId, es_default: addresses.length === 0 })
+      const { data, error } = await addressService.create({ ...payload, user_id: userId, es_default: addresses.length === 0 })
       if (error) {
         setFeedback({ type: 'error', message: error.message })
         return
@@ -68,10 +83,11 @@ export default function AddressesSection({ userId }: AddressesSectionProps) {
   }
 
   const startEdit = (addr: AddressRow) => {
-    setForm({ nombre: addr.nombre, calle: addr.calle, numero: addr.numero || '', piso: addr.piso || '', departamento: addr.departamento || '', ciudad: addr.ciudad, provincia: addr.provincia, codigo_postal: addr.codigo_postal, pais: addr.pais, telefono: addr.telefono || '' })
+    setForm({ nombre: addr.nombre, calle: addr.calle, numero: addr.numero || '', piso: addr.piso || '', departamento: addr.departamento || '', ciudad: addr.ciudad, provincia: addr.provincia, codigo_postal: addr.codigo_postal, pais: addr.pais, telefono: phoneToInputValue(addr.telefono) })
     setEditing(addr.id)
     setShowForm(true)
     setFeedback(null)
+    setPhoneError(null)
   }
 
   if (loading) return <p className="text-gray-400 animate-pulse py-8">Cargando direcciones...</p>
@@ -120,10 +136,20 @@ export default function AddressesSection({ userId }: AddressesSectionProps) {
             <Input label="Provincia" value={form.provincia} onChange={e => setForm(f => ({ ...f, provincia: e.target.value }))} required />
             <Input label="Código postal" value={form.codigo_postal} onChange={e => setForm(f => ({ ...f, codigo_postal: e.target.value }))} required />
           </div>
-          <Input label="Teléfono" value={form.telefono} onChange={e => setForm(f => ({ ...f, telefono: e.target.value }))} />
+          <Input
+            label="Teléfono de contacto (WhatsApp)"
+            value={form.telefono}
+            onChange={e => { setForm(f => ({ ...f, telefono: e.target.value })); setPhoneError(null) }}
+            required
+            placeholder={PHONE_PLACEHOLDER}
+            helperText={PHONE_HELP_TEXT}
+            inputMode="tel"
+            autoComplete="tel"
+            error={phoneError ?? undefined}
+          />
           <div className="flex gap-2">
             <Button type="submit" size="sm">{editing ? 'Guardar' : 'Crear'}</Button>
-            <Button variant="ghost" size="sm" type="button" onClick={() => { setShowForm(false); setEditing(null); setForm(emptyForm) }}>Cancelar</Button>
+            <Button variant="ghost" size="sm" type="button" onClick={() => { setShowForm(false); setEditing(null); setForm(emptyForm); setPhoneError(null) }}>Cancelar</Button>
           </div>
         </form>
       )}

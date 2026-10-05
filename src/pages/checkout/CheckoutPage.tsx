@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { CreditCard, AlertTriangle, ArrowLeft, Truck } from 'lucide-react'
+import { CreditCard, AlertTriangle, ArrowLeft, Truck, Coins } from 'lucide-react'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { sileo } from 'sileo'
 import useCart from '../../hooks/useCart'
@@ -23,12 +23,35 @@ interface CreatePaymentSuccess {
   initPoint: string
 }
 
-async function extractPaymentError(error: unknown): Promise<{ code: PaymentErrorCode; message: string }> {
+interface CreateUsdtPaymentSuccess {
+  success: true
+  orderId: number
+  orderNumber: string | null
+  amountArs: number
+  amountUsdt: number
+  exchangeRate: number
+  walletAddress: string
+  network: string
+}
+
+type PaymentMethod = 'mercadopago' | 'usdt'
+
+const PAYMENT_METHOD_OPTIONS: { value: PaymentMethod; label: string; hint: string; icon: typeof CreditCard }[] = [
+  { value: 'mercadopago', label: 'Mercado Pago', hint: 'Tarjeta, débito o hasta 3 cuotas', icon: CreditCard },
+  { value: 'usdt', label: 'USDT (TRC20)', hint: 'Transferencia cripto, confirmación manual', icon: Coins },
+]
+
+async function extractPaymentError(error: unknown): Promise<{ code: PaymentErrorCode; message: string; orderId?: number }> {
   if (error instanceof FunctionsHttpError) {
     try {
-      const body = await error.context.json() as { error?: { code?: string; message?: string } }
+      const body = await error.context.json() as { error?: { code?: string; message?: string }; orderId?: unknown }
       if (body?.error?.code && body.error.code in PAYMENT_ERROR_MESSAGES) {
-        return { code: body.error.code as PaymentErrorCode, message: body.error.message ?? '' }
+        return {
+          code: body.error.code as PaymentErrorCode,
+          message: body.error.message ?? '',
+          // Solo en PENDING_USDT_ORDER: el pedido USDT pendiente que bloquea el checkout
+          orderId: typeof body.orderId === 'number' ? body.orderId : undefined,
+        }
       }
     } catch {
       // la respuesta no tenía JSON válido
@@ -43,6 +66,7 @@ function CheckoutContent() {
   const navigate = useNavigate()
   const [currentStep, setCurrentStep] = useState<1 | 2>(1)
   const [isPaying, setIsPaying] = useState(false)
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('mercadopago')
 
   useEffect(() => {
     if (!loading && !syncPending && itemCount === 0) {
@@ -69,6 +93,26 @@ function CheckoutContent() {
     setCurrentStep(1)
   }
 
+  // Error de create-payment / create-payment-usdt. Con un pedido USDT pendiente
+  // (PENDING_USDT_ORDER) no se puede iniciar otro checkout: se lleva al usuario a
+  // las instrucciones de ese pedido en vez de dejarlo bloqueado sin explicación.
+  const handlePaymentError = async (invokeError: unknown) => {
+    const failure = await extractPaymentError(invokeError)
+    if (failure.code === 'PENDING_USDT_ORDER' && failure.orderId) {
+      sileo.warning({
+        title: 'Ya tenés un pedido pendiente de pago con USDT',
+        description: 'Te mostramos los datos para completar la transferencia.',
+      })
+      // keepCart: el carrito actual es de una compra nueva, no del pedido pendiente
+      navigate(`/pago/usdt?order=${failure.orderId}`, { state: { keepCart: true } })
+      return
+    }
+    sileo.error({
+      title: 'No pudimos procesar el pago',
+      description: PAYMENT_ERROR_MESSAGES[failure.code] ?? PAYMENT_ERROR_MESSAGES.INTERNAL_ERROR,
+    })
+  }
+
   const handlePay = async () => {
     if (isPaying || !canProceedToPayment) return
 
@@ -92,14 +136,31 @@ function CheckoutContent() {
         })),
       }
 
+      if (paymentMethod === 'usdt') {
+        const { data: usdt, error: usdtError } = await supabase.functions.invoke<CreateUsdtPaymentSuccess>('create-payment-usdt', { body })
+
+        if (usdtError) {
+          await handlePaymentError(usdtError)
+          return
+        }
+
+        if (!usdt?.success || !usdt.orderId) {
+          sileo.error({
+            title: 'No pudimos procesar el pago',
+            description: PAYMENT_ERROR_MESSAGES.INTERNAL_ERROR,
+          })
+          return
+        }
+
+        // Flujo interno: las instrucciones de pago se muestran en la tienda
+        navigate(`/pago/usdt?order=${usdt.orderId}`)
+        return
+      }
+
       const { data, error: invokeError } = await supabase.functions.invoke<CreatePaymentSuccess>('create-payment', { body })
 
       if (invokeError) {
-        const failure = await extractPaymentError(invokeError)
-        sileo.error({
-          title: 'No pudimos procesar el pago',
-          description: PAYMENT_ERROR_MESSAGES[failure.code] ?? PAYMENT_ERROR_MESSAGES.INTERNAL_ERROR,
-        })
+        await handlePaymentError(invokeError)
         return
       }
 
@@ -202,14 +263,14 @@ function CheckoutContent() {
                 </span>
                 <div className="min-w-0">
                   <h2 className="text-sm sm:text-base font-bold text-primary-dark">Pago</h2>
-                  <p className="text-xs text-gray-400 mt-0.5">En el último paso te redirigimos a Mercado Pago</p>
+                  <p className="text-xs text-gray-400 mt-0.5">En el último paso elegís Mercado Pago o USDT (TRC20)</p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Validation error */}
-          {validationError && (
+          {/* Validation error (PHONE_REQUIRED ya se muestra en el paso de dirección, con "Agregar teléfono") */}
+          {validationError && validationError !== 'PHONE_REQUIRED' && (
             <div className="mt-5 bg-amber-50 border border-amber-200 rounded-xl p-3 sm:p-4" role="alert">
               <div className="flex items-start gap-2.5">
                 <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
@@ -280,6 +341,39 @@ function CheckoutContent() {
 
           <CheckoutReview onEditAddress={handleEditAddress} />
 
+          {/* Payment method */}
+          <fieldset className="mt-6 sm:mt-8">
+            <legend className="text-sm font-bold text-primary-dark mb-3">Medio de pago</legend>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {PAYMENT_METHOD_OPTIONS.map(option => {
+                const selected = paymentMethod === option.value
+                return (
+                  <label
+                    key={option.value}
+                    className={`flex items-center gap-3 rounded-xl border p-3 sm:p-4 cursor-pointer transition-colors ${
+                      selected ? 'border-accent bg-accent/5' : 'border-gray-200 hover:border-gray-300'
+                    } ${isPaying ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  >
+                    <input
+                      type="radio"
+                      name="payment-method"
+                      value={option.value}
+                      checked={selected}
+                      onChange={() => setPaymentMethod(option.value)}
+                      disabled={isPaying}
+                      className="accent-accent w-4 h-4 shrink-0"
+                    />
+                    <option.icon className={`w-5 h-5 shrink-0 ${selected ? 'text-accent' : 'text-gray-400'}`} aria-hidden="true" />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold text-primary-dark">{option.label}</span>
+                      <span className="block text-xs text-gray-400">{option.hint}</span>
+                    </span>
+                  </label>
+                )
+              })}
+            </div>
+          </fieldset>
+
           {/* Actions */}
           <div className="mt-6 sm:mt-8 space-y-3">
             <Button
@@ -290,7 +384,7 @@ function CheckoutContent() {
               loading={isPaying}
               onClick={handlePay}
             >
-              {isPaying ? 'Procesando…' : 'Ir a pagar'}
+              {isPaying ? 'Procesando…' : paymentMethod === 'usdt' ? 'Confirmar pedido y ver datos de pago' : 'Ir a pagar'}
             </Button>
 
             <Button

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { orderService, type OrderDetail } from '../../services/order.service'
 import useAuth from '../../hooks/useAuth'
 
@@ -52,12 +53,14 @@ export default function PaymentOrderSummary({ orderId }: PaymentOrderSummaryProp
 
       <div className="space-y-2.5">
         {order.order_items.map(item => (
-          <div key={item.id} className="flex justify-between gap-3 text-sm">
-            <span className="text-gray-600 min-w-0 truncate">
-              {item.nombre_producto}
-              {item.variante_nombre ? ` — ${item.variante_nombre}` : ''} ×{item.cantidad}
-            </span>
-            <span className="font-semibold text-primary-dark shrink-0">
+          <div key={item.id} className="flex justify-between items-start gap-3 text-sm">
+            <div className="min-w-0">
+              <p className="text-gray-600 break-words leading-snug">{item.nombre_producto}</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {item.variante_nombre ? `${item.variante_nombre} · ` : ''}×{item.cantidad}
+              </p>
+            </div>
+            <span className="shrink-0 whitespace-nowrap font-semibold text-primary-dark">
               ${item.subtotal.toLocaleString('es-AR')}
             </span>
           </div>
@@ -80,6 +83,14 @@ export default function PaymentOrderSummary({ orderId }: PaymentOrderSummaryProp
           <span>${order.total.toLocaleString('es-AR')}</span>
         </div>
       </div>
+
+      {/* pedido/:id usa el id numérico del pedido (no numero_pedido) */}
+      <Link
+        to={`/pedido/${order.id}`}
+        className="inline-block text-sm font-semibold text-accent hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent rounded"
+      >
+        Ver detalle completo del pedido
+      </Link>
     </div>
   )
 }

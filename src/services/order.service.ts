@@ -192,6 +192,16 @@ export type OrderStatus =
 
 export type PaymentStatus = 'pending' | 'approved' | 'rejected' | 'refunded' | 'cancelled'
 
+/** Datos para que el cliente transfiera USDT (payments.metadata de provider='usdt'). */
+export interface UsdtPaymentInfo {
+  status: string
+  amountArs: number
+  amountUsdt: number
+  exchangeRate: number
+  walletAddress: string
+  network: string
+}
+
 export type ShipmentStatus =
   | 'pending'
   | 'processing'
@@ -317,6 +327,46 @@ export const orderService = {
    * RLS filtra por user_id = auth.uid() en orders.
    * Un usuario que intente consultar un orderId ajeno no obtendrá datos.
    */
+  /**
+   * Pago USDT de un pedido propio, con los datos de transferencia (metadata).
+   * RLS (payments_select_own) limita la lectura a pagos de pedidos del usuario.
+   */
+  async getMyUsdtPayment(
+    orderId: number
+  ): Promise<{ data: UsdtPaymentInfo | null; error: Error | null }> {
+    const { data, error } = await supabase
+      .from('payments')
+      .select('status, amount, metadata')
+      .eq('order_id', orderId)
+      .eq('provider', 'usdt')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (error) return { data: null, error: new Error(error.message) }
+    if (!data) return { data: null, error: new Error('Pago no encontrado') }
+
+    const meta = (data.metadata ?? {}) as Record<string, unknown>
+    const amountUsdt = Number(meta.amount_usdt)
+    const exchangeRate = Number(meta.exchange_rate)
+    const walletAddress = typeof meta.wallet_address === 'string' ? meta.wallet_address : ''
+    if (!amountUsdt || !exchangeRate || !walletAddress) {
+      return { data: null, error: new Error('Faltan los datos de pago USDT') }
+    }
+
+    return {
+      data: {
+        status: data.status,
+        amountArs: data.amount,
+        amountUsdt,
+        exchangeRate,
+        walletAddress,
+        network: typeof meta.network === 'string' ? meta.network : 'TRC20',
+      },
+      error: null,
+    }
+  },
+
   async getMyOrderById(
     orderId: number
   ): Promise<{ data: OrderDetail | null; error: Error | null }> {

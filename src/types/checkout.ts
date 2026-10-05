@@ -7,6 +7,7 @@ export type CheckoutErrorCode =
   | 'INVALID_CART'
   | 'PRICE_CHANGED'
   | 'ADDRESS_REQUIRED'
+  | 'PHONE_REQUIRED'
   | 'SHIPPING_METHOD_REQUIRED'
   | 'CHECKOUT_NOT_READY'
 
@@ -16,6 +17,7 @@ export const CHECKOUT_ERROR_MESSAGES: Record<CheckoutErrorCode, string> = {
   INVALID_CART: 'Tu carrito tiene productos inválidos.',
   PRICE_CHANGED: 'El precio de uno de los productos cambió. Revisá tu carrito antes de continuar.',
   ADDRESS_REQUIRED: 'Seleccioná una dirección de envío.',
+  PHONE_REQUIRED: 'Agregá un teléfono de contacto a esta dirección para continuar',
   SHIPPING_METHOD_REQUIRED: 'Seleccioná un método de envío.',
   CHECKOUT_NOT_READY: 'El checkout no está listo para continuar.',
 }
@@ -33,6 +35,9 @@ export type PaymentErrorCode =
   | 'ORDER_CREATION_FAILED'
   | 'PAYMENT_CREATION_FAILED'
   | 'MERCADOPAGO_ERROR'
+  | 'EXCHANGE_RATE_ERROR'
+  | 'WALLET_NOT_CONFIGURED'
+  | 'PENDING_USDT_ORDER'
   | 'INTERNAL_ERROR'
 
 export const PAYMENT_ERROR_MESSAGES: Record<PaymentErrorCode, string> = {
@@ -48,6 +53,9 @@ export const PAYMENT_ERROR_MESSAGES: Record<PaymentErrorCode, string> = {
   ORDER_CREATION_FAILED: 'No pudimos crear tu pedido. Intentá nuevamente en unos minutos.',
   PAYMENT_CREATION_FAILED: 'No pudimos iniciar el pago. Intentá nuevamente en unos minutos.',
   MERCADOPAGO_ERROR: 'Mercado Pago no pudo procesar la operación. Intentá nuevamente.',
+  EXCHANGE_RATE_ERROR: 'No pudimos obtener la cotización de USDT en este momento. Probá de nuevo en unos minutos o pagá con Mercado Pago.',
+  WALLET_NOT_CONFIGURED: 'El pago con USDT no está disponible por el momento. Elegí otro método de pago.',
+  PENDING_USDT_ORDER: 'Ya tenés un pedido pendiente de pago con USDT.',
   INTERNAL_ERROR: 'Ocurrió un error inesperado. Intentá nuevamente.',
 }
 

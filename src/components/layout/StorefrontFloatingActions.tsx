@@ -1,13 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ArrowUp } from 'lucide-react'
+import { whatsappUrl } from '../../lib/whatsapp'
 
 const SCROLL_SHOW_THRESHOLD = 400
-
-const rawWhatsAppUrl = ((import.meta.env.VITE_WHATSAPP_URL as string | undefined) ?? '').trim()
-
-const whatsappUrl = /^(https:\/\/(wa\.me|api\.whatsapp\.com|whatsapp\.com)\/).*/i.test(rawWhatsAppUrl)
-  ? rawWhatsAppUrl
-  : ''
 
 const surfaceClasses =
   'flex items-center justify-center w-11 h-11 rounded-full ' +

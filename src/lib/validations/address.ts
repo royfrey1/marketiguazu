@@ -1,5 +1,6 @@
 import { z } from 'zod'
-import { requiredText, phone } from './common'
+import { requiredText } from './common'
+import { normalizeArPhone, PHONE_INVALID_MESSAGE } from '../phone'
 
 export const addressSchema = z.object({
   nombre: requiredText('El nombre', 1, 100),
@@ -11,7 +12,12 @@ export const addressSchema = z.object({
   provincia: requiredText('La provincia', 1, 100),
   codigo_postal: requiredText('El código postal', 1, 20),
   pais: requiredText('El país', 1, 100),
-  telefono: phone.optional().or(z.literal('')),
+  // Obligatorio: es el canal de contacto con el cliente (WhatsApp). Se guarda
+  // normalizado con normalizeArPhone() al crear/editar la dirección.
+  telefono: z
+    .string()
+    .trim()
+    .refine(value => normalizeArPhone(value) !== null, PHONE_INVALID_MESSAGE),
   es_default: z.boolean(),
 })
 

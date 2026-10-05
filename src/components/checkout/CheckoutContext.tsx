@@ -10,6 +10,7 @@ import {
   type ShippingQuoteErrorCode,
 } from '../../services/shipping.service'
 import type { AddressRow } from '../../services/address.service'
+import { normalizeArPhone } from '../../lib/phone'
 import type {
   CheckoutSnapshot,
   CheckoutValidationResult,
@@ -71,6 +72,8 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
       return { valid: false, error: 'PRICE_CHANGED' }
     }
     if (!selectedAddress) return { valid: false, error: 'ADDRESS_REQUIRED' }
+    // El teléfono es el canal de contacto (WhatsApp); bloquea ambos métodos de pago
+    if (!normalizeArPhone(selectedAddress.telefono)) return { valid: false, error: 'PHONE_REQUIRED' }
     if (!selectedShippingMethodId) return { valid: false, error: 'SHIPPING_METHOD_REQUIRED' }
     return { valid: true, error: null }
   }, [user, loading, syncPending, itemCount, items, selectedAddress, selectedShippingMethodId])

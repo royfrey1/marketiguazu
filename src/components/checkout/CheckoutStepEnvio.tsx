@@ -1,10 +1,11 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { MapPin, Plus, Check, Pencil, Trash2, Star, Loader2, Truck } from 'lucide-react'
+import { MapPin, Plus, Check, Pencil, Trash2, Star, Loader2, Truck, AlertTriangle } from 'lucide-react'
 import useAuth from '../../hooks/useAuth'
 import { addressService, type AddressRow, type AddressInsert } from '../../services/address.service'
 import { addressSchema, type AddressFormData } from '../../lib/validations/address'
+import { normalizeArPhone, phoneToInputValue, PHONE_HELP_TEXT, PHONE_PLACEHOLDER } from '../../lib/phone'
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '../ui/accordion'
 import Input from '../ui/Input'
 import Button from '../ui/Button'
@@ -97,7 +98,7 @@ export default function CheckoutStepEnvio({ onComplete }: CheckoutStepEnvioProps
         provincia: data.provincia,
         codigo_postal: data.codigo_postal,
         pais: data.pais || 'Argentina',
-        telefono: data.telefono || null,
+        telefono: normalizeArPhone(data.telefono),
       }
 
       const { data: updated, error } = await addressService.update(editingAddress.id, updatePayload)
@@ -127,7 +128,7 @@ export default function CheckoutStepEnvio({ onComplete }: CheckoutStepEnvioProps
         provincia: data.provincia,
         codigo_postal: data.codigo_postal,
         pais: data.pais || 'Argentina',
-        telefono: data.telefono || null,
+        telefono: normalizeArPhone(data.telefono),
         es_default: data.es_default,
       }
 
@@ -165,7 +166,10 @@ export default function CheckoutStepEnvio({ onComplete }: CheckoutStepEnvioProps
     onComplete(selectedAddress)
   }
 
-  const addressCompleted = !!selectedAddress
+  // Direcciones viejas sin teléfono válido: el checkout no avanza hasta completarlo.
+  // Cuenta como paso incompleto para que el acordeón abra la sección y muestre el aviso.
+  const selectedNeedsPhone = !!selectedAddress && !normalizeArPhone(selectedAddress.telefono)
+  const addressCompleted = !!selectedAddress && !selectedNeedsPhone
   const shippingCompleted = addressCompleted
 
   const defaultAccordionValue = !addressCompleted ? ['address'] : ['shipping']
@@ -238,6 +242,25 @@ export default function CheckoutStepEnvio({ onComplete }: CheckoutStepEnvioProps
                 </div>
               ) : (
                 <>
+                  {selectedNeedsPhone && selectedAddress && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 sm:p-4" role="alert">
+                      <div className="flex items-start gap-2.5">
+                        <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs sm:text-sm text-amber-700 font-medium">
+                            Agregá un teléfono de contacto a esta dirección para continuar
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => handleEdit(selectedAddress)}
+                            className="inline-block mt-2 text-xs sm:text-sm font-semibold text-amber-700 underline hover:text-amber-800 cursor-pointer"
+                          >
+                            Agregar teléfono
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   <div className="space-y-2">
                     {addresses.map(address => (
                       <AddressCard
@@ -471,7 +494,7 @@ function AddressForm({
           provincia: address.provincia,
           codigo_postal: address.codigo_postal,
           pais: address.pais || 'Argentina',
-          telefono: address.telefono || '',
+          telefono: phoneToInputValue(address.telefono),
           es_default: address.es_default,
         }
       : {
@@ -501,7 +524,7 @@ function AddressForm({
         provincia: address.provincia,
         codigo_postal: address.codigo_postal,
         pais: address.pais || 'Argentina',
-        telefono: address.telefono || '',
+        telefono: phoneToInputValue(address.telefono),
         es_default: address.es_default,
       })
     } else {
@@ -609,8 +632,11 @@ function AddressForm({
         </div>
 
         <Input
-          label="Teléfono (opcional)"
-          placeholder="Ej: +54 11 1234-5678"
+          label="Teléfono de contacto (WhatsApp)"
+          placeholder={PHONE_PLACEHOLDER}
+          helperText={PHONE_HELP_TEXT}
+          inputMode="tel"
+          autoComplete="tel"
           error={errors.telefono?.message}
           {...register('telefono')}
         />

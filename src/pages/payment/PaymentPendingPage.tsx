@@ -39,7 +39,7 @@ export default function PaymentPendingPage() {
           </h1>
 
           <p className="text-body text-gray-500 mb-5 max-w-md leading-relaxed">
-            ¡Listo! Estamos confirmando tu pago, te vamos a avisar por email cuando se acredite.
+            ¡Listo! Estamos confirmando tu pago. Podés seguir el estado de tu pedido en Mis pedidos.
           </p>
 
           <PaymentOrderSummary orderId={orderId} />
