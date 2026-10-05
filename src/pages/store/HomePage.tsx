@@ -3,6 +3,7 @@ import { productsService, type ProductWithPrimaryImage } from '../../services/pr
 import { categoriesService, type Category } from '../../services/categories.service'
 import HeroSection from '../../components/home/HeroSection'
 import TrustBar from '../../components/home/TrustBar'
+import PaymentMethodsTicker from '../../components/store/PaymentMethodsTicker'
 import CategoriesSection from '../../components/home/CategoriesSection'
 import FeaturedProducts from '../../components/home/FeaturedProducts'
 import ProblemSolutionSection from '../../components/home/ProblemSolutionSection'
@@ -93,6 +94,7 @@ export default function Home() {
     <div className="min-h-screen bg-white">
       <main>
         <HeroSection />
+        <PaymentMethodsTicker />
         <TrustBar />
         <CategoriesSection categories={categorias} />
         <FeaturedProducts products={destacados} loading={loadingDestacados} />

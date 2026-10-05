@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useParams, Link, Navigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { sileo } from 'sileo'
-import { ShoppingCart, Share2, Minus, Plus, Package, ChevronLeft, ChevronRight, Star, MessageSquare } from 'lucide-react'
+import { ShoppingCart, Share2, Minus, Plus, Package, ChevronLeft, ChevronRight, Star, MessageSquare, Truck } from 'lucide-react'
 import { productsService, type ProductWithPrimaryImage } from '../../services/products.service'
 import { productImagesService, type ProductImage } from '../../services/productImages.service'
 import { productVariantsService, type VariantWithInventory } from '../../services/productVariants.service'
@@ -11,9 +11,11 @@ import useCart from '../../hooks/useCart'
 import ProductCard from '../../components/home/ProductCard'
 import ProductImageViewer, { type ProductViewerImage } from '../../components/product/ProductImageViewer'
 import VariantDropdown from '../../components/product/VariantDropdown'
+import { PAYMENT_METHODS } from '../../components/store/paymentMethods'
 
 const MAX_VISIBLE_THUMBS = 5
 const SIN_IMAGENES: ProductImage[] = []
+const USDT_METHOD = PAYMENT_METHODS.find(m => m.label.startsWith('USDT'))
 
 type AttributeMap = Record<string, string>
 
@@ -572,13 +574,25 @@ export default function DetalleProducto() {
               <p className="text-price text-3xl sm:text-4xl">
                 ${effectivePrice.toLocaleString('es-AR')}
               </p>
-              <div className="mt-2 flex flex-col sm:flex-row sm:items-baseline sm:gap-3 gap-0.5">
-                <p className="text-sm font-bold text-accent">
-                  3 cuotas
+              <p className="mt-2 text-sm font-semibold text-primary-dark">
+                o en {INSTALLMENT_COUNT} cuotas de ${installmentAmount.toLocaleString('es-AR')} con Mercado Pago
+              </p>
+              {USDT_METHOD && (
+                <p className="mt-1.5 flex items-center gap-1.5 text-sm text-gray-500">
+                  <USDT_METHOD.icon className="w-4 h-4 text-accent shrink-0" aria-hidden="true" />
+                  También podés abonar con USDT (TRC20)
                 </p>
-                <p className="text-sm font-semibold text-primary">
-                  {INSTALLMENT_COUNT} × ${installmentAmount.toLocaleString('es-AR')}
-                </p>
+              )}
+            </div>
+
+            {/* Free shipping — business policy, always shown */}
+            <div className="mb-4 flex items-center gap-3 rounded-xl border border-primary-light bg-primary-light/40 px-4 py-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-white">
+                <Truck className="w-5 h-5" aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-primary-dark">Envío gratis a todo el país</p>
+                <p className="text-xs text-primary">Sin costo adicional en todas tus compras</p>
               </div>
             </div>
 
