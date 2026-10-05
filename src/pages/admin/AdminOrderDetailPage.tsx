@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import {
   ArrowLeft, AlertTriangle, RefreshCw, Package, Truck, MapPin,
   CreditCard, ShoppingBag, FileText, User, Hash,
-  ChevronRight, XCircle, Plus, Edit, CheckCircle, MessageCircle,
+  ChevronRight, XCircle, Plus, Edit, CheckCircle, MessageCircle, X,
 } from 'lucide-react'
 import { sileo } from 'sileo'
 import AdminSubpageHeader from '../../components/admin/AdminSubpageHeader'
@@ -481,14 +481,24 @@ export default function AdminOrderDetailPage() {
     }
   }, [order, manualConfirmPayment, refetch])
 
+  // Ítems a revisar en Inventario tras cancelar un pedido con pago aprobado: el stock
+  // no se repone solo en ese caso. Vive en el estado de la página (no reaparece al recargar).
+  const [stockReviewItems, setStockReviewItems] = useState<string[] | null>(null)
+
   const handleCancelOrder = useCallback(async () => {
     if (!order) return
 
     setCancelError(null)
+    const hadApprovedPayment = order.payment_status === 'approved'
     const result = await cancelOrder.execute(order.id, cancelReason || undefined)
     if (result.success) {
       setCancelModalOpen(false)
       setCancelReason('')
+      if (hadApprovedPayment) {
+        setStockReviewItems(order.order_items.map(item =>
+          `${item.nombre_producto}${item.variante_nombre ? ` (${item.variante_nombre})` : ''} ×${item.cantidad}`
+        ))
+      }
       await refetch()
     } else {
       setCancelError(result.error)
@@ -575,7 +585,7 @@ export default function AdminOrderDetailPage() {
   // --- Data ---
   const statusInfo = STATUS_MAP[order.status] ?? { label: order.status, variant: 'default' as const }
   const paymentInfo = PAYMENT_STATUS_MAP[order.payment_status] ?? { label: order.payment_status, variant: 'default' as const }
-  const canVerifyPayment = order.payment_status === 'pending' && order.payments.length > 0
+  const canVerifyPayment = order.payment_status === 'pending' && order.payments.length > 0 && order.status !== 'cancelled'
   const latestPayment = order.payments.reduce<(typeof order.payments)[number] | null>(
     (latest, p) => (!latest || p.created_at > latest.created_at ? p : latest),
     null
@@ -616,6 +626,34 @@ export default function AdminOrderDetailPage() {
           <Badge variant={paymentInfo.variant}>Pago: {paymentInfo.label}</Badge>
         </div>
       </AdminSubpageHeader>
+
+      {/* Post-cancel stock reminder (session only, dismissable) */}
+      {stockReviewItems && (
+        <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4" role="status">
+          <div className="flex items-start gap-2.5">
+            <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm text-amber-700 font-medium">
+                Revisá el stock de: {stockReviewItems.join(', ')}
+              </p>
+              <Link
+                to="/admin/inventario"
+                className="inline-block mt-2 text-sm font-semibold text-amber-700 underline hover:text-amber-800"
+              >
+                Ir a Inventario
+              </Link>
+            </div>
+            <button
+              type="button"
+              onClick={() => setStockReviewItems(null)}
+              className="p-1 text-amber-500 hover:text-amber-700 cursor-pointer shrink-0"
+              aria-label="Cerrar aviso"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Content grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -1194,6 +1232,14 @@ export default function AdminOrderDetailPage() {
             Estado actual: <span className="font-bold">{STATUS_LABELS[order.status]}</span>.
             Esta acción cancelará el pedido y ejecutará la lógica correspondiente de liberación de stock, si existe una reserva.
           </p>
+          {order.payment_status === 'approved' && (
+            <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+              <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+              <p className="text-xs text-amber-700">
+                Este pedido tiene el pago aprobado. Al cancelarlo, revisá el stock de los productos en Inventario y ajustalo manualmente si hace falta. Recordá también gestionar el reembolso al cliente por fuera del sistema, si corresponde.
+              </p>
+            </div>
+          )}
           <div className="mb-4">
             <label className="block text-xs font-medium text-gray-500 mb-1">Motivo de cancelación (opcional)</label>
             <textarea
