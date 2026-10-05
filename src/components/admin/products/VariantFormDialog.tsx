@@ -2,8 +2,11 @@ import { useState } from 'react'
 import { Loader2, Plus, Trash2 } from 'lucide-react'
 import type { VariantFormData } from '../../../services/productVariants.service'
 import Modal from '../../ui/Modal'
+import { sanitizeAttributeName } from '../../../lib/variantAttributes'
+import VariantImagesManager from './VariantImagesManager'
 
 interface VariantFormDialogProps {
+  productId: number
   mode: 'create' | 'edit'
   initialData?: VariantFormData & { id?: number }
   onConfirm: (data: VariantFormData) => Promise<void>
@@ -22,7 +25,7 @@ const EMPTY_FORM: VariantFormData = {
   activo: true,
 }
 
-export default function VariantFormDialog({ mode, initialData, onConfirm, onClose, loading, error }: VariantFormDialogProps) {
+export default function VariantFormDialog({ productId, mode, initialData, onConfirm, onClose, loading, error }: VariantFormDialogProps) {
   const [form, setForm] = useState<VariantFormData>(() => {
     if (initialData) {
       return {
@@ -60,11 +63,11 @@ export default function VariantFormDialog({ mode, initialData, onConfirm, onClos
   }
 
   const buildAtributos = (): Record<string, string> | null => {
-    const valid = attributePairs.filter((p) => p.key.trim() && p.value.trim())
+    const valid = attributePairs.filter((p) => sanitizeAttributeName(p.key) && p.value.trim())
     if (valid.length === 0) return null
     const obj: Record<string, string> = {}
     for (const p of valid) {
-      obj[p.key.trim()] = p.value.trim()
+      obj[sanitizeAttributeName(p.key)] = p.value.trim()
     }
     return obj
   }
@@ -180,37 +183,63 @@ export default function VariantFormDialog({ mode, initialData, onConfirm, onClos
           </button>
         </div>
         <div className="space-y-2">
-          {attributePairs.map((pair, index) => (
-            <div key={index} className="flex flex-col sm:flex-row sm:items-center gap-2">
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                <input
-                  type="text"
-                  value={pair.key}
-                  onChange={(e) => handleAttributeChange(index, 'key', e.target.value)}
-                  placeholder="Clave (ej: color)"
-                  className="flex-1 min-w-0 px-2.5 py-1.5 text-xs border border-gray-200 dark:border-white/10 rounded-lg bg-transparent text-gray-800 dark:text-white/80 placeholder:text-gray-400 dark:placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-[#185749]/20 dark:focus:ring-[#1CAAA8]/20"
-                />
-                <input
-                  type="text"
-                  value={pair.value}
-                  onChange={(e) => handleAttributeChange(index, 'value', e.target.value)}
-                  placeholder="Valor (ej: Negro)"
-                  className="flex-1 min-w-0 px-2.5 py-1.5 text-xs border border-gray-200 dark:border-white/10 rounded-lg bg-transparent text-gray-800 dark:text-white/80 placeholder:text-gray-400 dark:placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-[#185749]/20 dark:focus:ring-[#1CAAA8]/20"
-                />
+          {attributePairs.map((pair, index) => {
+            const savedKey = sanitizeAttributeName(pair.key)
+            // El aviso solo aparece si la sanitización cambió algo además de los espacios
+            const keyWasCleaned = pair.key.trim() !== '' && savedKey !== pair.key.trim()
+            return (
+              <div key={index} className="flex flex-col sm:flex-row sm:items-start gap-2">
+                <div className="flex items-start gap-2 flex-1 min-w-0">
+                  <div className="flex-1 min-w-0">
+                    <input
+                      type="text"
+                      value={pair.key}
+                      onChange={(e) => handleAttributeChange(index, 'key', e.target.value)}
+                      placeholder="Clave (ej: color)"
+                      className="w-full min-w-0 px-2.5 py-1.5 text-xs border border-gray-200 dark:border-white/10 rounded-lg bg-transparent text-gray-800 dark:text-white/80 placeholder:text-gray-400 dark:placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-[#185749]/20 dark:focus:ring-[#1CAAA8]/20"
+                    />
+                    {keyWasCleaned && (
+                      <p className="mt-0.5 text-[11px] text-amber-700 dark:text-amber-400">
+                        Se guardará como:{' '}
+                        {savedKey
+                          ? <span className="font-mono font-medium">{savedKey}</span>
+                          : <span className="italic">(vacío)</span>}
+                      </p>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    value={pair.value}
+                    onChange={(e) => handleAttributeChange(index, 'value', e.target.value)}
+                    placeholder="Valor (ej: Negro)"
+                    className="flex-1 min-w-0 px-2.5 py-1.5 text-xs border border-gray-200 dark:border-white/10 rounded-lg bg-transparent text-gray-800 dark:text-white/80 placeholder:text-gray-400 dark:placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-[#185749]/20 dark:focus:ring-[#1CAAA8]/20"
+                  />
+                </div>
+                {attributePairs.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveAttribute(index)}
+                    className="p-1 sm:mt-1 text-gray-400 dark:text-white/30 hover:text-red-500 dark:hover:text-red-400 cursor-pointer self-center sm:self-start"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                )}
               </div>
-              {attributePairs.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => handleRemoveAttribute(index)}
-                  className="p-1 text-gray-400 dark:text-white/30 hover:text-red-500 dark:hover:text-red-400 cursor-pointer self-center sm:self-center"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
-              )}
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
+
+      {/* Fotos de la variante (solo con la variante ya creada: necesita su id) */}
+      {mode === 'edit' && initialData?.id ? (
+        <div className="pt-1">
+          <VariantImagesManager productId={productId} variantId={initialData.id} />
+        </div>
+      ) : (
+        <p className="text-xs text-gray-400 dark:text-white/30">
+          Podés agregar fotos después de crear la variante.
+        </p>
+      )}
 
       {/* Activo */}
       <div className="flex items-center gap-2">

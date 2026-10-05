@@ -1,12 +1,18 @@
 import { useState, useEffect } from 'react'
-import { Plus, Loader2, Pencil, Trash2, ToggleLeft, ToggleRight, Package, History } from 'lucide-react'
+import { Plus, Loader2, Package, Layers, EyeOff } from 'lucide-react'
 import {
   productVariantsService,
   type VariantWithInventory,
   type VariantFormData,
 } from '../../../services/productVariants.service'
+import {
+  productImagesService,
+  type VariantImageSummary,
+} from '../../../services/productImages.service'
 import VariantFormDialog from './VariantFormDialog'
 import PriceHistoryDialog from './PriceHistoryDialog'
+import VariantCombinationGenerator from './VariantCombinationGenerator'
+import VariantRow, { VariantListHeader } from './VariantRow'
 import Modal from '../../ui/Modal'
 
 interface ProductVariantsManagerProps {
@@ -29,18 +35,29 @@ export default function ProductVariantsManager({ productId }: ProductVariantsMan
   const [deletingVariant, setDeletingVariant] = useState<VariantWithInventory | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
   const [historyVariant, setHistoryVariant] = useState<VariantWithInventory | null>(null)
+  const [generatorOpen, setGeneratorOpen] = useState(false)
+  const [inactiveOpen, setInactiveOpen] = useState(false)
+  // Galerías propias de cada variante (cantidad + foto principal), en una sola consulta por producto
+  const [imageSummary, setImageSummary] = useState<Map<number, VariantImageSummary>>(new Map())
 
   useEffect(() => {
     let cancelled = false
     const load = async () => {
       setLoading(true)
       setError(null)
-      const { data, error: fetchError } = await productVariantsService.getByProductId(productId)
+      const [{ data, error: fetchError }, { data: summary }] = await Promise.all([
+        productVariantsService.getByProductId(productId),
+        productImagesService.getVariantImageSummary(productId),
+      ])
       if (!cancelled) {
+        // Si el resumen falla llega vacío: la lista cae a imagen_url, no se rompe
+        setImageSummary(summary)
         if (fetchError) {
           setError(fetchError.message)
         } else {
           setVariants(data || [])
+          // Si ya no quedan inactivas (p. ej. se activó la última desde el modal), cerrarlo
+          if (!(data || []).some(v => !v.activo)) setInactiveOpen(false)
         }
         setLoading(false)
       }
@@ -48,6 +65,13 @@ export default function ProductVariantsManager({ productId }: ProductVariantsMan
     load()
     return () => { cancelled = true }
   }, [productId, refreshKey])
+
+  // Las fotos de una variante se guardan al subirlas, sin pasar por "Guardar cambios":
+  // al cerrar el diálogo (aun con "Cancelar") se refresca el resumen de la lista.
+  const refreshImageSummary = async () => {
+    const { data, error } = await productImagesService.getVariantImageSummary(productId)
+    if (!error) setImageSummary(data)
+  }
 
   const handleCreate = () => {
     setEditingVariant(null)
@@ -122,7 +146,20 @@ export default function ProductVariantsManager({ productId }: ProductVariantsMan
     }
   }
 
-  if (loading) {
+  const activeVariants = variants.filter(v => v.activo)
+  const inactiveVariants = variants.filter(v => !v.activo)
+
+  const rowHandlers = {
+    deleteLoading,
+    onEdit: handleEdit,
+    onToggleActive: handleToggleActive,
+    onDelete: handleDelete,
+    onShowHistory: setHistoryVariant,
+  }
+
+  // Skeleton solo en la primera carga: en los refrescos posteriores se mantiene
+  // la lista montada para no cerrar los modales abiertos (p. ej. el de inactivas).
+  if (loading && variants.length === 0) {
     return (
       <div className="bg-white dark:bg-[#162420] rounded-xl border border-gray-200 dark:border-white/5 p-6">
         <div className="flex items-center gap-2 mb-4">
@@ -137,20 +174,29 @@ export default function ProductVariantsManager({ productId }: ProductVariantsMan
   return (
     <div className="bg-white dark:bg-[#162420] rounded-xl border border-gray-200 dark:border-white/5">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-white/5">
-        <div className="flex items-center gap-2">
-          <Package className="w-4 h-4 text-gray-400 dark:text-white/30" />
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-6 py-4 border-b border-gray-100 dark:border-white/5">
+        <div className="flex items-center gap-2 min-w-0">
+          <Package className="w-4 h-4 text-gray-400 dark:text-white/30 shrink-0" />
           <h3 className="text-sm font-semibold text-gray-700 dark:text-white/70">
             Variantes ({variants.length})
           </h3>
         </div>
-        <button
-          onClick={handleCreate}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#185749] dark:text-[#1CAAA8] bg-[#185749]/5 dark:bg-[#1CAAA8]/5 hover:bg-[#185749]/10 dark:hover:bg-[#1CAAA8]/10 rounded-lg transition-colors cursor-pointer"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          Agregar variante
-        </button>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end sm:shrink-0">
+          <button
+            onClick={() => setGeneratorOpen(true)}
+            className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 text-xs font-medium text-center leading-tight text-[#185749] dark:text-[#1CAAA8] bg-[#185749]/5 dark:bg-[#1CAAA8]/5 hover:bg-[#185749]/10 dark:hover:bg-[#1CAAA8]/10 rounded-lg transition-colors cursor-pointer"
+          >
+            <Layers className="w-3.5 h-3.5 shrink-0" />
+            Generar combinaciones
+          </button>
+          <button
+            onClick={handleCreate}
+            className="flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 text-xs font-medium text-center leading-tight text-[#185749] dark:text-[#1CAAA8] bg-[#185749]/5 dark:bg-[#1CAAA8]/5 hover:bg-[#185749]/10 dark:hover:bg-[#1CAAA8]/10 rounded-lg transition-colors cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5 shrink-0" />
+            Agregar variante
+          </button>
+        </div>
       </div>
 
       {/* Error */}
@@ -166,230 +212,84 @@ export default function ProductVariantsManager({ productId }: ProductVariantsMan
       )}
 
       {/* Content */}
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         {variants.length === 0 ? (
           <div className="text-center py-8 border-2 border-dashed border-gray-200 dark:border-white/10 rounded-lg">
             <Package className="w-10 h-10 text-gray-200 dark:text-white/10 mx-auto mb-2" />
             <p className="text-sm text-gray-500 dark:text-white/40">Sin variantes</p>
             <p className="text-xs text-gray-400 dark:text-white/25 mt-1">Este producto se vende como producto simple</p>
           </div>
+        ) : activeVariants.length === 0 ? (
+          <div className="text-center py-8 border-2 border-dashed border-gray-200 dark:border-white/10 rounded-lg">
+            <EyeOff className="w-10 h-10 text-gray-200 dark:text-white/10 mx-auto mb-2" />
+            <p className="text-sm text-gray-500 dark:text-white/40">No hay variantes activas</p>
+            <p className="text-xs text-gray-400 dark:text-white/25 mt-1">Todas las variantes de este producto están desactivadas</p>
+          </div>
         ) : (
           <>
-            {/* Desktop: table header */}
-            <div className="hidden sm:grid sm:grid-cols-[1fr_100px_100px_80px_120px] gap-2 px-4 py-2 text-[11px] font-medium text-gray-400 dark:text-white/25 uppercase tracking-wider border-b border-gray-100 dark:border-white/5">
-              <span>Variante</span>
-              <span>SKU</span>
-              <span>Precio</span>
-              <span className="text-center">Stock</span>
-              <span className="text-right">Acciones</span>
-            </div>
-
-            {/* Rows */}
+            <VariantListHeader />
             <div className="divide-y divide-gray-100 dark:divide-white/5">
-              {variants.map((variant) => {
-                const inv = variant.inventory
-                const available = (inv?.quantity ?? 0) - (inv?.reserved ?? 0)
-
-                return (
-                  <div
-                    key={variant.id}
-                    className={`px-4 py-4 sm:py-3 transition-colors ${
-                      variant.activo
-                        ? 'hover:bg-gray-50/50 dark:hover:bg-white/[0.02]'
-                        : 'opacity-60'
-                    }`}
-                  >
-                    {/* Desktop: table row */}
-                    <div className="hidden sm:grid sm:grid-cols-[1fr_100px_100px_80px_120px] gap-2 sm:items-center">
-                      {/* Variante (nombre + imagen + atributos) */}
-                      <div className="flex items-center gap-3 min-w-0">
-                        {variant.imagen_url ? (
-                          <img
-                            src={variant.imagen_url}
-                            alt={variant.nombre}
-                            className="w-9 h-9 rounded-lg object-cover bg-gray-100 dark:bg-white/5 shrink-0"
-                          />
-                        ) : (
-                          <div className="w-9 h-9 rounded-lg bg-gray-100 dark:bg-white/5 flex items-center justify-center text-gray-400 dark:text-white/20 text-xs shrink-0">
-                            --
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-gray-800 dark:text-white/80 truncate">{variant.nombre}</span>
-                            {!variant.activo && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-200 dark:bg-white/10 text-gray-500 dark:text-white/40 font-medium shrink-0">
-                                INACTIVA
-                              </span>
-                            )}
-                          </div>
-                          {variant.atributos && typeof variant.atributos === 'object' && Object.keys(variant.atributos).length > 0 && (
-                            <p className="text-xs text-gray-400 dark:text-white/30 mt-0.5 truncate">
-                              {Object.entries(variant.atributos).map(([k, v]) => `${k}: ${v}`).join(' · ')}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* SKU */}
-                      <span className="text-xs text-gray-500 dark:text-white/40 font-mono truncate">{variant.sku}</span>
-
-                      {/* Precio */}
-                      <div>
-                        <p className="text-sm font-semibold text-gray-800 dark:text-white/80">${variant.precio.toLocaleString('es-AR')}</p>
-                        {variant.precio_anterior && variant.precio_anterior > variant.precio && (
-                          <p className="text-xs text-gray-400 dark:text-white/30 line-through">${variant.precio_anterior.toLocaleString('es-AR')}</p>
-                        )}
-                      </div>
-
-                      {/* Stock */}
-                      <div className="text-center">
-                        <p className={`text-sm font-semibold ${available <= 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-800 dark:text-white/80'}`}>
-                          {inv?.quantity ?? 0}
-                        </p>
-                        <p className="text-[10px] text-gray-400 dark:text-white/25">
-                          {inv?.reserved ?? 0} reserva{inv?.reserved !== 1 ? 's' : ''}
-                        </p>
-                      </div>
-
-                      {/* Acciones */}
-                      <div className="flex items-center justify-end gap-0.5">
-                        <button
-                          onClick={() => setHistoryVariant(variant)}
-                          className="p-1.5 text-gray-400 dark:text-white/30 hover:text-[#185749] dark:hover:text-[#1CAAA8] hover:bg-[#185749]/5 dark:hover:bg-[#1CAAA8]/5 rounded-lg transition-colors cursor-pointer"
-                          title="Historial de precios"
-                        >
-                          <History className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleToggleActive(variant)}
-                          disabled={deleteLoading === variant.id}
-                          className="p-1.5 text-gray-400 dark:text-white/30 hover:text-[#185749] dark:hover:text-[#1CAAA8] hover:bg-[#185749]/5 dark:hover:bg-[#1CAAA8]/5 rounded-lg transition-colors cursor-pointer"
-                          title={variant.activo ? 'Desactivar' : 'Activar'}
-                        >
-                          {deleteLoading === variant.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : variant.activo ? (
-                            <ToggleRight className="w-4 h-4 text-[#389C52]" />
-                          ) : (
-                            <ToggleLeft className="w-4 h-4" />
-                          )}
-                        </button>
-                        <button
-                          onClick={() => handleEdit(variant)}
-                          className="p-1.5 text-gray-400 dark:text-white/30 hover:text-[#185749] dark:hover:text-[#1CAAA8] hover:bg-[#185749]/5 dark:hover:bg-[#1CAAA8]/5 rounded-lg transition-colors cursor-pointer"
-                          title="Editar"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(variant)}
-                          disabled={deleteLoading === variant.id}
-                          className="p-1.5 text-gray-400 dark:text-white/30 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors cursor-pointer"
-                          title="Eliminar"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Mobile: card */}
-                    <div className="sm:hidden space-y-3">
-                      <div className="flex items-start gap-3.5">
-                        {variant.imagen_url ? (
-                          <img
-                            src={variant.imagen_url}
-                            alt={variant.nombre}
-                            className="w-10 h-10 rounded-lg object-cover bg-gray-100 dark:bg-white/5 shrink-0"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/5 flex items-center justify-center text-gray-400 dark:text-white/20 text-xs shrink-0">
-                            --
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-gray-800 dark:text-white/80 truncate">{variant.nombre}</span>
-                            {!variant.activo && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-200 dark:bg-white/10 text-gray-500 dark:text-white/40 font-medium">
-                                INACTIVA
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs text-gray-400 dark:text-white/30 font-mono mt-0.5">SKU: {variant.sku}</p>
-                          {variant.atributos && typeof variant.atributos === 'object' && Object.keys(variant.atributos).length > 0 && (
-                            <p className="text-xs text-gray-400 dark:text-white/30 mt-1">
-                              {Object.entries(variant.atributos).map(([k, v]) => `${k}: ${v}`).join(' · ')}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="variant-price-actions flex items-center justify-between pt-1">
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-gray-800 dark:text-white/80">${variant.precio.toLocaleString('es-AR')}</p>
-                          {variant.precio_anterior && variant.precio_anterior > variant.precio && (
-                            <p className="text-xs text-gray-400 dark:text-white/30 line-through">${variant.precio_anterior.toLocaleString('es-AR')}</p>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <button
-                            onClick={() => setHistoryVariant(variant)}
-                            className="p-1.5 text-gray-400 dark:text-white/30 hover:text-[#185749] dark:hover:text-[#1CAAA8] hover:bg-[#185749]/5 dark:hover:bg-[#1CAAA8]/5 rounded-lg transition-colors cursor-pointer"
-                            title="Historial de precios"
-                          >
-                            <History className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleToggleActive(variant)}
-                            disabled={deleteLoading === variant.id}
-                            className="p-1.5 text-gray-400 dark:text-white/30 hover:text-[#185749] dark:hover:text-[#1CAAA8] hover:bg-[#185749]/5 dark:hover:bg-[#1CAAA8]/5 rounded-lg transition-colors cursor-pointer"
-                            title={variant.activo ? 'Desactivar' : 'Activar'}
-                          >
-                            {deleteLoading === variant.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : variant.activo ? (
-                              <ToggleRight className="w-4 h-4 text-[#389C52]" />
-                            ) : (
-                              <ToggleLeft className="w-4 h-4" />
-                            )}
-                          </button>
-                          <button
-                            onClick={() => handleEdit(variant)}
-                            className="p-1.5 text-gray-400 dark:text-white/30 hover:text-[#185749] dark:hover:text-[#1CAAA8] hover:bg-[#185749]/5 dark:hover:bg-[#1CAAA8]/5 rounded-lg transition-colors cursor-pointer"
-                            title="Editar"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(variant)}
-                            disabled={deleteLoading === variant.id}
-                            className="p-1.5 text-gray-400 dark:text-white/30 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors cursor-pointer"
-                            title="Eliminar"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
+              {activeVariants.map((variant) => (
+                <VariantRow key={variant.id} variant={variant} imageInfo={imageSummary.get(variant.id)} {...rowHandlers} />
+              ))}
             </div>
           </>
         )}
+
+        {/* Inactive variants — summary button, full list in a modal */}
+        {inactiveVariants.length > 0 && (
+          <button
+            onClick={() => setInactiveOpen(true)}
+            className="mt-4 w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-500 dark:text-white/40 hover:text-[#185749] dark:hover:text-[#1CAAA8] bg-gray-50 dark:bg-white/[0.02] hover:bg-[#185749]/5 dark:hover:bg-[#1CAAA8]/5 border border-gray-100 dark:border-white/5 rounded-lg transition-colors cursor-pointer"
+          >
+            <EyeOff className="w-3.5 h-3.5 shrink-0" />
+            Variantes inactivas ({inactiveVariants.length})
+          </button>
+        )}
       </div>
+
+      {/* Inactive variants modal */}
+      {inactiveOpen && inactiveVariants.length > 0 && (
+        <Modal
+          open
+          onClose={() => setInactiveOpen(false)}
+          title={`Variantes inactivas (${inactiveVariants.length})`}
+          description="No se muestran en la tienda. Activalas para volver a venderlas."
+          size="lg"
+          className="max-w-3xl!"
+        >
+          <div className="-mx-2 sm:mx-0">
+            <VariantListHeader />
+            <div className="divide-y divide-gray-100 dark:divide-white/5">
+              {inactiveVariants.map((variant) => (
+                <VariantRow key={variant.id} variant={variant} imageInfo={imageSummary.get(variant.id)} {...rowHandlers} />
+              ))}
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {/* Dialogs */}
       {dialogMode && (
         <VariantFormDialog
+          productId={productId}
           mode={dialogMode}
           initialData={editingVariant || undefined}
           onConfirm={handleConfirm}
-          onClose={() => { setDialogMode(null); setSaveError(null) }}
+          onClose={() => { setDialogMode(null); setSaveError(null); void refreshImageSummary() }}
           loading={saving}
           error={saveError}
+        />
+      )}
+
+      {generatorOpen && (
+        <VariantCombinationGenerator
+          productId={productId}
+          existingVariants={variants}
+          onClose={(created) => {
+            setGeneratorOpen(false)
+            if (created) setRefreshKey((k) => k + 1)
+          }}
         />
       )}
 

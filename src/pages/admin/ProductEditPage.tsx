@@ -275,7 +275,7 @@ export default function ProductEditPage() {
         </div>
       )}
 
-      {/* Form with two-column layout */}
+      {/* Form: info, images and specifications stacked full-width */}
       {product && (
         <ProductForm
           product={product}
@@ -283,7 +283,7 @@ export default function ProductEditPage() {
           onSubmit={handleSubmit}
           onCancel={() => navigate('/admin/productos')}
           loading={submitting}
-          sidebar={
+          extraSections={
             <>
               {/* Images */}
               <ProductImagesManager productId={product.id} />

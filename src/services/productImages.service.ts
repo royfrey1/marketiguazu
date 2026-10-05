@@ -6,6 +6,11 @@ type ProductImageInsert = Database['public']['Tables']['product_images']['Insert
 
 export type { ProductImage, ProductImageInsert }
 
+export interface VariantImageSummary {
+  count: number
+  principalUrl: string | null
+}
+
 export interface ProductImageRef {
   url: string
   alt_text: string | null
@@ -65,12 +70,56 @@ export const productImagesService = {
       .from('product_images')
       .select('*')
       .eq('product_id', productId)
+      .is('variant_id', null)
       .order('sort_order', { ascending: true })
 
     return { data, error }
   },
 
-  async upload(productId: number, file: File, userId: string, altText?: string) {
+  async getByVariantId(variantId: number) {
+    const { data, error } = await supabase
+      .from('product_images')
+      .select('*')
+      .eq('variant_id', variantId)
+      .order('sort_order', { ascending: true })
+
+    return { data, error }
+  },
+
+  /**
+   * Resumen de las galerías de todas las variantes de un producto, en UNA sola
+   * consulta: cantidad de fotos y url de la principal por variant_id.
+   * Ante un error devuelve un Map vacío junto con el error (quien llama decide).
+   */
+  async getVariantImageSummary(productId: number) {
+    const summary = new Map<number, VariantImageSummary>()
+    const { data, error } = await supabase
+      .from('product_images')
+      .select('id, variant_id, url, es_principal, sort_order')
+      .eq('product_id', productId)
+      .not('variant_id', 'is', null)
+
+    if (error) return { data: summary, error }
+
+    const byVariant = new Map<number, ProductImageRef[]>()
+    for (const row of data ?? []) {
+      if (row.variant_id == null) continue
+      const list = byVariant.get(row.variant_id) ?? []
+      list.push({ url: row.url, alt_text: null, sort_order: row.sort_order, es_principal: row.es_principal })
+      byVariant.set(row.variant_id, list)
+    }
+    for (const [variantId, images] of byVariant) {
+      summary.set(variantId, { count: images.length, principalUrl: resolveImageUrl(images) })
+    }
+
+    return { data: summary, error: null }
+  },
+
+  // Todas las operaciones de escritura trabajan sobre una sola galería: la general
+  // del producto (variant_id null) o la de una variante (variant_id = variantId).
+  // Sin ese filtro se mezclarían el orden, el conteo y la imagen principal entre galerías.
+
+  async upload(productId: number, file: File, userId: string, altText?: string, variantId?: number | null) {
     const validationError = validateFile(file)
     if (validationError) return { data: null, error: new Error(validationError) }
 
@@ -89,10 +138,13 @@ export const productImagesService = {
 
     const publicUrl = urlData.publicUrl
 
-    const { data: existing } = await supabase
+    const existingQuery = supabase
       .from('product_images')
       .select('id')
       .eq('product_id', productId)
+    const { data: existing } = await (variantId != null
+      ? existingQuery.eq('variant_id', variantId)
+      : existingQuery.is('variant_id', null))
 
     const isFirst = !existing || existing.length === 0
 
@@ -100,6 +152,7 @@ export const productImagesService = {
       .from('product_images')
       .insert({
         product_id: productId,
+        variant_id: variantId ?? null,
         url: publicUrl,
         alt_text: altText || null,
         sort_order: existing?.length ?? 0,
@@ -136,10 +189,13 @@ export const productImagesService = {
     }
 
     if (image.es_principal) {
-      const { data: remaining } = await supabase
+      const remainingQuery = supabase
         .from('product_images')
         .select('id')
         .eq('product_id', image.product_id)
+      const { data: remaining } = await (image.variant_id != null
+        ? remainingQuery.eq('variant_id', image.variant_id)
+        : remainingQuery.is('variant_id', null))
         .order('sort_order', { ascending: true })
         .limit(1)
 
@@ -154,12 +210,15 @@ export const productImagesService = {
     return { error: null }
   },
 
-  async setPrincipal(imageId: number, productId: number) {
-    await supabase
+  async setPrincipal(imageId: number, productId: number, variantId?: number | null) {
+    const clearQuery = supabase
       .from('product_images')
       .update({ es_principal: false })
       .eq('product_id', productId)
       .eq('es_principal', true)
+    await (variantId != null
+      ? clearQuery.eq('variant_id', variantId)
+      : clearQuery.is('variant_id', null))
 
     const { error } = await supabase
       .from('product_images')
@@ -178,13 +237,17 @@ export const productImagesService = {
     return { error }
   },
 
-  async reorder(images: { id: number; sort_order: number }[]) {
-    const updates = images.map((img) =>
-      supabase
+  async reorder(productId: number, orderedIds: number[], variantId?: number | null) {
+    const updates = orderedIds.map((id, index) => {
+      const query = supabase
         .from('product_images')
-        .update({ sort_order: img.sort_order })
-        .eq('id', img.id)
-    )
+        .update({ sort_order: index })
+        .eq('id', id)
+        .eq('product_id', productId)
+      return variantId != null
+        ? query.eq('variant_id', variantId)
+        : query.is('variant_id', null)
+    })
 
     const results = await Promise.all(updates)
     const firstError = results.find((r) => r.error)

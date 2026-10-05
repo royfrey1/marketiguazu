@@ -191,13 +191,13 @@ export default function ProductCreatePage() {
         </div>
       )}
 
-      {/* Form with two-column layout */}
+      {/* Form: info, images and specifications stacked full-width */}
       <ProductForm
         categories={categories}
         onSubmit={handleSubmit}
         onCancel={() => navigate('/admin/productos')}
         loading={submitting}
-        sidebar={
+        extraSections={
           <>
             {/* Images card */}
             <div className="bg-white dark:bg-[#162420] rounded-xl border border-gray-200 dark:border-white/5 p-6">

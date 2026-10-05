@@ -10,8 +10,10 @@ import { productSpecificationsService, type ProductSpecificationRow } from '../.
 import useCart from '../../hooks/useCart'
 import ProductCard from '../../components/home/ProductCard'
 import ProductImageViewer, { type ProductViewerImage } from '../../components/product/ProductImageViewer'
+import VariantDropdown from '../../components/product/VariantDropdown'
 
 const MAX_VISIBLE_THUMBS = 5
+const SIN_IMAGENES: ProductImage[] = []
 
 type AttributeMap = Record<string, string>
 
@@ -77,8 +79,12 @@ export default function DetalleProducto() {
   const { id, slug } = useParams<{ id: string; slug: string }>()
   const [producto, setProducto] = useState<ProductWithPrimaryImage | null>(null)
   const [imagenes, setImagenes] = useState<ProductImage[]>([])
+  // Galerías propias de variantes, por id de variante (se cargan al seleccionarla)
+  const [galeriasVariante, setGaleriasVariante] = useState<Record<number, ProductImage[]>>({})
   const [loading, setLoading] = useState(true)
-  const [imagenActiva, setImagenActiva] = useState(0)
+  // Índice de la foto activa, atado a la galería en la que se eligió: al cambiar de
+  // galería (otra variante / producto) se vuelve a la principal de la nueva.
+  const [seleccionImagen, setSeleccionImagen] = useState<{ galeria: string; index: number } | null>(null)
   const [viewerOpen, setViewerOpen] = useState(false)
   const [viewerIndex, setViewerIndex] = useState(0)
   const { addToCart, loading: cartLoading } = useCart()
@@ -110,7 +116,9 @@ export default function DetalleProducto() {
         if (!cancelled && prodData) {
           setProducto(prodData)
           const { data: imgs } = await productImagesService.getByProductId(prodData.id)
-          if (!cancelled && imgs) setImagenes(imgs)
+          if (!cancelled && imgs) {
+            setImagenes(imgs)
+          }
 
           setVariantesLoading(true)
           setVariantesError(null)
@@ -170,6 +178,23 @@ export default function DetalleProducto() {
     if (Object.keys(selectedAttributes).length === 0) return null
     return resolveVariant(variantes, selectedAttributes)
   }, [variantes, selectedAttributes])
+
+  const selectedVariantId = selectedVariant?.id
+  useEffect(() => {
+    if (selectedVariantId == null) return
+    let cancelled = false
+    productImagesService.getByVariantId(selectedVariantId).then(({ data }) => {
+      if (!cancelled) {
+        setGaleriasVariante(prev => ({ ...prev, [selectedVariantId]: data ?? [] }))
+      }
+    })
+    return () => { cancelled = true }
+  }, [selectedVariantId])
+
+  const imagenesVariante = useMemo(
+    () => (selectedVariantId != null ? galeriasVariante[selectedVariantId] : undefined) ?? SIN_IMAGENES,
+    [galeriasVariante, selectedVariantId]
+  )
 
   const handleAttributeSelect = useCallback((key: string, value: string) => {
     setSelectedAttributes(prev => {
@@ -238,14 +263,23 @@ export default function DetalleProducto() {
   const isVariantProduct = hasVariants || variantesLoading
 
   const effectiveImage = useMemo(() => {
+    if (imagenesVariante.length > 0) {
+      return productImagesService.resolveImageUrl(imagenesVariante, selectedVariant?.imagen_url ?? producto?.imagen_url)
+    }
     if (selectedVariant?.imagen_url) return selectedVariant.imagen_url
     if (imagenes.length > 0) {
       return productImagesService.resolveImageUrl(imagenes, producto?.imagen_url)
     }
     return productsService.resolveImageUrl(producto)
-  }, [selectedVariant, imagenes, producto])
+  }, [selectedVariant, imagenesVariante, imagenes, producto])
 
   const effectiveAlt = useMemo(() => {
+    if (selectedVariant && imagenesVariante.length > 0) {
+      return productImagesService.resolveAltText(
+        imagenesVariante.find(img => img.es_principal) || imagenesVariante[0],
+        selectedVariant.nombre
+      )
+    }
     if (selectedVariant) return selectedVariant.nombre
     if (imagenes.length > 0) {
       return productImagesService.resolveAltText(
@@ -254,7 +288,7 @@ export default function DetalleProducto() {
       )
     }
     return producto?.titulo || ''
-  }, [selectedVariant, imagenes, producto])
+  }, [selectedVariant, imagenesVariante, imagenes, producto])
 
   const handleShare = async () => {
     const shareData = {
@@ -274,12 +308,21 @@ export default function DetalleProducto() {
   }
 
   const galeriaImagenes = useMemo(() => {
+    if (imagenesVariante.length > 0) return imagenesVariante
     if (selectedVariant?.imagen_url) return []
     if (imagenes.length > 0) return imagenes
     return []
-  }, [selectedVariant, imagenes])
+  }, [selectedVariant, imagenesVariante, imagenes])
 
   const totalGaleria = galeriaImagenes.length
+  const galeriaKey = imagenesVariante.length > 0 ? `variante-${selectedVariantId}` : 'producto'
+  const imagenActiva = seleccionImagen?.galeria === galeriaKey && seleccionImagen.index < totalGaleria
+    ? seleccionImagen.index
+    : Math.max(0, galeriaImagenes.findIndex(img => img.es_principal))
+  const setImagenActiva = useCallback(
+    (index: number) => setSeleccionImagen({ galeria: galeriaKey, index }),
+    [galeriaKey]
+  )
   const visibleThumbs = galeriaImagenes.slice(0, MAX_VISIBLE_THUMBS)
   const extraPhotos = Math.max(0, totalGaleria - MAX_VISIBLE_THUMBS)
 
@@ -307,12 +350,12 @@ export default function DetalleProducto() {
   )
 
   const prevImage = useCallback(() => {
-    setImagenActiva(i => (i > 0 ? i - 1 : totalGaleria - 1))
-  }, [totalGaleria])
+    setImagenActiva(imagenActiva > 0 ? imagenActiva - 1 : totalGaleria - 1)
+  }, [imagenActiva, totalGaleria, setImagenActiva])
 
   const nextImage = useCallback(() => {
-    setImagenActiva(i => (i < totalGaleria - 1 ? i + 1 : 0))
-  }, [totalGaleria])
+    setImagenActiva(imagenActiva < totalGaleria - 1 ? imagenActiva + 1 : 0)
+  }, [imagenActiva, totalGaleria, setImagenActiva])
 
   if (loading) {
     return (
@@ -356,10 +399,6 @@ export default function DetalleProducto() {
   }
 
   const categorySlug = (producto as ProductWithPrimaryImage & { categories?: { slug?: string | null } }).categories?.slug
-
-  const selectedAttrEntries = selectedVariant?.atributos && typeof selectedVariant.atributos === 'object'
-    ? Object.entries(selectedVariant.atributos as Record<string, string>)
-    : []
 
   const showVariantSelector = hasVariants && !variantesLoading && !variantesError && attributeGroups.length > 0
 
@@ -480,19 +519,25 @@ export default function DetalleProducto() {
             transition={{ duration: 0.5, delay: 0.1 }}
             className="flex flex-col"
           >
-            {/* Share — top-right, secondary */}
+            {/* Category · SKU + share (top-right, secondary) */}
             <div className="flex items-start justify-between gap-3 mb-2">
-              {producto.categories && (
-                <div className="min-w-0">
-                  {categorySlug ? (
-                    <Link to={`/categoria/${categorySlug}`} className="text-meta">
-                      {producto.categories.nombre}
-                    </Link>
-                  ) : (
-                    <span className="text-meta">{producto.categories.nombre}</span>
-                  )}
-                </div>
-              )}
+              <div className="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                {producto.categories && (
+                  <>
+                    {categorySlug ? (
+                      <Link to={`/categoria/${categorySlug}`} className="text-meta">
+                        {producto.categories.nombre}
+                      </Link>
+                    ) : (
+                      <span className="text-meta">{producto.categories.nombre}</span>
+                    )}
+                    <span className="text-meta" aria-hidden="true">·</span>
+                  </>
+                )}
+                <span className="text-meta">
+                  SKU: {selectedVariant?.sku || producto.slug?.toUpperCase().slice(0, 20) || 'DEMO-SKU-001'}
+                </span>
+              </div>
               <button
                 type="button"
                 onClick={handleShare}
@@ -513,13 +558,6 @@ export default function DetalleProducto() {
                 Marca: <span className="text-primary-dark font-medium">{producto.marca}</span>
               </p>
             )}
-
-            {/* SKU */}
-            <p className="text-body mb-3">
-              SKU: <span className="text-primary-dark font-medium">
-                {selectedVariant?.sku || producto.slug?.toUpperCase().slice(0, 20) || 'DEMO-SKU-001'}
-              </span>
-            </p>
 
             {/* Price */}
             <div className="mb-4">
@@ -564,25 +602,13 @@ export default function DetalleProducto() {
               </p>
             )}
 
-            {/* Selected variant info */}
-            {selectedVariant && (
-              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                <p className="text-sm font-medium text-primary-dark">{selectedVariant.nombre}</p>
-                {selectedAttrEntries.length > 0 && (
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    {selectedAttrEntries.map(([k, v]) => `${k}: ${v}`).join(' · ')}
-                  </p>
-                )}
-              </div>
-            )}
-
             {/* Selection zone — variantes + cantidad */}
             <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               {(showVariantSelector || variantesError) && (
                 <div className="min-w-0 flex-1">
                   {showVariantSelector && (
                     <div className="space-y-3">
-                      {attributeGroups.map((group, groupIndex) => {
+                      {attributeGroups.map((group) => {
                         const compatible = getCompatibleValues(variantes, group.key, selectedAttributes)
                         const optionStates = group.values.map(val => {
                           const isSelected = selectedAttributes[group.key] === val
@@ -600,62 +626,14 @@ export default function DetalleProducto() {
                           return { val, isSelected, isCompatible, isAvailable }
                         })
 
-                        if (group.values.length > 3) {
-                          const selectId = `variant-select-${groupIndex}`
-                          return (
-                            <div key={group.key}>
-                              <label
-                                htmlFor={selectId}
-                                className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2"
-                              >
-                                {group.key}
-                              </label>
-                              <select
-                                id={selectId}
-                                value={selectedAttributes[group.key] ?? ''}
-                                onChange={(e) => {
-                                  if (e.target.value) handleAttributeSelect(group.key, e.target.value)
-                                }}
-                                className="w-full lg:w-auto border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-primary-dark bg-white cursor-pointer hover:border-accent transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                              >
-                                <option value="">Seleccioná {group.key}</option>
-                                {optionStates.map(({ val, isCompatible, isAvailable }) => (
-                                  <option key={val} value={val} disabled={!isCompatible || !isAvailable}>
-                                    {val}{isCompatible && !isAvailable ? ' (sin stock)' : ''}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          )
-                        }
-
                         return (
-                          <div key={group.key}>
-                            <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">{group.key}</p>
-                            <div className="flex flex-wrap gap-2">
-                              {optionStates.map(({ val, isSelected, isCompatible, isAvailable }) => (
-                                <div key={val} className="flex flex-col items-start">
-                                  <button
-                                    onClick={() => isCompatible && handleAttributeSelect(group.key, val)}
-                                    disabled={!isCompatible}
-                                    aria-pressed={isSelected}
-                                    className={`px-4 py-2 text-sm rounded-lg border transition-all ${
-                                      isSelected
-                                        ? 'bg-primary border-primary text-white font-medium'
-                                        : isCompatible
-                                          ? 'border-gray-200 text-gray-700 hover:border-accent cursor-pointer'
-                                          : 'border-gray-100 text-gray-300 cursor-not-allowed opacity-40'
-                                    }`}
-                                  >
-                                    {val}
-                                  </button>
-                                  {isSelected && !isAvailable && (
-                                    <span className="text-[10px] text-red-500 mt-0.5 ml-1">Sin stock</span>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
+                          <VariantDropdown
+                            key={group.key}
+                            label={group.key}
+                            options={optionStates}
+                            value={selectedAttributes[group.key]}
+                            onSelect={(val) => handleAttributeSelect(group.key, val)}
+                          />
                         )
                       })}
                     </div>
