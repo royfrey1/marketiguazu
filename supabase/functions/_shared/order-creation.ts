@@ -111,12 +111,17 @@ export async function releaseReservedItems(
   reservedItems: ReservedItem[],
 ): Promise<void> {
   for (const item of reservedItems) {
-    await supabase.rpc("release_reservation", {
+    const { error } = await supabase.rpc("release_reservation", {
       p_product_id: item.productId,
       p_variant_id: item.variantId,
       p_cantidad: item.quantity,
       p_order_id: orderId,
     });
+    if (error) {
+      console.error(
+        `releaseReservedItems: release_reservation falló (order_id=${orderId}, product_id=${item.productId}, variant_id=${item.variantId}, cantidad=${item.quantity}): ${error.message}`,
+      );
+    }
   }
 }
 
@@ -311,19 +316,30 @@ export async function createPendingOrder(
     numeroPedido = existingOrder.numero_pedido;
 
     // Liberar reservas de los items anteriores antes de re-armar la orden
-    // (release_reservation es idempotente).
+    // (release_reservation es idempotente). Si alguna liberación falla,
+    // NO continuar: no borrar items ni reservar de menos sobre una
+    // orden con reservas previas sin liberar.
     const { data: oldItems } = await supabase
       .from("order_items")
       .select("product_id, variant_id, cantidad")
       .eq("order_id", orderId);
 
     for (const old of oldItems ?? []) {
-      await supabase.rpc("release_reservation", {
+      const { error: releaseErr } = await supabase.rpc("release_reservation", {
         p_product_id: old.product_id,
         p_variant_id: old.variant_id,
         p_cantidad: old.cantidad,
         p_order_id: orderId,
       });
+      if (releaseErr) {
+        console.error(
+          `createPendingOrder: release_reservation falló al re-armar la orden order_id=${orderId} (product_id=${old.product_id}, variant_id=${old.variant_id}): ${releaseErr.message}`,
+        );
+        return failure(
+          "ORDER_CREATION_FAILED",
+          "Error al liberar las reservas previas de la orden"
+        );
+      }
     }
 
     await supabase.from("order_items").delete().eq("order_id", orderId);

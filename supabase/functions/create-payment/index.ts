@@ -98,6 +98,21 @@ serve(async (req: Request): Promise<Response> => {
     return errResp("INVALID_PAYLOAD", "Método no permitido", 405);
   }
 
+  // Reservas a liberar si algo falla DESPUÉS de crear la orden y
+  // ANTES de la respuesta exitosa. Las ramas de error explícitas
+  // (PAYMENT_CREATION_FAILED, MERCADOPAGO_ERROR) y el catch externo
+  // consumen esta única referencia: se anula ANTES de esperar la
+  // llamada para no liberar dos veces (la idempotencia neta de
+  // release_reservation protege igual, pero no se repiten llamadas
+  // innecesarias).
+  let pendingRelease: (() => Promise<void>) | null = null;
+  const releaseOnce = (): Promise<void> => {
+    if (!pendingRelease) return Promise.resolve();
+    const release = pendingRelease;
+    pendingRelease = null;
+    return release();
+  };
+
   try {
     // ----------------------------------------------------------
     // 1. autenticación (presencia del header) + env
@@ -155,6 +170,7 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     const { orderId, numeroPedido, total, validatedItems, reservedItems } = order;
+    pendingRelease = () => releaseReservedItems(supabase, orderId, reservedItems);
 
     // ----------------------------------------------------------
     // 9. crear payment pendiente
@@ -189,7 +205,7 @@ serve(async (req: Request): Promise<Response> => {
         .single();
 
       if (payErr || !payment) {
-        await releaseReservedItems(supabase, orderId, reservedItems);
+        await releaseOnce();
         return errResp(
           "PAYMENT_CREATION_FAILED",
           "Error al crear registro de pago",
@@ -237,12 +253,15 @@ serve(async (req: Request): Promise<Response> => {
         Authorization: `Bearer ${mpAccessToken}`,
       },
       body: JSON.stringify(preferenceBody),
+      // Timeout para no dejar el isolate colgado con la reserva
+      // activa: un timeout lanza excepción -> catch externo -> libera.
+      signal: AbortSignal.timeout(10000),
     });
 
     if (!mpResponse.ok) {
       const mpError = await mpResponse.text();
 
-      await releaseReservedItems(supabase, orderId, reservedItems);
+      await releaseOnce();
 
       console.error("Mercado Pago error:", mpResponse.status, mpError);
 
@@ -265,8 +284,10 @@ serve(async (req: Request): Promise<Response> => {
       .eq("id", paymentId);
 
     // ----------------------------------------------------------
-    // 11. respuesta exitosa
+    // 11. respuesta exitosa (orden, pago y preferencia hechos:
+    //     no queda nada por liberar)
     // ----------------------------------------------------------
+    pendingRelease = null;
     return jsonResp({
       success: true,
       orderId,
@@ -275,6 +296,20 @@ serve(async (req: Request): Promise<Response> => {
     });
   } catch (error) {
     console.error("Error interno:", error);
+    // Excepción no manejada después de crear la orden (payments,
+    // preferencia MP, respuesta): liberar reservas para no dejar
+    // stock reservado sin proceso que lo sostenga. releaseOnce
+    // evita duplicar si una rama de error explícita ya liberó.
+    if (pendingRelease) {
+      try {
+        await releaseOnce();
+      } catch (releaseError) {
+        console.error(
+          "create-payment: liberación de reservas falló en el catch externo",
+          releaseError
+        );
+      }
+    }
     return errResp("INTERNAL_ERROR", "Error interno del servidor", 500);
   }
 });

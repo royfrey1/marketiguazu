@@ -78,10 +78,18 @@ type ErrorCode =
 // Se usa `bid` (precio al que el que recibe USDT puede venderlas):
 // es conservador para el vendedor — el cliente transfiere un poco
 // más de USDT y el total ARS queda cubierto.
+//
+// Cada fetch lleva AbortSignal.timeout(6000): un timeout se trata
+// como falla de ESA fuente (el try/catch pasa al fallback) y, si
+// ambas fallan, se devuelve null -> EXCHANGE_RATE_ERROR con
+// liberación de reservas, como antes. Sin timeout, un fetch colgado
+// podía matar el isolate y dejar la reserva huérfana.
 
 async function fetchUsdtRate(): Promise<number | null> {
   try {
-    const res = await fetch("https://criptoya.com/api/dolar");
+    const res = await fetch("https://criptoya.com/api/dolar", {
+      signal: AbortSignal.timeout(6000),
+    });
     if (res.ok) {
       const data = await res.json();
       const bid = Number(data?.cripto?.usdt?.bid);
@@ -95,7 +103,9 @@ async function fetchUsdtRate(): Promise<number | null> {
   }
 
   try {
-    const res = await fetch("https://criptoya.com/api/binance/USDT/ARS/1");
+    const res = await fetch("https://criptoya.com/api/binance/USDT/ARS/1", {
+      signal: AbortSignal.timeout(6000),
+    });
     if (res.ok) {
       const data = await res.json();
       const bid = Number(data?.bid);
@@ -140,6 +150,21 @@ serve(async (req: Request): Promise<Response> => {
   if (req.method !== "POST") {
     return errResp("INVALID_PAYLOAD", "Método no permitido", 405);
   }
+
+  // Reservas a liberar si algo falla DESPUÉS de crear la orden y
+  // ANTES de la respuesta exitosa. Las ramas de error explícitas
+  // (EXCHANGE_RATE_ERROR, PAYMENT_CREATION_FAILED) y el catch
+  // externo consumen esta única referencia: se anula ANTES de
+  // esperar la llamada para no liberar dos veces (la idempotencia
+  // neta de release_reservation protege igual, pero no se repiten
+  // llamadas innecesarias).
+  let pendingRelease: (() => Promise<void>) | null = null;
+  const releaseOnce = (): Promise<void> => {
+    if (!pendingRelease) return Promise.resolve();
+    const release = pendingRelease;
+    pendingRelease = null;
+    return release();
+  };
 
   try {
     // ----------------------------------------------------------
@@ -196,13 +221,14 @@ serve(async (req: Request): Promise<Response> => {
 
     const { userId, orderId, numeroPedido, total, reservedItems } = order;
     const numero = numeroPedido ?? String(orderId);
+    pendingRelease = () => releaseReservedItems(supabase, orderId, reservedItems);
 
     // ----------------------------------------------------------
     // 9. cotización ARS -> USDT en vivo
     // ----------------------------------------------------------
     const rate = await fetchUsdtRate();
     if (!rate) {
-      await releaseReservedItems(supabase, orderId, reservedItems);
+      await releaseOnce();
       return errResp(
         "EXCHANGE_RATE_ERROR",
         "No se pudo obtener la cotización de USDT",
@@ -244,7 +270,7 @@ serve(async (req: Request): Promise<Response> => {
         .eq("id", existingPayment.id);
 
       if (updErr) {
-        await releaseReservedItems(supabase, orderId, reservedItems);
+        await releaseOnce();
         console.error(
           "create-payment-usdt: update de pago falló",
           updErr.message
@@ -268,7 +294,7 @@ serve(async (req: Request): Promise<Response> => {
         });
 
       if (payErr) {
-        await releaseReservedItems(supabase, orderId, reservedItems);
+        await releaseOnce();
         console.error(
           "create-payment-usdt: insert de pago falló",
           payErr.message
@@ -335,8 +361,10 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     // ----------------------------------------------------------
-    // 13. respuesta exitosa
+    // 13. respuesta exitosa (pedido, pago y notificaciones hechos:
+    //     no queda nada por liberar)
     // ----------------------------------------------------------
+    pendingRelease = null;
     return jsonResp({
       success: true,
       orderId,
@@ -349,6 +377,20 @@ serve(async (req: Request): Promise<Response> => {
     });
   } catch (error) {
     console.error("Error interno:", error);
+    // Excepción no manejada después de crear la orden (pago,
+    // notificaciones, respuesta): liberar reservas para no dejar
+    // stock reservado sin proceso que lo sostenga. releaseOnce
+    // evita duplicar si una rama de error explícita ya liberó.
+    if (pendingRelease) {
+      try {
+        await releaseOnce();
+      } catch (releaseError) {
+        console.error(
+          "create-payment-usdt: liberación de reservas falló en el catch externo",
+          releaseError
+        );
+      }
+    }
     return errResp("INTERNAL_ERROR", "Error interno del servidor", 500);
   }
 });
