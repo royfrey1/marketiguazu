@@ -34,6 +34,14 @@ const FILTER_OPTIONS: { value: WithdrawalAdminFilter; label: string }[] = [
 
 const FIELD_CLASS = 'w-full px-3 py-2 text-sm border border-gray-200 dark:border-white/10 rounded-lg bg-transparent dark:bg-[#1A2B27] text-gray-700 dark:text-white/70 focus:outline-none focus:ring-2 focus:ring-[#185749]/20 dark:focus:ring-[#1CAAA8]/20 focus:border-[#185749] dark:focus:border-[#1CAAA8] transition-colors'
 
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute: '2-digit' })
+}
+
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString('es-AR', {
     timeZone: 'America/Argentina/Buenos_Aires',
@@ -47,11 +55,11 @@ function formatDateTime(iso: string): string {
 
 function StatusBadge({ status }: { status: string }) {
   const info = isWithdrawalStatus(status) ? WITHDRAWAL_STATUS_MAP[status] : { label: status, variant: 'default' as const }
-  return <Badge variant={info.variant}>{info.label}</Badge>
+  return <Badge variant={info.variant} className="whitespace-nowrap">{info.label}</Badge>
 }
 
 function DeadlineBadge({ within }: { within: boolean }) {
-  return <Badge variant={within ? 'success' : 'default'}>{within ? 'Dentro de plazo' : 'Fuera de plazo'}</Badge>
+  return <Badge variant={within ? 'success' : 'default'} className="whitespace-nowrap">{within ? 'Dentro de plazo' : 'Fuera de plazo'}</Badge>
 }
 
 function scopeLabel(row: WithdrawalRow): string {
@@ -265,8 +273,8 @@ export default function WithdrawalsAdminPage() {
   const viewButton = (row: WithdrawalRow, full = false) => (
     <button
       type="button"
-      onClick={() => setSelected(row)}
-      className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#185749] dark:text-[#1CAAA8] border border-[#185749]/20 dark:border-[#1CAAA8]/20 rounded-lg hover:bg-[#185749]/5 dark:hover:bg-[#1CAAA8]/5 transition-colors cursor-pointer ${full ? 'w-full py-2 text-sm' : ''}`}
+      onClick={e => { e.stopPropagation(); setSelected(row) }}
+      className={`inline-flex items-center justify-center gap-1.5 whitespace-nowrap px-3 py-1.5 text-xs font-medium text-[#185749] dark:text-[#1CAAA8] border border-[#185749]/20 dark:border-[#1CAAA8]/20 rounded-lg hover:bg-[#185749]/5 dark:hover:bg-[#1CAAA8]/5 transition-colors cursor-pointer ${full ? 'w-full py-2 text-sm' : ''}`}
     >
       <Eye className="w-3.5 h-3.5" />
       Gestionar
@@ -327,42 +335,64 @@ export default function WithdrawalsAdminPage() {
         </div>
       ) : rows.length > 0 && (
         <>
-          {/* Desktop (>=1024px) */}
-          <div className="hidden lg:block bg-white dark:bg-[#162420] rounded-xl border border-gray-200 dark:border-white/5 overflow-hidden">
+          {/* Desktop (>=1280px). overflow-x-auto: si igual no entra, se scrollea y la acción nunca se pierde */}
+          <div className="hidden xl:block bg-white dark:bg-[#162420] rounded-xl border border-gray-200 dark:border-white/5 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 dark:border-white/5">
-                  {['Constancia', 'Pedido', 'Cliente', 'Fecha', 'Plazo', 'Estado', 'Alcance', ''].map(h => (
-                    <th key={h} className="text-left px-4 py-3 font-medium text-gray-400 dark:text-white/30">{h}</th>
+                  {[
+                    { label: 'Constancia' }, { label: 'Pedido' }, { label: 'Cliente' }, { label: 'Fecha' },
+                    { label: 'Plazo' }, { label: 'Estado' }, { label: 'Alcance', className: 'hidden 2xl:table-cell' }, { label: '' },
+                  ].map(h => (
+                    <th key={h.label} className={`text-left px-3 py-3 font-medium text-gray-400 dark:text-white/30 whitespace-nowrap ${h.className ?? ''}`}>{h.label}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 dark:divide-white/5">
                 {rows.map(row => (
-                  <tr key={row.id} className="hover:bg-gray-50/50 dark:hover:bg-white/[0.02] transition-colors">
-                    <td className="px-4 py-3 font-bold text-gray-800 dark:text-white/80">{row.numero}</td>
-                    <td className="px-4 py-3">
-                      <Link to={`/admin/pedido/${row.order_id}`} className="font-bold text-[#185749] dark:text-[#1CAAA8] hover:underline">
+                  <tr
+                    key={row.id}
+                    onClick={() => setSelected(row)}
+                    onKeyDown={e => {
+                      if (e.target !== e.currentTarget) return
+                      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected(row) }
+                    }}
+                    tabIndex={0}
+                    aria-label={`Gestionar solicitud ${row.numero}`}
+                    className="hover:bg-gray-50/50 dark:hover:bg-white/[0.02] transition-colors cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#1CAAA8]"
+                  >
+                    <td className="px-3 py-3 font-bold text-gray-800 dark:text-white/80 whitespace-nowrap">{row.numero}</td>
+                    <td className="px-3 py-3 whitespace-nowrap">
+                      <Link
+                        to={`/admin/pedido/${row.order_id}`}
+                        onClick={e => e.stopPropagation()}
+                        className="font-bold text-[#185749] dark:text-[#1CAAA8] hover:underline"
+                      >
                         #{row.numero_pedido}
                       </Link>
                     </td>
-                    <td className="px-4 py-3 max-w-[14rem]">
-                      <p className="text-gray-700 dark:text-white/70 truncate">{row.nombre}</p>
-                      <p className="text-xs text-gray-400 dark:text-white/30 truncate">{row.email}</p>
+                    <td className="px-3 py-3">
+                      <div className="w-40 2xl:w-56">
+                        <p className="text-gray-700 dark:text-white/70 truncate" title={row.nombre}>{row.nombre}</p>
+                        <p className="text-xs text-gray-400 dark:text-white/30 truncate" title={row.email}>{row.email}</p>
+                      </div>
                     </td>
-                    <td className="px-4 py-3 text-gray-500 dark:text-white/40 whitespace-nowrap">{formatDateTime(row.created_at)}</td>
-                    <td className="px-4 py-3"><DeadlineBadge within={row.within_deadline} /></td>
-                    <td className="px-4 py-3"><StatusBadge status={row.status} /></td>
-                    <td className="px-4 py-3 text-gray-500 dark:text-white/40 whitespace-nowrap">{scopeLabel(row)}</td>
-                    <td className="px-4 py-3 text-right">{viewButton(row)}</td>
+                    <td className="px-3 py-3 text-gray-500 dark:text-white/40 whitespace-nowrap">
+                      <p>{formatDate(row.created_at)}</p>
+                      <p className="text-xs text-gray-400 dark:text-white/30">{formatTime(row.created_at)}</p>
+                    </td>
+                    <td className="px-3 py-3 whitespace-nowrap"><DeadlineBadge within={row.within_deadline} /></td>
+                    <td className="px-3 py-3 whitespace-nowrap"><StatusBadge status={row.status} /></td>
+                    <td className="px-3 py-3 text-gray-500 dark:text-white/40 whitespace-nowrap hidden 2xl:table-cell">{scopeLabel(row)}</td>
+                    <td className="px-3 py-3 text-right">{viewButton(row)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
 
-          {/* Mobile / tablet cards (<1024px) */}
-          <div className="lg:hidden space-y-3">
+          {/* Mobile / tablet / laptop cards (<1280px) */}
+          <div className="xl:hidden space-y-3">
             {rows.map(row => (
               <div key={row.id} className="bg-white dark:bg-[#162420] rounded-xl border border-gray-200 dark:border-white/5 p-4 space-y-3">
                 <div className="flex items-start justify-between gap-3">

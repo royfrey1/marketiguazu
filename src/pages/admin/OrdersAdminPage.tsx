@@ -273,8 +273,8 @@ export default function OrdersAdminPage() {
       {/* Orders content */}
       {orders.length > 0 && (
         <>
-          {/* Desktop table (>=1024px) */}
-          <div className="hidden lg:block bg-white dark:bg-[#162420] rounded-xl border border-gray-200 dark:border-white/5 overflow-hidden">
+          {/* Desktop table (>=1280px) */}
+          <div className="hidden xl:block bg-white dark:bg-[#162420] rounded-xl border border-gray-200 dark:border-white/5 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 dark:border-white/5">
@@ -332,8 +332,8 @@ export default function OrdersAdminPage() {
             </table>
           </div>
 
-          {/* Tablet table (768-1023px) */}
-          <div className="hidden md:block lg:hidden bg-white dark:bg-[#162420] rounded-xl border border-gray-200 dark:border-white/5 overflow-hidden">
+          {/* Tablet table (768-1279px) */}
+          <div className="hidden md:block xl:hidden bg-white dark:bg-[#162420] rounded-xl border border-gray-200 dark:border-white/5 overflow-hidden">
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-gray-100 dark:border-white/5">
