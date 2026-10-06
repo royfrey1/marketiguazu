@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { MapPin, Mail, ShoppingBag, HelpCircle, ArrowUpRight, Flag } from 'lucide-react'
 import logo from '../../assets/images/iguazu1.png'
+import { LEGAL } from '../../config/legal'
 
 export default function Footer() {
   return (
@@ -24,10 +25,10 @@ export default function Footer() {
               <div className="flex items-center gap-2.5 text-white/40 text-sm">
                 <Mail className="w-4 h-4 text-accent shrink-0" />
                 <a
-                  href="mailto:contacto@iguazumarketplace.com"
+                  href={`mailto:${LEGAL.EMAIL_CONTACTO}`}
                   className="hover:text-white/70 transition-colors"
                 >
-                  contacto@iguazumarketplace.com
+                  {LEGAL.EMAIL_CONTACTO}
                 </a>
               </div>
             </div>
@@ -58,7 +59,14 @@ export default function Footer() {
             </h4>
             <ul className="space-y-2.5">
               <FooterSpan>Nosotros</FooterSpan>
-              <FooterSpan>Contacto</FooterSpan>
+              <li>
+                <a
+                  href={`mailto:${LEGAL.EMAIL_CONTACTO}`}
+                  className="text-sm transition-colors inline-flex items-center gap-1.5 text-white/45 hover:text-white/80"
+                >
+                  Contacto
+                </a>
+              </li>
               <FooterSpan>Preguntas frecuentes</FooterSpan>
               <FooterLink to="/privacidad">Política de Privacidad</FooterLink>
               <FooterLink to="/terminos">Términos y Condiciones</FooterLink>
@@ -76,9 +84,8 @@ export default function Footer() {
             <ul className="space-y-2.5">
               <FooterSpan>Envíos</FooterSpan>
               <FooterSpan>Medios de pago</FooterSpan>
-              <FooterSpan>Garantías</FooterSpan>
+              <FooterLink to="/devoluciones">Garantías</FooterLink>
               <FooterLink to="/devoluciones">Cambios y devoluciones</FooterLink>
-              {/* /arrepentimiento: la página se crea en la etapa siguiente (hoy cae en 404) */}
               <FooterLink to="/arrepentimiento">Botón de arrepentimiento</FooterLink>
               <FooterLink to="/report" accent icon={<Flag className="w-3.5 h-3.5" />}>Reportar un problema</FooterLink>
             </ul>

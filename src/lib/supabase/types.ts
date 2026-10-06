@@ -894,6 +894,68 @@ export type Database = {
           },
         ]
       }
+      withdrawal_requests: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          email: string
+          handled_at: string | null
+          handled_by: string | null
+          id: number
+          motivo: string | null
+          nombre: string
+          numero: string
+          numero_pedido: string
+          order_id: number
+          order_item_ids: number[] | null
+          status: string
+          user_id: string
+          within_deadline: boolean
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          email: string
+          handled_at?: string | null
+          handled_by?: string | null
+          id?: number
+          motivo?: string | null
+          nombre: string
+          numero?: string
+          numero_pedido: string
+          order_id: number
+          order_item_ids?: number[] | null
+          status?: string
+          user_id: string
+          within_deadline: boolean
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          email?: string
+          handled_at?: string | null
+          handled_by?: string | null
+          id?: number
+          motivo?: string | null
+          nombre?: string
+          numero?: string
+          numero_pedido?: string
+          order_id?: number
+          order_item_ids?: number[] | null
+          status?: string
+          user_id?: string
+          within_deadline?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "withdrawal_requests_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       inventory_admin_view: {
@@ -943,6 +1005,10 @@ export type Database = {
       }
     }
     Functions: {
+      admin_update_withdrawal: {
+        Args: { p_id: number; p_notes: string | null; p_status: string }
+        Returns: Json
+      }
       adjust_stock: {
         Args: {
           p_inventory_id: number

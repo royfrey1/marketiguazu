@@ -44,6 +44,8 @@ const PaymentUsdtPage = lazy(() => import('./pages/payment/PaymentUsdtPage'))
 const TermsPage = lazy(() => import('./pages/legal/TermsPage'))
 const PrivacyPage = lazy(() => import('./pages/legal/PrivacyPage'))
 const ReturnsPage = lazy(() => import('./pages/legal/ReturnsPage'))
+const WithdrawalPage = lazy(() => import('./pages/legal/WithdrawalPage'))
+const WithdrawalsAdminPage = lazy(() => import('./pages/admin/WithdrawalsAdminPage'))
 
 function Loading() {
   return (
@@ -105,6 +107,7 @@ function App() {
                 <Route path="admin/inventario" element={<InventoryAdminPage />} />
                 <Route path="admin/pedido/:id" element={<AdminOrderDetailPage />} />
                 <Route path="admin/pedidos" element={<OrdersAdminPage />} />
+                <Route path="admin/arrepentimientos" element={<WithdrawalsAdminPage />} />
                 <Route path="admin/cuenta" element={<AdminAccountPage />} />
               </Route>
             </Route>
@@ -139,6 +142,7 @@ function App() {
               <Route path="terminos" element={<TermsPage />} />
               <Route path="privacidad" element={<PrivacyPage />} />
               <Route path="devoluciones" element={<ReturnsPage />} />
+              <Route path="arrepentimiento" element={<WithdrawalPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Route>
             </Routes>

@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { AlertTriangle, Bug, Paintbrush, Lightbulb, HelpCircle, Send, ArrowLeft, CheckCircle2, Shield } from 'lucide-react'
 import useAuth from '../../hooks/useAuth'
 import { reportService } from '../../services/report.service'
+import { LEGAL } from '../../config/legal'
 
 interface ReportForm {
   nombre: string
@@ -87,9 +88,9 @@ export default function ReportarProblema() {
       const msg = err instanceof Error ? err.message : String(err)
       console.error('Report submission error:', msg)
       if (msg.includes('row-level security') || msg.includes('RLS') || msg.includes('policy')) {
-        setError('No se pudo enviar el reporte por una restricción de seguridad. Contactanos directamente a contacto@iguazumarketplace.com')
+        setError(`No se pudo enviar el reporte por una restricción de seguridad. Contactanos directamente a ${LEGAL.EMAIL_CONTACTO}`)
       } else {
-        setError('No se pudo enviar el reporte. Si el problema persiste, escribinos a contacto@iguazumarketplace.com')
+        setError(`No se pudo enviar el reporte. Si el problema persiste, escribinos a ${LEGAL.EMAIL_CONTACTO}`)
       }
     } finally {
       setEnviando(false)

@@ -1,13 +1,16 @@
+import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   AlertTriangle, RefreshCw, Package, Truck, MapPin, CreditCard,
-  Calendar, ArrowLeft, ShoppingBag, FileText, Coins,
+  Calendar, ArrowLeft, ShoppingBag, FileText, Coins, RotateCcw,
 } from 'lucide-react'
 import { useOrder } from '../../hooks/useOrder'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Skeleton from '../../components/ui/Skeleton'
+import { withdrawalService } from '../../services/withdrawal.service'
+import { WITHDRAWAL_STATUS_MAP, isWithdrawalStatus, type WithdrawalRow } from '../../types/withdrawal'
 
 
 // ---------------------------------------------------------------------------
@@ -159,6 +162,17 @@ export default function OrderDetailPage() {
   const isValidId = !isNaN(orderId) && orderId > 0
 
   const { data: order, loading, error, refetch } = useOrder(isValidId ? orderId : null)
+
+  // Solicitud de arrepentimiento más reciente de este pedido (si hay)
+  const [withdrawal, setWithdrawal] = useState<{ orderId: number; row: WithdrawalRow | null } | null>(null)
+  useEffect(() => {
+    if (!isValidId) return
+    let cancelled = false
+    withdrawalService.listMyWithdrawals(orderId).then(({ data }) => {
+      if (!cancelled) setWithdrawal({ orderId, row: data[0] ?? null })
+    })
+    return () => { cancelled = true }
+  }, [orderId, isValidId])
 
   // --- Invalid ID ---
   if (!isValidId) {
@@ -427,6 +441,32 @@ export default function OrderDetailPage() {
                 <p className="text-sm text-gray-400">Sin información de pago</p>
               )}
             </SectionCard>
+
+            {/* Arrepentimiento: constancia si ya la pidió; si no, acceso secundario al botón */}
+            {withdrawal?.orderId === order.id && withdrawal.row ? (
+              <SectionCard icon={RotateCcw} title="Arrepentimiento">
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between items-center gap-3">
+                    <span className="text-gray-500">Constancia</span>
+                    <span className="font-bold text-primary-dark">{withdrawal.row.numero}</span>
+                  </div>
+                  <div className="flex justify-between items-center gap-3">
+                    <span className="text-gray-500">Estado</span>
+                    <Badge variant={isWithdrawalStatus(withdrawal.row.status) ? WITHDRAWAL_STATUS_MAP[withdrawal.row.status].variant : 'default'}>
+                      {isWithdrawalStatus(withdrawal.row.status) ? WITHDRAWAL_STATUS_MAP[withdrawal.row.status].label : withdrawal.row.status}
+                    </Badge>
+                  </div>
+                </div>
+              </SectionCard>
+            ) : withdrawal?.orderId === order.id && order.payment_status === 'approved' && order.status !== 'cancelled' && (
+              <Link
+                to={`/arrepentimiento?pedido=${encodeURIComponent(order.numero_pedido)}`}
+                className="flex items-center justify-center gap-1.5 text-sm text-gray-500 hover:text-accent transition-colors py-1"
+              >
+                <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
+                Arrepentirme de la compra
+              </Link>
+            )}
 
             {/* Notes */}
             {order.notas && (

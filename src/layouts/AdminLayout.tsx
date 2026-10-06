@@ -3,9 +3,11 @@ import { Outlet, Link, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, Package, ShoppingCart, Tag, ClipboardList,
   ChevronLeft, ChevronRight, LogOut, ExternalLink, Menu,
-  Search, Moon, Sun, Bell, X,
+  Search, Moon, Sun, Bell, X, RotateCcw,
 } from 'lucide-react'
 import useAuth from '../hooks/useAuth'
+import { withdrawalService } from '../services/withdrawal.service'
+import { WITHDRAWALS_CHANGED_EVENT } from '../types/withdrawal'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -17,7 +19,10 @@ const NAV_ITEMS = [
   { to: '/admin/pedidos', label: 'Pedidos', icon: ShoppingCart },
   { to: '/admin/categorias', label: 'Categorías', icon: Tag },
   { to: '/admin/inventario', label: 'Inventario', icon: ClipboardList },
+  { to: '/admin/arrepentimientos', label: 'Arrepentimientos', icon: RotateCcw },
 ] as const
+
+const WITHDRAWALS_PATH = '/admin/arrepentimientos'
 
 const SIDEBAR_WIDTH = 256
 const SIDEBAR_COLLAPSED_WIDTH = 72
@@ -71,6 +76,24 @@ export default function AdminLayout({ dark, onToggleTheme }: { dark: boolean; on
   }, [location.pathname])
 
   const toggleCollapse = useCallback(() => setCollapsed(prev => !prev), [])
+
+  // Solicitudes de arrepentimiento sin atender (status received). Si la consulta
+  // falla queda en null y el menú no muestra contador.
+  const [openWithdrawals, setOpenWithdrawals] = useState<number | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    const load = () => {
+      withdrawalService.countOpenWithdrawalsAdmin()
+        .then(({ count }) => { if (!cancelled) setOpenWithdrawals(count) })
+        .catch(() => { if (!cancelled) setOpenWithdrawals(null) })
+    }
+    load()
+    window.addEventListener(WITHDRAWALS_CHANGED_EVENT, load)
+    return () => {
+      cancelled = true
+      window.removeEventListener(WITHDRAWALS_CHANGED_EVENT, load)
+    }
+  }, [location.pathname])
 
   const isActive = (to: string) => {
     if (to === '/admin') return location.pathname === '/admin'
@@ -199,6 +222,16 @@ export default function AdminLayout({ dark, onToggleTheme }: { dark: boolean; on
                 )}
                 <Icon className={`w-5 h-5 flex-shrink-0 ${active ? 'text-[#1CAAA8]' : ''}`} />
                 {!collapsed && <span>{item.label}</span>}
+                {item.to === WITHDRAWALS_PATH && openWithdrawals != null && openWithdrawals > 0 && (
+                  <span
+                    className={`min-w-5 h-5 px-1.5 rounded-full bg-amber-400 text-[#0D3732] text-[10px] font-black leading-5 text-center ${
+                      collapsed ? 'absolute top-0.5 right-0.5 min-w-4 h-4 leading-4 px-1' : 'ml-auto'
+                    }`}
+                    aria-label={`${openWithdrawals} sin atender`}
+                  >
+                    {openWithdrawals > 99 ? '99+' : openWithdrawals}
+                  </span>
+                )}
               </Link>
             )
           })}

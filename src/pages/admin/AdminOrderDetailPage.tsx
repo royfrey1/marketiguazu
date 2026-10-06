@@ -1,14 +1,16 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   ArrowLeft, AlertTriangle, RefreshCw, Package, Truck, MapPin,
   CreditCard, ShoppingBag, FileText, User, Hash,
-  ChevronRight, XCircle, Plus, Edit, CheckCircle, MessageCircle, X,
+  ChevronRight, XCircle, Plus, Edit, CheckCircle, MessageCircle, X, RotateCcw,
 } from 'lucide-react'
 import { sileo } from 'sileo'
 import AdminSubpageHeader from '../../components/admin/AdminSubpageHeader'
 import { supabase } from '../../lib/supabase/client'
 import { whatsappLinkFromPhone } from '../../lib/phone'
+import { withdrawalService } from '../../services/withdrawal.service'
+import { WITHDRAWAL_STATUS_MAP, isWithdrawalStatus, type WithdrawalRow } from '../../types/withdrawal'
 import { useAdminOrder } from '../../hooks/useAdminOrder'
 import { useAdminOrderMutations } from '../../hooks/useAdminOrderMutations'
 import {
@@ -230,6 +232,17 @@ export default function AdminOrderDetailPage() {
   const isValidId = !isNaN(orderId) && orderId > 0
 
   const { data: order, loading, error, refetch } = useAdminOrder(isValidId ? orderId : null)
+
+  // Solicitud de arrepentimiento abierta de este pedido (banner informativo)
+  const [openWithdrawal, setOpenWithdrawal] = useState<{ orderId: number; row: WithdrawalRow | null } | null>(null)
+  useEffect(() => {
+    if (!isValidId) return
+    let cancelled = false
+    withdrawalService.getOpenWithdrawalForOrderAdmin(orderId).then(({ data }) => {
+      if (!cancelled) setOpenWithdrawal({ orderId, row: data })
+    })
+    return () => { cancelled = true }
+  }, [orderId, isValidId])
   const {
     updateOrderStatus, updatePaymentStatus, cancelOrder,
     createShipment, updateShipment, updateShipmentStatus,
@@ -626,6 +639,26 @@ export default function AdminOrderDetailPage() {
           <Badge variant={paymentInfo.variant}>Pago: {paymentInfo.label}</Badge>
         </div>
       </AdminSubpageHeader>
+
+      {/* Open withdrawal request (botón de arrepentimiento) */}
+      {openWithdrawal?.orderId === order.id && openWithdrawal.row && (
+        <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4" role="status">
+          <div className="flex items-start gap-2.5">
+            <RotateCcw className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+            <div className="min-w-0 flex-1 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              <p className="text-sm text-amber-700 font-medium">
+                Este pedido tiene una solicitud de arrepentimiento abierta: {openWithdrawal.row.numero}
+              </p>
+              <Badge variant={isWithdrawalStatus(openWithdrawal.row.status) ? WITHDRAWAL_STATUS_MAP[openWithdrawal.row.status].variant : 'default'}>
+                {isWithdrawalStatus(openWithdrawal.row.status) ? WITHDRAWAL_STATUS_MAP[openWithdrawal.row.status].label : openWithdrawal.row.status}
+              </Badge>
+              <Link to="/admin/arrepentimientos" className="text-sm font-semibold text-amber-700 underline hover:text-amber-800">
+                Ver arrepentimientos
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Post-cancel stock reminder (session only, dismissable) */}
       {stockReviewItems && (
