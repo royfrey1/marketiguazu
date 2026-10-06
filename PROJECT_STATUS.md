@@ -1,7 +1,7 @@
 # Iguazú Marketplace — Estado del Proyecto
 
-**Última actualización:** 2026-10-05
-**Fuente:** QA manual del usuario + auditoría de opencode con verificación en vivo (repo, BD remota y Supabase CLI) el 2026-10-05
+**Última actualización:** 2026-10-06
+**Fuente:** QA manual del usuario + auditoría de opencode con verificación en vivo (repo, BD remota y Supabase CLI) el 2026-10-06
 
 > Este documento es la fuente de verdad de en qué fase estamos. Actualizarlo después de cada sesión de trabajo relevante (no hace falta después de cada micro-tarea).
 
@@ -9,7 +9,7 @@
 
 ## 🎯 Momento actual
 
-Estamos en la **recta final previa al lanzamiento**: QA de producción y requisitos legales/dominio. La tienda opera end-to-end en producción (checkout con Mercado Pago, webhook, páginas de resultado con pedido real), con pago alternativo en USDT (TRC20) probado de punta a punta, **modelo de stock corregido** (reservas por saldo neto, `confirm_sale` al aprobar), variantes de producto con galería propia, sidebar de subcategorías y teléfono de contacto obligatorio. Todo el trabajo está commiteado y pusheado (working tree limpio al cierre de esta sesión). El trabajo que queda no es de construcción: es legal, dominio/emails y limpieza de datos de QA.
+Estamos en la **recta final previa al lanzamiento**: QA de producción, requisitos legales/dominio y limpieza de datos de QA. La tienda opera end-to-end en producción (checkout con Mercado Pago, webhook, páginas de resultado con pedido real), con pago alternativo en USDT (TRC20) probado de punta a punta, **modelo de stock corregido** (reservas por saldo neto, `confirm_sale` al aprobar), variantes de producto con galería propia, sidebar de subcategorías y teléfono de contacto obligatorio. Desde 2026-10-06 los **textos legales están publicados** (con aceptación en checkout y registro) y el **botón de arrepentimiento está completo** (página pública con constancia, estado en el pedido y gestión en el admin). Todo el trabajo de la sesión está commiteado (working tree limpio; el push cierra la sesión). El trabajo que queda no es de construcción: es completar datos del titular, dominio/emails, rotar secretos y limpiar datos de QA.
 
 ### ✅ Hechos confirmados por QA manual
 
@@ -25,17 +25,22 @@ Estamos en la **recta final previa al lanzamiento**: QA de producción y requisi
 - **2026-10-05** — Bug de reserva de stock: `cancel_order` no liberaba la reserva cuando la orden pending se había reutilizado (re-armo: release + nueva reserva) antes de cancelarse, dejando `inventory.reserved` clavado; corregido con **idempotencia por saldo neto** (delegando en `release_reservation`). 3 inventarios huérfanos (41, 55 y 71) corregidos con `release_reservation` (`739706e`).
 - **2026-10-05** — Guard de pagos: no se puede aprobar ni modificar el pago de un pedido cancelado (`update_payment_status` lanza excepción); `cancel_order` pasa a `cancelled` los pagos `pending` (nunca toca los `approved`); el admin oculta "Confirmar/Verificar pago" en pedidos cancelados y muestra avisos de stock/reembolso al cancelar con pago aprobado (`4f63f32`).
 - **2026-10-05** — `confirm_sale` al aprobar pagos manuales no-MP (USDT): al aprobar, la reserva se convierte en venta; si no hay reserva vigente, la aprobación falla sin aprobar nada. Endurecimiento de `create-payment-usdt`/`order-creation` ante fallos: timeouts en CriptoYa (6 s) y en la preferencia MP (10 s), liberación de reservas ante excepciones en el catch externo y verificación de errores de `release_reservation` (`a039a94`, `6fe9152`).
-- **Commits recientes (todos pusheados):** `8fc4a5c`, `b8dc73a`, `6f52bc6`, `a39767a`, `d1ba6cc`, `2a5fbb7`, `fbd7cff`, `739706e`, `4f63f32`, `a039a94`, `6fe9152`.
+- **2026-10-06** — Textos legales publicados: Términos y Condiciones, Política de Privacidad y Cambios y devoluciones en `/terminos`, `/privacidad` y `/devoluciones`, con checkbox de aceptación en checkout y registro (`c5ddfc4`).
+- **2026-10-06** — Botón de arrepentimiento completo: backend (`f16ace3`) con tabla `withdrawal_requests`, Edge Function `request-withdrawal` v1 y RPC `admin_update_withdrawal`; frontend (`04be7bb`) con página pública `/arrepentimiento` (con y sin sesión) que emite constancia, bloque de constancia/estado en el pedido del cliente, pantalla `/admin/arrepentimientos` con contador en el menú lateral y banner en el detalle de pedido del admin. Footer y ReportPage leen el contacto único de `src/config/legal.ts` (`LEGAL.EMAIL_CONTACTO`).
+- **2026-10-06** — Arreglos de diseño del admin: tablas de pedidos y de arrepentimientos con `overflow-x-auto` y breakpoint `xl`, fila de arrepentimientos clickeable y accesible por teclado (`925f9b6`); `.gitignore` ampliado a `.env*` con excepción de `.env.example` (`00b9ab7`).
+- **2026-10-06** — Seguridad: se detectó que unas migraciones de QA versionadas documentan la contraseña de usuarios de prueba. La cuenta de QA con rol admin fue **neutralizada** (rol bajado a cliente, contraseña aleatoria descartada, cuenta bloqueada) y se auditaron el repo y su historial completo: sin claves ni tokens expuestos. Queda anotado: **no ejecutar esas migraciones QA en bases nuevas**; la cuenta de QA con rol customer y los datos de prueba se eliminan al final del QA.
+- **Commits recientes (todos pusheado al cerrar esta sesión):** `8fc4a5c`, `b8dc73a`, `6f52bc6`, `a39767a`, `d1ba6cc`, `2a5fbb7`, `fbd7cff`, `739706e`, `4f63f32`, `a039a94`, `6fe9152`, `c5ddfc4`, `f16ace3`, `04be7bb`, `925f9b6`, `00b9ab7`.
 
 ---
 
 ## 🚨 Bloqueadores críticos (antes del lanzamiento, resolver en este orden)
 
-1. **Textos legales**: Términos y Condiciones (con apartado de pago USDT), Política de Privacidad, botón de arrepentimiento, checkbox de aceptación en el checkout, datos del proveedor (razón social/CUIT/domicilio).
-2. **Dominio propio**: verificarlo en Resend (hoy los emails a clientes reales fallan con 403; solo llegan al email dueño de la cuenta de Resend), cambiar el secret `RESEND_FROM_EMAIL`, reemplazar el email placeholder `contacto@iguazumarketplace.com` (Footer y ReportPage).
-3. **Rotar `MP_WEBHOOK_SECRET`**.
-4. **Productos de QA 1007/1008 visibles en producción**: ocultarlos o borrarlos.
-5. **Primer pago USDT real**: confirmar en Binance que el depósito entró ANTES de apretar "Confirmar pago recibido" (la wallet nunca se probó con un depósito).
+1. **Datos del titular en `src/config/legal.ts`**: razón social, CUIT, domicilio, condición fiscal, plazo de entrega, analíticas y fecha de publicación (los textos legales ya están publicados; solo faltan estos datos).
+2. **Dominio propio**: verificarlo en Resend (hoy los emails a clientes reales fallan con 403; solo llegan al email dueño de la cuenta de Resend), cambiar el secret `RESEND_FROM_EMAIL`, y agregar ese remitente a los orígenes CORS de `request-withdrawal` o definir el secret `SITE_URL`.
+3. **Rotar el topic de ntfy**: aleatorio y largo, con el mismo valor en la app y en el secret `NTFY_TOPIC`.
+4. **Rotar `MP_WEBHOOK_SECRET`**.
+5. **Cuenta de QA con rol customer y datos de prueba**: borrar o banear la cuenta (queda activa hasta que termine el QA en producción), limpiar productos 1007/1008, pedidos y pagos fixture, y reponer a mano el stock afectado por los pedidos de prueba.
+6. **Primer pago USDT real**: confirmar en Binance que el depósito entró ANTES de apretar "Confirmar pago recibido" (la wallet nunca se probó con un depósito).
 
 ---
 
@@ -49,16 +54,16 @@ Estamos en la **recta final previa al lanzamiento**: QA de producción y requisi
 | 3 — Auth/usuarios | ✅ Completa | |
 | 4 — Catálogo | ✅ Completa | Home, búsqueda, PDP, variantes con galería propia por variante, favoritos |
 | 5 — Carrito | ✅ Completa | Invitado + sincronización con login; persiste al cancelar el pago |
-| 6 — Checkout | ✅ Completa | Mercado Pago end-to-end en producción; teléfono obligatorio; selector MP/USDT |
+| 6 — Checkout | ✅ Completa | Mercado Pago end-to-end en producción; teléfono obligatorio; selector MP/USDT; aceptación de términos |
 | 7 — Mercado Pago | ✅ Completa | `create-payment`, `mp-webhook` y `admin-verify-payment` desplegadas (ACTIVE) y probadas |
-| 8 — Pedidos | ✅ Completa | Pedidos reales, páginas de resultado con estado real, confirmación manual de pago USDT desde el admin |
+| 8 — Pedidos | ✅ Completa | Pedidos reales, páginas de resultado con estado real, confirmación manual de pago USDT desde el admin; arrepentimiento con constancia y gestión en admin |
 | 9 — Envíos | 🔶 Parcial | Proveedores manuales + cotizador Correo Argentino; `create-quote` existe en el repo pero **no está desplegada** y hoy nada la invoca desde el frontend (ver Deuda técnica) |
 | 10 — Admin | 🔶 Parcial | Falta módulo **Clientes** (sin verificar) |
-| 11 — Seguridad/QA | 🔶 Parcial | RLS cerrado y verificado en vivo; QA manual de los flujos principales hecho; queda el checklist de casos extremos (stock 0, pago duplicado, compras simultáneas) (sin verificar) |
+| 11 — Seguridad/QA | 🔶 Parcial | RLS cerrado y verificado en vivo; QA manual de los flujos principales hecho; seguridad del repo auditada (2026-10-06); queda el checklist de casos extremos (stock 0, pago duplicado, compras simultáneas) (sin verificar) |
 | 12 — SEO/Performance | 🔶 Parcial | Verificado 2026-10-05: sigue `lang="en"` en `index.html`, sin meta description/OG, sin `robots.txt` ni `sitemap.xml` |
 | 13 — Lanzamiento | ⬜ No iniciada | Dependiente de los bloqueadores de arriba |
 
-**Edge Functions desplegadas (verificadas el 2026-10-05):** `create-payment` (v27), `mp-webhook` (v19), `admin-verify-payment` (v10), `create-payment-usdt` (v11), `send-order-email` (v10) — todas ACTIVE. `create-quote` solo existe en el repo (no desplegada).
+**Edge Functions desplegadas** (las 5 primeras verificadas el 2026-10-05; `request-withdrawal` desplegada y verificada el 2026-10-06): `create-payment` (v27), `mp-webhook` (v19), `admin-verify-payment` (v10), `create-payment-usdt` (v11), `send-order-email` (v10), `request-withdrawal` (v1) — todas ACTIVE. `create-quote` solo existe en el repo (no desplegada).
 
 ---
 
@@ -70,11 +75,14 @@ La lista completa vive en **🚨 Bloqueadores críticos** (única fuente de verd
 
 ### No bloqueantes
 
-- ntfy: usar un topic con sufijo aleatorio largo (hoy es adivinable), igual en la app y en el secret `NTFY_TOPIC`.
+- Persistir la aceptación de términos (guardar fecha y versión aceptada; hoy el checkbox no deja registro).
+- El login siempre vuelve a `/`, no al formulario de arrepentimiento desde el que se inició sesión.
+- La lista de arrepentimientos del admin está limitada a 200 filas, sin paginación.
+- `src/lib/supabase/types.ts` tiene los tipos de `withdrawal_requests` escritos a mano; regenerarlos con la CLI de Supabase debería dar lo mismo.
 - Validar el teléfono de la dirección en el **backend** (hoy la validación es solo de frontend; las Edge Functions no lo exigen).
 - En Mi cuenta, el botón "+ Nueva" no limpia el formulario si antes se canceló una edición.
 - Precargar el teléfono de la dirección desde `profiles`.
-- `npx tsc -b` tiene 52 errores preexistentes (verificado 2026-10-05; el build de Vite compila bien); lint en 67 problemas (58 errores, 9 warnings) como línea base.
+- `npx tsc -b` tiene 52 errores preexistentes (verificado 2026-10-06; el build de Vite compila bien); lint en 67 problemas (58 errores, 9 warnings) como línea base.
 - `sort_order=0` cosmético en galerías; la galería se comparte entre variantes de distinta capacidad.
 - Chunk de build >500 kB, sin script `typecheck`, sin tests, `tailwind.config.js` duplicado.
 - Variable `VITE_WHATSAPP_URL`: cargada como Config en Vercel (Production y Preview) (sin verificar).
@@ -88,19 +96,21 @@ La lista completa vive en **🚨 Bloqueadores críticos** (única fuente de verd
 
 ## ✅ Próximos pasos (orden recomendado)
 
-1. **Textos legales + checkbox de aceptación en el checkout** — único requisito legal que falta
-2. **Dominio propio → verificación en Resend → nuevo `RESEND_FROM_EMAIL` → quitar el email placeholder** (Footer y ReportPage)
-3. **Rotar `MP_WEBHOOK_SECRET`**
-4. **Limpiar productos de QA 1007/1008** de la producción
-5. **Primer pago USDT real**, verificando el depósito en Binance antes de confirmar en el admin
-6. **QA de casos extremos** (Fase 11): stock 0, pago duplicado, compras simultáneas — ahora con el modelo de stock ya corregido
-7. **SEO básico + limpieza de Tailwind config** (Fase 12)
-8. **Checklist de lanzamiento** (Fase 13)
+1. **Completar datos del titular en `src/config/legal.ts`** (razón social, CUIT, domicilio, condición fiscal, plazo de entrega, analíticas, fecha de publicación)
+2. **Dominio propio → verificación en Resend → nuevo `RESEND_FROM_EMAIL` → CORS de `request-withdrawal` o secret `SITE_URL`**
+3. **Rotar el topic de ntfy** (mismo valor en la app y en `NTFY_TOPIC`)
+4. **Rotar `MP_WEBHOOK_SECRET`**
+5. **Limpiar la cuenta de QA con rol customer y los datos de prueba** (productos 1007/1008, pedidos/pagos fixture; reponer stock a mano)
+6. **Primer pago USDT real**, verificando el depósito en Binance antes de confirmar en el admin
+7. **QA de casos extremos** (Fase 11): stock 0, pago duplicado, compras simultáneas — ahora con el modelo de stock ya corregido
+8. **SEO básico + limpieza de Tailwind config** (Fase 12)
+9. **Checklist de lanzamiento** (Fase 13)
 
 ---
 
 ## 🗂️ Historial de sesiones
 
+- **2026-10-06** — Cierre del bloque legal y del arrepentimiento: textos legales publicados con aceptación en checkout y registro (`c5ddfc4`), backend del arrepentimiento con tabla, Edge Function y RPC (`f16ace3`), frontend con página `/arrepentimiento`, constancia, estado en pedidos y pantalla de gestión con contador en el menú (`04be7bb`), arreglos de diseño de las tablas del admin (`925f9b6`) y `.gitignore` ampliado a `.env*` (`00b9ab7`). Verificaciones contra la línea base (build Vite, `tsc -b` en 52, lint en 67) y revisión de secretos sobre todo el diff antes del push. En seguridad: neutralización de la cuenta de QA con rol admin (rol bajado, contraseña aleatoria y bloqueo), auditoría del repo y de su historial sin claves ni tokens expuestos, y constancias de prueba de arrepentimiento borradas con la secuencia reiniciada para que la próxima constancia sea `ARR-000001`.
 - **2026-10-05** — Cierre del bloque de QA post-pago: bug del carrito corregido antes de pagar (`8fc4a5c`), variantes de producto con galería propia por variante, dropdown y drag & drop de imágenes con 4 migraciones aplicadas en remoto (`b8dc73a`), backend y frontend del pago USDT con guard 409, ntfy, emails y página `/pago/usdt` (`6f52bc6`), sidebar de subcategorías (`a39767a`), teléfono obligatorio con WhatsApp en el detalle de pedido (`2a5fbb7`) y franja de medios de pago en Home y ficha (`fbd7cff`). Todo commiteado y pusheado; verificación en vivo de RLS, cron de expiración y Edge Functions desplegadas en la BD remota; bug de `useCatalog` confirmado resuelto.
 - **2026-10-05** — Cierre del bloque de stock: `cancel_order` con idempotencia por saldo neto y 3 inventarios huérfanos corregidos (`739706e`); guard de pedidos cancelados en pagos + avisos de stock/reembolso en el admin (`4f63f32`); `confirm_sale` al aprobar pagos manuales USDT (`a039a94`); endurecimiento de `create-payment-usdt` y `order-creation` ante fallos, timeouts y errores de release (`6fe9152`). Migraciones aplicadas en remoto; funciones redeployadas (`create-payment` v27, `create-payment-usdt` v11).
 - **2026-09-25** — Auditoría inicial completa vía opencode. Diagnóstico: falta conectar pago end-to-end. Enviado prompt de estabilización (commits, bug useCatalog, RLS, .env.example, README).
