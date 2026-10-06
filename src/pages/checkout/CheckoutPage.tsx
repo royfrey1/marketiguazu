@@ -12,6 +12,7 @@ import CheckoutStepEnvio from '../../components/checkout/CheckoutStepEnvio'
 import CheckoutReview from '../../components/checkout/CheckoutReview'
 import Button from '../../components/ui/Button'
 import CartLoading from '../../components/cart/CartLoading'
+import TermsAcceptance from '../../components/legal/TermsAcceptance'
 import { CHECKOUT_ERROR_MESSAGES, PAYMENT_ERROR_MESSAGES, type PaymentErrorCode } from '../../types/checkout'
 import { supabase } from '../../lib/supabase/client'
 import type { AddressRow } from '../../services/address.service'
@@ -67,6 +68,9 @@ function CheckoutContent() {
   const [currentStep, setCurrentStep] = useState<1 | 2>(1)
   const [isPaying, setIsPaying] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('mercadopago')
+  // Aceptación de Términos y Privacidad: solo en memoria, se destilda al volver a entrar
+  const [termsAccepted, setTermsAccepted] = useState(false)
+  const [termsError, setTermsError] = useState(false)
 
   useEffect(() => {
     if (!loading && !syncPending && itemCount === 0) {
@@ -115,6 +119,11 @@ function CheckoutContent() {
 
   const handlePay = async () => {
     if (isPaying || !canProceedToPayment) return
+    // Vale para Mercado Pago y USDT: los dos pasan por acá
+    if (!termsAccepted) {
+      setTermsError(true)
+      return
+    }
 
     const snapshot = buildSnapshot()
     if (!snapshot) {
@@ -373,6 +382,15 @@ function CheckoutContent() {
               })}
             </div>
           </fieldset>
+
+          <div className="mt-6">
+            <TermsAcceptance
+              id="checkout-terms"
+              checked={termsAccepted}
+              onChange={checked => { setTermsAccepted(checked); if (checked) setTermsError(false) }}
+              showError={termsError}
+            />
+          </div>
 
           {/* Actions */}
           <div className="mt-6 sm:mt-8 space-y-3">

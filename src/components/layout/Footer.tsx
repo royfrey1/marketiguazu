@@ -60,8 +60,8 @@ export default function Footer() {
               <FooterSpan>Nosotros</FooterSpan>
               <FooterSpan>Contacto</FooterSpan>
               <FooterSpan>Preguntas frecuentes</FooterSpan>
-              <FooterSpan>Política de privacidad</FooterSpan>
-              <FooterSpan>Términos y condiciones</FooterSpan>
+              <FooterLink to="/privacidad">Política de Privacidad</FooterLink>
+              <FooterLink to="/terminos">Términos y Condiciones</FooterLink>
             </ul>
           </div>
 
@@ -77,7 +77,9 @@ export default function Footer() {
               <FooterSpan>Envíos</FooterSpan>
               <FooterSpan>Medios de pago</FooterSpan>
               <FooterSpan>Garantías</FooterSpan>
-              <FooterSpan>Cambios y devoluciones</FooterSpan>
+              <FooterLink to="/devoluciones">Cambios y devoluciones</FooterLink>
+              {/* /arrepentimiento: la página se crea en la etapa siguiente (hoy cae en 404) */}
+              <FooterLink to="/arrepentimiento">Botón de arrepentimiento</FooterLink>
               <FooterLink to="/report" accent icon={<Flag className="w-3.5 h-3.5" />}>Reportar un problema</FooterLink>
             </ul>
           </div>

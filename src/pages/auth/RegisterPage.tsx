@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { supabase } from '../../lib/supabase/client'
+import TermsAcceptance from '../../components/legal/TermsAcceptance'
 
 export default function Register() {
   const navigate = useNavigate()
@@ -14,6 +15,9 @@ export default function Register() {
     confirmPassword: '',
     telefono: '',
   })
+  // Términos 1.1: registrarse implica aceptarlos, así que la aceptación es explícita
+  const [termsAccepted, setTermsAccepted] = useState(false)
+  const [termsError, setTermsError] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value })
@@ -21,6 +25,10 @@ export default function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!termsAccepted) {
+      setTermsError(true)
+      return
+    }
     setLoading(true)
     setError(null)
 
@@ -153,6 +161,15 @@ export default function Register() {
             pattern="[0-9]{10,15}"
             className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-gray-900 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors"
             placeholder="+54 3757 000000"
+          />
+        </div>
+
+        <div className="pt-1">
+          <TermsAcceptance
+            id="register-terms"
+            checked={termsAccepted}
+            onChange={checked => { setTermsAccepted(checked); if (checked) setTermsError(false) }}
+            showError={termsError}
           />
         </div>
 

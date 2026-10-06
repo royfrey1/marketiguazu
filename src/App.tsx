@@ -41,6 +41,9 @@ const PaymentSuccessPage = lazy(() => import('./pages/payment/PaymentSuccessPage
 const PaymentPendingPage = lazy(() => import('./pages/payment/PaymentPendingPage'))
 const PaymentFailurePage = lazy(() => import('./pages/payment/PaymentFailurePage'))
 const PaymentUsdtPage = lazy(() => import('./pages/payment/PaymentUsdtPage'))
+const TermsPage = lazy(() => import('./pages/legal/TermsPage'))
+const PrivacyPage = lazy(() => import('./pages/legal/PrivacyPage'))
+const ReturnsPage = lazy(() => import('./pages/legal/ReturnsPage'))
 
 function Loading() {
   return (
@@ -133,6 +136,9 @@ function App() {
               <Route path="pago/pendiente" element={<PaymentPendingPage />} />
               <Route path="pago/fallo" element={<PaymentFailurePage />} />
               <Route path="pago/usdt" element={<PaymentUsdtPage />} />
+              <Route path="terminos" element={<TermsPage />} />
+              <Route path="privacidad" element={<PrivacyPage />} />
+              <Route path="devoluciones" element={<ReturnsPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Route>
             </Routes>
