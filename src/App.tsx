@@ -45,6 +45,7 @@ const TermsPage = lazy(() => import('./pages/legal/TermsPage'))
 const PrivacyPage = lazy(() => import('./pages/legal/PrivacyPage'))
 const ReturnsPage = lazy(() => import('./pages/legal/ReturnsPage'))
 const WithdrawalPage = lazy(() => import('./pages/legal/WithdrawalPage'))
+const ContactPage = lazy(() => import('./pages/store/ContactPage'))
 const WithdrawalsAdminPage = lazy(() => import('./pages/admin/WithdrawalsAdminPage'))
 
 function Loading() {
@@ -143,6 +144,7 @@ function App() {
               <Route path="privacidad" element={<PrivacyPage />} />
               <Route path="devoluciones" element={<ReturnsPage />} />
               <Route path="arrepentimiento" element={<WithdrawalPage />} />
+              <Route path="contacto" element={<ContactPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Route>
             </Routes>

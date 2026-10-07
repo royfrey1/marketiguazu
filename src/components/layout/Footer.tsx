@@ -59,14 +59,7 @@ export default function Footer() {
             </h4>
             <ul className="space-y-2.5">
               <FooterSpan>Nosotros</FooterSpan>
-              <li>
-                <a
-                  href={`mailto:${LEGAL.EMAIL_CONTACTO}`}
-                  className="text-sm transition-colors inline-flex items-center gap-1.5 text-white/45 hover:text-white/80"
-                >
-                  Contacto
-                </a>
-              </li>
+              <FooterLink to="/contacto">Contacto</FooterLink>
               <FooterSpan>Preguntas frecuentes</FooterSpan>
               <FooterLink to="/privacidad">Política de Privacidad</FooterLink>
               <FooterLink to="/terminos">Términos y Condiciones</FooterLink>
