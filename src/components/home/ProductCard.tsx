@@ -1,10 +1,7 @@
-import { useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { ShoppingCart, Loader2 } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { sileo } from 'sileo'
 import { productsService, type ProductWithPrimaryImage } from '../../services/products.service'
-import useCart from '../../hooks/useCart'
 import ProductFavorite from '../product/ProductFavorite'
 import { getCategoryIcon } from '../../lib/categoryIcons'
 
@@ -16,40 +13,13 @@ interface ProductCardProps {
 
 export default function ProductCard({ product, badge, badgeColor = 'bg-accent' }: ProductCardProps) {
   const imageUrl = productsService.resolveImageUrl(product)
-  const { addToCart, loading: cartLoading } = useCart()
-  const [adding, setAdding] = useState(false)
-
+  const productUrl = `/producto/${product.slug}`
   const outOfStock = !product.available || product.available <= 0
-
-  const handleAddToCart = useCallback(async (e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (adding || cartLoading || !product.activo || outOfStock) return
-
-    setAdding(true)
-    try {
-      await addToCart(product.id, product.precio, 1, null)
-      sileo.success({
-        title: 'Producto agregado',
-        description: 'El producto fue agregado a tu carrito.',
-      })
-    } catch (err) {
-      sileo.error({
-        title: 'No se pudo agregar',
-        description: err instanceof Error ? err.message : 'Ocurrió un error inesperado.',
-      })
-    } finally {
-      setAdding(false)
-    }
-  }, [adding, cartLoading, product.activo, outOfStock, product.id, product.precio, addToCart])
-
-  const isLoading = adding || cartLoading
-  const isDisabled = !product.activo || outOfStock
 
   return (
     <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.2 }} className="h-full flex flex-col">
       <Link
-        to={`/producto/${product.slug}`}
+        to={productUrl}
         className="card group h-full flex flex-col relative flex-1"
       >
         <ProductFavorite productId={product.id} />
@@ -112,25 +82,17 @@ export default function ProductCard({ product, badge, badgeColor = 'bg-accent' }
         </div>
       </Link>
 
+      {/* Llamado a la acción: link hermano del Link principal (no anidado). La elección de
+          variante y el agregado al carrito se hacen en la ficha del producto. */}
       <div className="px-3 pb-3 sm:px-4 sm:pb-4">
-        <button
-          onClick={handleAddToCart}
-          disabled={isDisabled || isLoading}
-          aria-label={outOfStock ? 'Producto sin stock' : !product.activo ? 'Producto agotado' : 'Agregar al carrito'}
-          className="btn-card w-full disabled:opacity-40 disabled:cursor-not-allowed"
+        <Link
+          to={productUrl}
+          aria-label={`Ver producto ${product.titulo}`}
+          className="btn-card w-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
-          {isLoading ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <ShoppingCart className="w-4 h-4" />
-          )}
-          {outOfStock ? 'Sin stock' : !product.activo ? 'Agotado' : adding ? 'Agregando...' : (
-            <>
-              <span className="sm:hidden">Agregar</span>
-              <span className="hidden sm:inline">Agregar al carrito</span>
-            </>
-          )}
-        </button>
+          Ver producto
+          <ArrowRight className="w-4 h-4" aria-hidden="true" />
+        </Link>
       </div>
     </motion.div>
   )
