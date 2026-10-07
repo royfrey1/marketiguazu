@@ -5,3 +5,9 @@ project_id = "default"
 # MP_WEBHOOK_SECRET, validada dentro de la función.
 [functions.mp-webhook]
 verify_jwt = false
+
+# request-withdrawal acepta llamadas con o sin sesión (el botón de
+# arrepentimiento también lo usa quien no está logueado); la identidad
+# se valida dentro de la función.
+[functions.request-withdrawal]
+verify_jwt = false
