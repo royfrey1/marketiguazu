@@ -23,7 +23,7 @@ Conforme a la Ley 24.240 (art. 34) y al Código Civil y Comercial, el Usuario pu
 
 - El producto debe devolverse en las condiciones en que fue recibido: sin uso, con su embalaje, accesorios y manuales. Abrirlo y probarlo para verificar su estado y funcionamiento no se considera uso.
 - Los gastos de la devolución son a cargo de la Tienda. Coordinaremos con el Usuario el envío de vuelta (retiro o envío por Correo Argentino) sin costo para él.
-- Devolvemos el total pagado, incluido el costo del envío de ida si lo hubo, por el mismo medio de pago utilizado y según lo previsto en la sección 1.7 de los Términos. En pagos con USDT se devuelve la misma cantidad de USDT recibida.
+- Devolvemos el total pagado, incluido el costo del envío de ida si lo hubo, por el mismo medio de pago utilizado y según lo previsto en la sección 1.7 de los Términos. En pagos con USDT se devuelve la misma cantidad de USDT recibida; en pagos por transferencia bancaria, se reintegra por transferencia a la cuenta que indique el Usuario.
 
 ## 3.3 Garantía legal
 
@@ -41,7 +41,7 @@ Si el producto llega dañado o no es el que se compró, el Usuario debe avisarno
 
 ## 3.5 Cancelación antes del despacho
 
-Mientras el pedido no haya sido despachado, el Usuario puede pedirnos su cancelación por email o por WhatsApp. Reintegramos el total pagado según la sección 1.7 de los Términos. Un pedido con pago en USDT pendiente que no se paga dentro de las 24 horas se cancela automáticamente.
+Mientras el pedido no haya sido despachado, el Usuario puede pedirnos su cancelación por email o por WhatsApp. Reintegramos el total pagado según la sección 1.7 de los Términos. Un pedido con pago en USDT o por transferencia bancaria pendiente que no se paga dentro de las 24 horas se cancela automáticamente.
 
 ## 3.6 Cambios por otros motivos
 

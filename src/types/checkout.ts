@@ -38,6 +38,8 @@ export type PaymentErrorCode =
   | 'EXCHANGE_RATE_ERROR'
   | 'WALLET_NOT_CONFIGURED'
   | 'PENDING_USDT_ORDER'
+  | 'PENDING_TRANSFER_ORDER'
+  | 'TRANSFER_NOT_CONFIGURED'
   | 'INTERNAL_ERROR'
 
 export const PAYMENT_ERROR_MESSAGES: Record<PaymentErrorCode, string> = {
@@ -56,6 +58,8 @@ export const PAYMENT_ERROR_MESSAGES: Record<PaymentErrorCode, string> = {
   EXCHANGE_RATE_ERROR: 'No pudimos obtener la cotización de USDT en este momento. Probá de nuevo en unos minutos o pagá con Mercado Pago.',
   WALLET_NOT_CONFIGURED: 'El pago con USDT no está disponible por el momento. Elegí otro método de pago.',
   PENDING_USDT_ORDER: 'Ya tenés un pedido pendiente de pago con USDT.',
+  PENDING_TRANSFER_ORDER: 'Ya tenés un pedido pendiente de pago por transferencia. Te llevamos a los datos para completarlo.',
+  TRANSFER_NOT_CONFIGURED: 'La transferencia bancaria no está disponible en este momento. Elegí otro medio de pago o intentá más tarde.',
   INTERNAL_ERROR: 'Ocurrió un error inesperado. Intentá nuevamente.',
 }
 

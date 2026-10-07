@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { CreditCard, AlertTriangle, ArrowLeft, Truck, Coins } from 'lucide-react'
+import { CreditCard, AlertTriangle, ArrowLeft, Truck, Coins, Landmark } from 'lucide-react'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { sileo } from 'sileo'
 import useCart from '../../hooks/useCart'
@@ -35,11 +35,31 @@ interface CreateUsdtPaymentSuccess {
   network: string
 }
 
-type PaymentMethod = 'mercadopago' | 'usdt'
+interface CreateTransferPaymentSuccess {
+  success: true
+  orderId: number
+  orderNumber: string | null
+  amountArs: number
+  titular: string
+  alias?: string
+  cbu?: string
+  banco?: string
+  referencia: string
+  paymentWindowHours: number
+}
+
+type PaymentMethod = 'mercadopago' | 'usdt' | 'transfer'
+
+// Medios con confirmación manual: se crea el pedido y se muestran los datos de pago en la tienda
+const MANUAL_PAYMENT_FLOWS = {
+  usdt: { functionName: 'create-payment-usdt', path: '/pago/usdt' },
+  transfer: { functionName: 'create-payment-transfer', path: '/pago/transferencia' },
+} as const
 
 const PAYMENT_METHOD_OPTIONS: { value: PaymentMethod; label: string; hint: string; icon: typeof CreditCard }[] = [
   { value: 'mercadopago', label: 'Mercado Pago', hint: 'Tarjeta, débito o hasta 3 cuotas', icon: CreditCard },
   { value: 'usdt', label: 'USDT (TRC20)', hint: 'Transferencia cripto, confirmación manual', icon: Coins },
+  { value: 'transfer', label: 'Transferencia bancaria', hint: 'Transferí el total exacto en pesos, sin recargo. Confirmamos el pago de forma manual.', icon: Landmark },
 ]
 
 async function extractPaymentError(error: unknown): Promise<{ code: PaymentErrorCode; message: string; orderId?: number }> {
@@ -50,7 +70,7 @@ async function extractPaymentError(error: unknown): Promise<{ code: PaymentError
         return {
           code: body.error.code as PaymentErrorCode,
           message: body.error.message ?? '',
-          // Solo en PENDING_USDT_ORDER: el pedido USDT pendiente que bloquea el checkout
+          // Solo en PENDING_USDT_ORDER / PENDING_TRANSFER_ORDER: el pedido pendiente que bloquea el checkout
           orderId: typeof body.orderId === 'number' ? body.orderId : undefined,
         }
       }
@@ -97,11 +117,21 @@ function CheckoutContent() {
     setCurrentStep(1)
   }
 
-  // Error de create-payment / create-payment-usdt. Con un pedido USDT pendiente
-  // (PENDING_USDT_ORDER) no se puede iniciar otro checkout: se lleva al usuario a
-  // las instrucciones de ese pedido en vez de dejarlo bloqueado sin explicación.
+  // Error de create-payment / create-payment-usdt / create-payment-transfer. Con un pedido
+  // USDT o de transferencia pendiente (PENDING_USDT_ORDER / PENDING_TRANSFER_ORDER) no se
+  // puede iniciar otro checkout con ningún medio: se lleva al usuario a las instrucciones
+  // de ese pedido en vez de dejarlo bloqueado sin explicación.
   const handlePaymentError = async (invokeError: unknown) => {
     const failure = await extractPaymentError(invokeError)
+    if (failure.code === 'PENDING_TRANSFER_ORDER' && failure.orderId) {
+      sileo.warning({
+        title: 'Ya tenés un pedido pendiente de pago por transferencia',
+        description: 'Te llevamos a los datos para completarlo.',
+      })
+      // keepCart: el carrito actual es de una compra nueva, no del pedido pendiente
+      navigate(`/pago/transferencia?order=${failure.orderId}`, { state: { keepCart: true } })
+      return
+    }
     if (failure.code === 'PENDING_USDT_ORDER' && failure.orderId) {
       sileo.warning({
         title: 'Ya tenés un pedido pendiente de pago con USDT',
@@ -119,7 +149,7 @@ function CheckoutContent() {
 
   const handlePay = async () => {
     if (isPaying || !canProceedToPayment) return
-    // Vale para Mercado Pago y USDT: los dos pasan por acá
+    // Vale para todos los medios de pago: pasan por acá
     if (!termsAccepted) {
       setTermsError(true)
       return
@@ -145,15 +175,16 @@ function CheckoutContent() {
         })),
       }
 
-      if (paymentMethod === 'usdt') {
-        const { data: usdt, error: usdtError } = await supabase.functions.invoke<CreateUsdtPaymentSuccess>('create-payment-usdt', { body })
+      if (paymentMethod === 'usdt' || paymentMethod === 'transfer') {
+        const flow = MANUAL_PAYMENT_FLOWS[paymentMethod]
+        const { data: manual, error: manualError } = await supabase.functions.invoke<CreateUsdtPaymentSuccess | CreateTransferPaymentSuccess>(flow.functionName, { body })
 
-        if (usdtError) {
-          await handlePaymentError(usdtError)
+        if (manualError) {
+          await handlePaymentError(manualError)
           return
         }
 
-        if (!usdt?.success || !usdt.orderId) {
+        if (!manual?.success || !manual.orderId) {
           sileo.error({
             title: 'No pudimos procesar el pago',
             description: PAYMENT_ERROR_MESSAGES.INTERNAL_ERROR,
@@ -162,7 +193,7 @@ function CheckoutContent() {
         }
 
         // Flujo interno: las instrucciones de pago se muestran en la tienda
-        navigate(`/pago/usdt?order=${usdt.orderId}`)
+        navigate(`${flow.path}?order=${manual.orderId}`)
         return
       }
 
@@ -272,7 +303,7 @@ function CheckoutContent() {
                 </span>
                 <div className="min-w-0">
                   <h2 className="text-sm sm:text-base font-bold text-primary-dark">Pago</h2>
-                  <p className="text-xs text-gray-400 mt-0.5">En el último paso elegís Mercado Pago o USDT (TRC20)</p>
+                  <p className="text-xs text-gray-400 mt-0.5">En el último paso elegís Mercado Pago, USDT (TRC20) o transferencia bancaria</p>
                 </div>
               </div>
             </div>
@@ -359,7 +390,7 @@ function CheckoutContent() {
                 return (
                   <label
                     key={option.value}
-                    className={`flex items-center gap-3 rounded-xl border p-3 sm:p-4 cursor-pointer transition-colors ${
+                    className={`flex items-center gap-3 rounded-xl border p-3 sm:p-4 cursor-pointer transition-colors sm:last:odd:col-span-2 ${
                       selected ? 'border-accent bg-accent/5' : 'border-gray-200 hover:border-gray-300'
                     } ${isPaying ? 'opacity-60 cursor-not-allowed' : ''}`}
                   >
@@ -402,7 +433,7 @@ function CheckoutContent() {
               loading={isPaying}
               onClick={handlePay}
             >
-              {isPaying ? 'Procesando…' : paymentMethod === 'usdt' ? 'Confirmar pedido y ver datos de pago' : 'Ir a pagar'}
+              {isPaying ? 'Procesando…' : paymentMethod === 'mercadopago' ? 'Ir a pagar' : 'Confirmar pedido y ver datos de pago'}
             </Button>
 
             <Button

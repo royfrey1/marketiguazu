@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   AlertTriangle, RefreshCw, Package, Truck, MapPin, CreditCard,
-  Calendar, ArrowLeft, ShoppingBag, FileText, Coins, RotateCcw,
+  Calendar, ArrowLeft, ShoppingBag, FileText, Coins, RotateCcw, Landmark,
 } from 'lucide-react'
 import { useOrder } from '../../hooks/useOrder'
 import Badge from '../../components/ui/Badge'
@@ -62,6 +62,7 @@ function formatCurrency(amount: number): string {
 function ProviderLabel({ provider }: { provider: string }) {
   if (provider === 'mercadopago') return <span>Mercado Pago</span>
   if (provider === 'usdt') return <span>USDT (TRC20)</span>
+  if (provider === 'transfer') return <span>Transferencia bancaria</span>
   return <span className="capitalize">{provider.replace(/_/g, ' ')}</span>
 }
 
@@ -252,6 +253,7 @@ export default function OrderDetailPage() {
   const address = order.direccion_envio as Record<string, string | undefined> | null
   const firstPayment = order.payments?.[0]
   const hasPendingUsdtPayment = order.payments?.some(p => p.provider === 'usdt' && p.status === 'pending') ?? false
+  const hasPendingTransferPayment = order.payments?.some(p => p.provider === 'transfer' && p.status === 'pending') ?? false
   const firstShipment = order.shipments?.[0]
   const shipmentStatus = firstShipment
     ? SHIPMENT_STATUS_MAP[firstShipment.status] ?? { label: firstShipment.status, variant: 'default' as const }
@@ -433,6 +435,14 @@ export default function OrderDetailPage() {
                       <Button variant="primary" size="sm" className="w-full">
                         <Coins className="w-4 h-4" />
                         Ver datos de pago USDT
+                      </Button>
+                    </Link>
+                  )}
+                  {hasPendingTransferPayment && (
+                    <Link to={`/pago/transferencia?order=${order.id}`} className="block pt-1">
+                      <Button variant="primary" size="sm" className="w-full">
+                        <Landmark className="w-4 h-4" />
+                        Ver datos de pago por transferencia
                       </Button>
                     </Link>
                   )}

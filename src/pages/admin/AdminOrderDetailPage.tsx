@@ -130,6 +130,12 @@ const SHIPMENT_STATUS_LABELS: Record<string, string> = {
   failed: 'Fallido',
 }
 
+// Método de pago legible; los que no están mapeados se muestran como vienen
+function paymentProviderLabel(provider: string): string {
+  if (provider === 'transfer') return 'Transferencia bancaria'
+  return provider.replace(/_/g, ' ')
+}
+
 const SHIPMENT_PROVIDERS: { value: ShipmentProvider; label: string }[] = [
   { value: 'correo_argentino', label: 'Correo Argentino' },
   { value: 'via_cargo', label: 'Via Cargo' },
@@ -460,7 +466,7 @@ export default function AdminOrderDetailPage() {
     }
   }, [order, refetch])
 
-  // --- Confirmación manual de pagos fuera de Mercado Pago (ej. USDT) ---
+  // --- Confirmación manual de pagos fuera de Mercado Pago (USDT y transferencia bancaria) ---
   // admin-verify-payment consulta la API de MP y no sirve para estos pagos:
   // el admin confirma a mano que recibió la transferencia.
   const [manualConfirmPayment, setManualConfirmPayment] = useState<{ id: number; provider: string; amount: number; currency: string } | null>(null)
@@ -1077,7 +1083,7 @@ export default function AdminOrderDetailPage() {
                         <div className="flex justify-between">
                           <span className="text-gray-500">Método</span>
                           <span className="font-medium text-gray-800 capitalize">
-                            {payment.provider.replace(/_/g, ' ')}
+                            {paymentProviderLabel(payment.provider)}
                           </span>
                         </div>
                         <div className="flex justify-between">
@@ -1209,7 +1215,7 @@ export default function AdminOrderDetailPage() {
         </Modal>
       )}
 
-      {/* Manual payment confirmation modal (USDT u otros métodos sin verificación automática) */}
+      {/* Manual payment confirmation modal (USDT, transferencia u otros métodos sin verificación automática) */}
       {manualConfirmPayment && (
         <Modal
           open
@@ -1218,13 +1224,20 @@ export default function AdminOrderDetailPage() {
         >
           <p className="text-sm text-gray-600 mb-4">
             ¿Confirmás que recibiste el pago #{manualConfirmPayment.id} por{' '}
-            <span className="font-bold text-gray-800 uppercase">{manualConfirmPayment.provider.replace(/_/g, ' ')}</span>{' '}
+            <span className="font-bold text-gray-800 uppercase">{paymentProviderLabel(manualConfirmPayment.provider)}</span>{' '}
             ({formatCurrency(manualConfirmPayment.amount)} {manualConfirmPayment.currency})?
           </p>
-          <p className="text-xs text-amber-600 bg-amber-50 rounded-lg p-3 mb-4">
-            Revisá que la transferencia esté acreditada en la wallet antes de confirmar. El pago pasa a
-            &ldquo;Aprobado&rdquo; y el pedido a &ldquo;Pagado&rdquo;.
-          </p>
+          {manualConfirmPayment.provider === 'transfer' ? (
+            <p className="text-xs text-amber-600 bg-amber-50 rounded-lg p-3 mb-4">
+              Confirmá que la transferencia por el monto exacto ya figura acreditada en tu cuenta bancaria. Al
+              confirmar, se descuenta el stock y el pedido pasa a &ldquo;Pagado&rdquo;. Esta acción no se puede deshacer.
+            </p>
+          ) : (
+            <p className="text-xs text-amber-600 bg-amber-50 rounded-lg p-3 mb-4">
+              Revisá que la transferencia esté acreditada en la wallet antes de confirmar. El pago pasa a
+              &ldquo;Aprobado&rdquo; y el pedido a &ldquo;Pagado&rdquo;.
+            </p>
+          )}
           <p className="text-xs text-gray-600 mb-4">
             {customerPhone
               ? 'Se intentará enviar un email de confirmación al cliente. Hasta que se verifique el dominio de envío, puede no llegarle: avisale también por WhatsApp.'

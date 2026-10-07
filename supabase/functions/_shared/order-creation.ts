@@ -2,7 +2,7 @@
 // _shared/order-creation.ts — creación genérica de orden pending
 // ============================================================
 // Pasos 1-8 de create-payment, compartidos entre create-payment
-// (Mercado Pago) y create-payment-usdt:
+// (Mercado Pago), create-payment-usdt y create-payment-transfer:
 //
 //   1. autenticación (JWT -> usuario)
 //   2. validar payload (addressId, items, cantidades)
@@ -72,7 +72,8 @@ export type OrderErrorCode =
   | "ADDRESS_NOT_FOUND"
   | "STOCK_UNAVAILABLE"
   | "ORDER_CREATION_FAILED"
-  | "PENDING_USDT_ORDER";
+  | "PENDING_USDT_ORDER"
+  | "PENDING_TRANSFER_ORDER";
 
 export interface OrderCreationFailure {
   success: false;
@@ -80,7 +81,7 @@ export interface OrderCreationFailure {
   message: string;
   /** Status HTTP sugerido para la respuesta. */
   status: number;
-  /** Solo en PENDING_USDT_ORDER: id de la orden existente que quedó intacta. */
+  /** Solo en PENDING_USDT_ORDER / PENDING_TRANSFER_ORDER: id de la orden existente que quedó intacta. */
   orderId?: number;
 }
 
@@ -287,12 +288,14 @@ export async function createPendingOrder(
 
   if (existingOrder) {
     // ----------------------------------------------------------
-    // Guarda: si la orden pending existente tiene un pago USDT
-    // pendiente, NO se toca nada (los pedidos USDT quedan
-    // esperando la verificación manual durante horas y el cliente
-    // puede haber transferido ya): ni reservas, ni items, ni
-    // pagos. Se responde con la orden existente para que el
-    // frontend/cliente sepa cuál es.
+    // Guarda: si la orden pending existente tiene un pago USDT o
+    // de transferencia pendiente, NO se toca nada (los pedidos
+    // USDT y por transferencia quedan esperando la verificación
+    // manual durante horas y el cliente puede haber transferido
+    // ya): ni reservas, ni items, ni pagos. Se responde con la
+    // orden existente para que el frontend/cliente sepa cuál es.
+    // (MP sigue pudiendo rearmar su orden pending: solo aplica a
+    // pagos pendientes de estos dos providers manuales.)
     // ----------------------------------------------------------
     const { data: pendingUsdt } = await supabase
       .from("payments")
@@ -307,6 +310,24 @@ export async function createPendingOrder(
         success: false,
         code: "PENDING_USDT_ORDER",
         message: "Ya tenés un pedido pendiente de pago con USDT",
+        status: 409,
+        orderId: existingOrder.id,
+      };
+    }
+
+    const { data: pendingTransfer } = await supabase
+      .from("payments")
+      .select("id")
+      .eq("order_id", existingOrder.id)
+      .eq("provider", "transfer")
+      .eq("status", "pending")
+      .maybeSingle();
+
+    if (pendingTransfer) {
+      return {
+        success: false,
+        code: "PENDING_TRANSFER_ORDER",
+        message: "Ya tenés un pedido pendiente de pago por transferencia",
         status: 409,
         orderId: existingOrder.id,
       };

@@ -1,39 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Coins, Home, Copy, Check, CheckCircle, Clock, MessageCircle, AlertTriangle } from 'lucide-react'
+import { Coins, Home, CheckCircle, Clock, MessageCircle, AlertTriangle } from 'lucide-react'
 import Button from '../../components/ui/Button'
 import PaymentOrderSummary from './PaymentOrderSummary'
+import CopyButton from './CopyButton'
 import useAuth from '../../hooks/useAuth'
 import useClearCartOnOrder from '../../hooks/useClearCartOnOrder'
 import { orderService, type UsdtPaymentInfo } from '../../services/order.service'
 import { whatsappUrl } from '../../lib/whatsapp'
-
-function CopyButton({ value, label }: { value: string; label: string }) {
-  const [copied, setCopied] = useState(false)
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(value)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch {
-      // Portapapeles no disponible: el valor sigue visible para copiarlo a mano
-    }
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={handleCopy}
-      className="inline-flex items-center gap-1.5 shrink-0 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-primary-dark hover:border-accent hover:text-accent transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-      aria-label={label}
-    >
-      {copied ? <Check className="w-3.5 h-3.5 text-accent" /> : <Copy className="w-3.5 h-3.5" />}
-      {copied ? 'Copiado' : 'Copiar'}
-    </button>
-  )
-}
 
 export default function PaymentUsdtPage() {
   const [searchParams] = useSearchParams()

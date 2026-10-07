@@ -202,6 +202,18 @@ export interface UsdtPaymentInfo {
   network: string
 }
 
+/** Datos para que el cliente transfiera en pesos (payments.metadata de provider='transfer'). */
+export interface TransferPaymentInfo {
+  status: string
+  amountArs: number
+  createdAt: string
+  titular: string
+  alias: string | null
+  cbu: string | null
+  banco: string | null
+  referencia: string
+}
+
 export type ShipmentStatus =
   | 'pending'
   | 'processing'
@@ -362,6 +374,50 @@ export const orderService = {
         exchangeRate,
         walletAddress,
         network: typeof meta.network === 'string' ? meta.network : 'TRC20',
+      },
+      error: null,
+    }
+  },
+
+  /**
+   * Pago por transferencia bancaria de un pedido propio, con los datos de la cuenta (metadata).
+   * RLS (payments_select_own) limita la lectura a pagos de pedidos del usuario.
+   */
+  async getMyTransferPayment(
+    orderId: number
+  ): Promise<{ data: TransferPaymentInfo | null; error: Error | null }> {
+    const { data, error } = await supabase
+      .from('payments')
+      .select('status, amount, created_at, metadata')
+      .eq('order_id', orderId)
+      .eq('provider', 'transfer')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (error) return { data: null, error: new Error(error.message) }
+    if (!data) return { data: null, error: new Error('Pago no encontrado') }
+
+    const meta = (data.metadata ?? {}) as Record<string, unknown>
+    const text = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : null)
+    const titular = text(meta.titular)
+    const alias = text(meta.alias)
+    const cbu = text(meta.cbu)
+    const referencia = text(meta.referencia)
+    if (!titular || (!alias && !cbu) || !referencia) {
+      return { data: null, error: new Error('Faltan los datos de la transferencia') }
+    }
+
+    return {
+      data: {
+        status: data.status,
+        amountArs: data.amount,
+        createdAt: data.created_at,
+        titular,
+        alias,
+        cbu,
+        banco: text(meta.banco),
+        referencia,
       },
       error: null,
     }

@@ -25,13 +25,15 @@ Al registrarse, navegar o comprar en la Tienda, el usuario ("el Usuario") acepta
 
 ## 1.4 Cómo se concreta la compra
 
-El Usuario arma su carrito, elige dirección y método de envío, y selecciona el medio de pago. El pedido queda en estado pendiente hasta que se acredite el pago (Mercado Pago) o hasta que confirmemos manualmente su recepción (USDT). Recién entonces la compra se considera perfeccionada. Las novedades del pedido se comunican por los datos de contacto que el Usuario haya cargado.
+El Usuario arma su carrito, elige dirección y método de envío, y selecciona el medio de pago. El pedido queda en estado pendiente hasta que se acredite el pago (Mercado Pago) o hasta que confirmemos manualmente su recepción (USDT o transferencia bancaria). Recién entonces la compra se considera perfeccionada. Las novedades del pedido se comunican por los datos de contacto que el Usuario haya cargado.
 
 ## 1.5 Facturación
 
 El titular de la Tienda reviste la condición de {{CONDICION_FISCAL}}. El comprobante se emite a nombre del titular de la cuenta, con los datos informados al comprar.
 
 ## 1.6 Medios de pago
+
+La Tienda acepta Mercado Pago, USDT (red TRC20) y transferencia bancaria.
 
 ### 1.6.1 Mercado Pago
 
@@ -50,15 +52,27 @@ Es un medio de pago alternativo, con confirmación manual. Para usarlo, el Usuar
 - **Naturaleza de la operación.** Las transacciones en blockchain son públicas e irreversibles y no admiten contracargos. El USDT no es moneda de curso legal en Argentina y su paridad no está garantizada. No brindamos asesoramiento financiero. El Usuario es responsable de las obligaciones impositivas que le correspondan.
 - **Prevención.** Podemos solicitar información adicional o rechazar operaciones que resulten sospechosas o contrarias a la normativa vigente, reintegrando lo recibido según 1.7.
 
+### 1.6.3 Transferencia bancaria
+
+Es un medio de pago en pesos, con confirmación manual. Para usarlo, el Usuario acepta lo siguiente:
+
+- **Precio.** Se abona el precio de contado, sin recargo.
+- **Datos de la cuenta.** Al confirmar el pedido, el sitio muestra los datos de la cuenta de la Tienda.
+- **Monto y concepto.** Hay que transferir el total exacto del pedido, en pesos, indicando el número de pedido como concepto.
+- **Plazo.** El Usuario tiene 24 horas desde la creación del pedido para realizar la transferencia.
+- **Confirmación manual.** Verificamos la acreditación en nuestra cuenta y confirmamos el pago. Puede demorar algunas horas. El pedido se considera pagado solo desde nuestra confirmación.
+- **Pago no acreditado o por un monto distinto.** Si el pago no se acredita dentro del plazo, o el monto no coincide con el total del pedido, el pedido puede cancelarse y se libera el stock. Si recibimos una transferencia luego de cancelado el pedido, o por un monto distinto, nos comunicaremos con el Usuario para ofrecerle una de dos opciones: generar un pedido nuevo (sujeto a stock) o la devolución del monto recibido según 1.7.
+
 ## 1.7 Reembolsos
 
 - **Mercado Pago:** se reintegra por el mismo medio de pago utilizado, a través de Mercado Pago. El plazo de acreditación depende de Mercado Pago y de la entidad emisora.
 - **USDT:** se reintegra la misma cantidad de USDT que recibimos, por red TRC20, a la dirección de wallet que indique el Usuario. No se aplica conversión ni ajuste por variaciones de cotización. La comisión de red del reintegro corre por cuenta de la Tienda. El Usuario es responsable de que la dirección informada sea correcta y compatible con TRC20.
+- **Transferencia bancaria:** se reintegra por transferencia bancaria a la cuenta que indique el Usuario. El Usuario es responsable de que los datos de la cuenta informada sean correctos.
 - Los reembolsos se realizan sin demora y dentro de los 10 días corridos desde que recibimos el producto devuelto o desde que confirmamos que corresponde el reintegro.
 
 ## 1.8 Envíos y entrega
 
-- Enviamos a domicilio dentro de Argentina por Correo Argentino. El costo del envío se informa en el checkout antes de pagar; cuando figure "envío gratis", no se cobra al Usuario.
+- Enviamos a domicilio dentro de Argentina por Correo Argentino. El envío es gratuito a todo el país en todos los productos de la Tienda. Si esto cambiara en el futuro, lo informaremos previamente en el sitio y el costo del envío se mostrará en el checkout antes de pagar.
 - El plazo estimado es de {{PLAZO_ENTREGA}} desde la confirmación del pago. Es un estimado: el tiempo de traslado depende del operador logístico.
 - Hasta la entrega al Usuario, el producto viaja por cuenta y riesgo de la Tienda.
 - Al recibir el paquete, el Usuario debe verificar que el embalaje esté intacto. Si presenta daños, conviene dejar constancia al momento de la entrega y avisarnos dentro de las 48 horas.

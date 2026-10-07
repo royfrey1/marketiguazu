@@ -58,9 +58,9 @@ export default function Footer() {
               Iguazú Marketplace
             </h4>
             <ul className="space-y-2.5">
-              <FooterSpan>Nosotros</FooterSpan>
+              <FooterLink to="/nosotros">Nosotros</FooterLink>
               <FooterLink to="/contacto">Contacto</FooterLink>
-              <FooterSpan>Preguntas frecuentes</FooterSpan>
+              <FooterLink to="/preguntas-frecuentes">Preguntas frecuentes</FooterLink>
               <FooterLink to="/privacidad">Política de Privacidad</FooterLink>
               <FooterLink to="/terminos">Términos y Condiciones</FooterLink>
             </ul>
@@ -75,8 +75,8 @@ export default function Footer() {
               </h4>
             </div>
             <ul className="space-y-2.5">
-              <FooterSpan>Envíos</FooterSpan>
-              <FooterSpan>Medios de pago</FooterSpan>
+              <FooterLink to="/envios">Envíos</FooterLink>
+              <FooterLink to="/medios-de-pago">Medios de pago</FooterLink>
               <FooterLink to="/devoluciones">Garantías</FooterLink>
               <FooterLink to="/devoluciones">Cambios y devoluciones</FooterLink>
               <FooterLink to="/arrepentimiento">Botón de arrepentimiento</FooterLink>
@@ -136,16 +136,6 @@ function FooterLink({
         {icon}
         {children}
       </Link>
-    </li>
-  )
-}
-
-function FooterSpan({ children }: { children: React.ReactNode }) {
-  return (
-    <li>
-      <span className="text-sm text-white/45 hover:text-white/80 transition-colors cursor-pointer">
-        {children}
-      </span>
     </li>
   )
 }

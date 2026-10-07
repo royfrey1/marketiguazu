@@ -41,11 +41,16 @@ const PaymentSuccessPage = lazy(() => import('./pages/payment/PaymentSuccessPage
 const PaymentPendingPage = lazy(() => import('./pages/payment/PaymentPendingPage'))
 const PaymentFailurePage = lazy(() => import('./pages/payment/PaymentFailurePage'))
 const PaymentUsdtPage = lazy(() => import('./pages/payment/PaymentUsdtPage'))
+const PaymentTransferPage = lazy(() => import('./pages/payment/PaymentTransferPage'))
 const TermsPage = lazy(() => import('./pages/legal/TermsPage'))
 const PrivacyPage = lazy(() => import('./pages/legal/PrivacyPage'))
 const ReturnsPage = lazy(() => import('./pages/legal/ReturnsPage'))
 const WithdrawalPage = lazy(() => import('./pages/legal/WithdrawalPage'))
 const ContactPage = lazy(() => import('./pages/store/ContactPage'))
+const AboutPage = lazy(() => import('./pages/info/AboutPage'))
+const FaqPage = lazy(() => import('./pages/info/FaqPage'))
+const ShippingPage = lazy(() => import('./pages/info/ShippingPage'))
+const PaymentMethodsPage = lazy(() => import('./pages/info/PaymentMethodsPage'))
 const WithdrawalsAdminPage = lazy(() => import('./pages/admin/WithdrawalsAdminPage'))
 
 function Loading() {
@@ -140,11 +145,16 @@ function App() {
               <Route path="pago/pendiente" element={<PaymentPendingPage />} />
               <Route path="pago/fallo" element={<PaymentFailurePage />} />
               <Route path="pago/usdt" element={<PaymentUsdtPage />} />
+              <Route path="pago/transferencia" element={<PaymentTransferPage />} />
               <Route path="terminos" element={<TermsPage />} />
               <Route path="privacidad" element={<PrivacyPage />} />
               <Route path="devoluciones" element={<ReturnsPage />} />
               <Route path="arrepentimiento" element={<WithdrawalPage />} />
               <Route path="contacto" element={<ContactPage />} />
+              <Route path="nosotros" element={<AboutPage />} />
+              <Route path="preguntas-frecuentes" element={<FaqPage />} />
+              <Route path="envios" element={<ShippingPage />} />
+              <Route path="medios-de-pago" element={<PaymentMethodsPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Route>
             </Routes>

@@ -15,8 +15,8 @@ export const LEGAL = {
   DOMICILIO: '[DOMICILIO]',
   // Condición frente al IVA (ej: "Responsable Monotributo", "Responsable Inscripto")
   CONDICION_FISCAL: '[CONDICIÓN FISCAL]',
-  // Plazo estimado de entrega (ej: "5 a 8 días hábiles")
-  PLAZO_ENTREGA: '[PLAZO DE ENTREGA]',
+  // Plazo estimado de entrega desde la confirmación del pago (también se usa en /envios)
+  PLAZO_ENTREGA: '6 a 7 días hábiles',
   // Herramientas de analíticas usadas (ej: "Vercel Analytics, que no usa cookies")
   ANALITICAS: '[ANALÍTICAS]',
   // Fecha de publicación de los textos (ej: "15 de octubre de 2026")
