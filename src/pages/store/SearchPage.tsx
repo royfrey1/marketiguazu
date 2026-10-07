@@ -6,6 +6,7 @@ import { useCatalog, useBrands } from '../../hooks/useProducts'
 import { categoriesService, type Category } from '../../services/categories.service'
 import type { SortOption } from '../../services/products.service'
 import ProductCard from '../../components/home/ProductCard'
+import { ProductGrid, ProductGridSkeleton } from '../../components/store/ProductGrid'
 import { getCategoryIcon } from '../../lib/categoryIcons'
 
 export default function Busqueda() {
@@ -466,11 +467,7 @@ export default function Busqueda() {
 
             {/* Product grid */}
             {loading && productos.length === 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-                {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
-                  <div key={n} className="bg-gray-100 h-72 rounded-xl animate-pulse" />
-                ))}
-              </div>
+              <ProductGridSkeleton variant="withSidebar" count={6} />
             ) : error ? (
               <div className="text-center py-20">
                 <p className="text-body text-lg">{error}</p>
@@ -491,7 +488,7 @@ export default function Busqueda() {
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                <ProductGrid variant="withSidebar">
                   {productos.map((prod) => (
                     <motion.div
                       key={prod.id}
@@ -503,7 +500,7 @@ export default function Busqueda() {
                       <ProductCard product={prod} />
                     </motion.div>
                   ))}
-                </div>
+                </ProductGrid>
 
                 {totalPages > 1 && (
                   <div className="flex items-center justify-center gap-2 mt-10">

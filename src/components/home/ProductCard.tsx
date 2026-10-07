@@ -50,7 +50,7 @@ export default function ProductCard({ product, badge, badgeColor = 'bg-accent' }
     <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.2 }} className="h-full flex flex-col">
       <Link
         to={`/producto/${product.slug}`}
-        className="card h-full flex flex-col relative flex-1"
+        className="card group h-full flex flex-col relative flex-1"
       >
         <ProductFavorite productId={product.id} />
 
@@ -60,12 +60,14 @@ export default function ProductCard({ product, badge, badgeColor = 'bg-accent' }
           </span>
         )}
 
-        <div className="h-48 sm:h-52 bg-primary-light/10 overflow-hidden relative shrink-0">
+        {/* Imagen cuadrada y entera (object-contain), con poco aire; el zoom del hover queda contenido por overflow-hidden */}
+        <div className="aspect-square bg-white p-2 sm:p-3 overflow-hidden relative shrink-0">
           {imageUrl ? (
             <img
               src={imageUrl}
               alt={product.titulo}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              loading="lazy"
+              className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
@@ -83,9 +85,9 @@ export default function ProductCard({ product, badge, badgeColor = 'bg-accent' }
           )}
         </div>
 
-        <div className="p-4 flex flex-col flex-1">
+        <div className="p-3 sm:p-4 flex flex-col flex-1">
           {product.categories && (
-            <p className="text-category mb-1.5">
+            <p className="text-category mb-1.5 line-clamp-1">
               {product.categories.nombre}
             </p>
           )}
@@ -110,7 +112,7 @@ export default function ProductCard({ product, badge, badgeColor = 'bg-accent' }
         </div>
       </Link>
 
-      <div className="px-4 pb-4">
+      <div className="px-3 pb-3 sm:px-4 sm:pb-4">
         <button
           onClick={handleAddToCart}
           disabled={isDisabled || isLoading}
@@ -122,7 +124,12 @@ export default function ProductCard({ product, badge, badgeColor = 'bg-accent' }
           ) : (
             <ShoppingCart className="w-4 h-4" />
           )}
-          {outOfStock ? 'Sin stock' : !product.activo ? 'Agotado' : adding ? 'Agregando...' : 'Agregar al carrito'}
+          {outOfStock ? 'Sin stock' : !product.activo ? 'Agotado' : adding ? 'Agregando...' : (
+            <>
+              <span className="sm:hidden">Agregar</span>
+              <span className="hidden sm:inline">Agregar al carrito</span>
+            </>
+          )}
         </button>
       </div>
     </motion.div>

@@ -6,6 +6,7 @@ import { categoriesService, buildChildrenMap, collectSubtreeIds, type Category }
 import { useCatalog, useBrands } from '../../hooks/useProducts'
 import type { SortOption } from '../../services/products.service'
 import ProductCard from '../../components/home/ProductCard'
+import { ProductGrid, ProductGridSkeleton } from '../../components/store/ProductGrid'
 import { getCategoryIcon } from '../../lib/categoryIcons'
 
 export default function CategoryPage() {
@@ -189,11 +190,7 @@ export default function CategoryPage() {
             <span>/</span>
             <span className="breadcrumb-current">Categorías</span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
-              <div key={n} className="bg-gray-100 h-72 rounded-xl animate-pulse" />
-            ))}
-          </div>
+          <ProductGridSkeleton variant="full" count={8} />
         </div>
       </div>
     )
@@ -457,11 +454,7 @@ export default function CategoryPage() {
 
             {/* Product grid */}
             {loading && productos.length === 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {[1, 2, 3, 4, 5, 6].map(n => (
-                  <div key={n} className="bg-gray-100 h-72 rounded-xl animate-pulse" />
-                ))}
-              </div>
+              <ProductGridSkeleton variant="withSidebar" count={6} />
             ) : error ? (
               <div className="text-center py-20">
                 <p className="text-body text-lg">{error}</p>
@@ -482,7 +475,7 @@ export default function CategoryPage() {
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                <ProductGrid variant="withSidebar">
                   {productos.map((prod) => (
                     <motion.div
                       key={prod.id}
@@ -494,7 +487,7 @@ export default function CategoryPage() {
                       <ProductCard product={prod} />
                     </motion.div>
                   ))}
-                </div>
+                </ProductGrid>
 
                 {totalPages > 1 && (
                   <div className="flex items-center justify-center gap-2 mt-10">

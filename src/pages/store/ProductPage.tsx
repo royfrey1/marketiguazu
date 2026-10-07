@@ -9,6 +9,7 @@ import { productVariantsService, type VariantWithInventory } from '../../service
 import { productSpecificationsService, type ProductSpecificationRow } from '../../services/productSpecifications.service'
 import useCart from '../../hooks/useCart'
 import ProductCard from '../../components/home/ProductCard'
+import { ProductGrid } from '../../components/store/ProductGrid'
 import ProductImageViewer, { type ProductViewerImage } from '../../components/product/ProductImageViewer'
 import VariantDropdown from '../../components/product/VariantDropdown'
 import { PAYMENT_METHODS } from '../../components/store/paymentMethods'
@@ -829,7 +830,7 @@ export default function DetalleProducto() {
             className="mt-16 sm:mt-20"
           >
             <h2 className="text-h2 text-2xl sm:text-3xl mb-8">Productos relacionados</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            <ProductGrid variant="full">
               {related.map((prod) => (
                 <motion.div
                   key={prod.id}
@@ -841,7 +842,7 @@ export default function DetalleProducto() {
                   <ProductCard product={prod} />
                 </motion.div>
               ))}
-            </div>
+            </ProductGrid>
           </motion.section>
         )}
       </div>

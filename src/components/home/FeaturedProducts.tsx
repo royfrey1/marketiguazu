@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { ArrowRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import ProductCard from './ProductCard'
+import { ProductGrid, ProductGridSkeleton } from '../store/ProductGrid'
 import SectionHeader from '../ui/SectionHeader'
 import type { ProductWithPrimaryImage } from '../../services/products.service'
 
@@ -36,17 +37,13 @@ export default function FeaturedProducts({ products, loading }: FeaturedProducts
         </motion.div>
 
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            {[1, 2, 3, 4].map(n => (
-              <div key={n} className="bg-gray-100 h-72 rounded-xl animate-pulse" />
-            ))}
-          </div>
+          <ProductGridSkeleton variant="full" count={4} />
         ) : products.length === 0 ? (
           <p className="text-gray-400 text-sm text-center py-12">
             No hay productos destacados en este momento.
           </p>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          <ProductGrid variant="full">
             {products.map((prod, i) => (
               <motion.div
                 key={prod.id}
@@ -58,7 +55,7 @@ export default function FeaturedProducts({ products, loading }: FeaturedProducts
                 <ProductCard product={prod} />
               </motion.div>
             ))}
-          </div>
+          </ProductGrid>
         )}
       </div>
     </section>
