@@ -114,24 +114,29 @@ function DesktopSwitch({
         </div>
       </motion.div>
 
-      {/* ── White form panel (z-20, always on top for interactivity) ── */}
+      {/* ── White form panel (z-20, always on top for interactivity) ──
+          Scroll propio: si el formulario no entra en el alto de la ventana se scrollea
+          en vez de recortarse. El centrado vertical va en el wrapper interno (min-h-full),
+          no en el panel con overflow, para no cortar el principio del contenido. */}
       <motion.div
-        className="absolute top-0 left-1/2 w-1/2 h-full bg-white z-20 flex items-center justify-center px-16 xl:px-20"
+        className="absolute top-0 left-1/2 w-1/2 h-full bg-white z-20 overflow-y-auto px-16 xl:px-20"
         animate={{ x: isLogin ? '0%' : '-100%', opacity: isLogin ? 0.95 : 1 }}
         transition={{ duration: panelDuration, ease: panelEase }}
       >
-        <div className="w-full max-w-md">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={pathname}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              transition={{ duration: contentCrossfade }}
-            >
-              {children}
-            </motion.div>
-          </AnimatePresence>
+        <div className="min-h-full flex items-center justify-center py-8">
+          <div className="w-full max-w-md">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={pathname}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={{ duration: contentCrossfade }}
+              >
+                {children}
+              </motion.div>
+            </AnimatePresence>
+          </div>
         </div>
       </motion.div>
     </div>

@@ -80,7 +80,7 @@ export default function Register() {
 
   return (
     <>
-      <div className="mb-6 lg:mb-8">
+      <div className="mb-5 lg:mb-6">
         <h2 className="text-h2 text-2xl sm:text-3xl text-primary-dark">
           Crear cuenta
         </h2>
@@ -90,7 +90,7 @@ export default function Register() {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-2.5 rounded-xl mb-4">
+        <div role="alert" className="bg-red-50 border border-red-200 text-red-600 text-xs px-3 py-2 rounded-lg mb-3">
           {error}
         </div>
       )}
@@ -105,7 +105,7 @@ export default function Register() {
             minLength={3}
             onChange={handleChange}
             required
-            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-gray-900 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors"
             placeholder="Tu nombre"
           />
         </div>
@@ -118,7 +118,7 @@ export default function Register() {
             value={form.email}
             onChange={handleChange}
             required
-            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-gray-900 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors"
             placeholder="tu@email.com"
           />
         </div>
@@ -132,7 +132,7 @@ export default function Register() {
             onChange={handleChange}
             required
             minLength={6}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-gray-900 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors"
             placeholder="Mínimo 6 caracteres"
           />
         </div>
@@ -146,7 +146,7 @@ export default function Register() {
             onChange={handleChange}
             required
             minLength={6}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-gray-900 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors"
             placeholder="Repetí tu contraseña"
           />
         </div>
@@ -159,7 +159,7 @@ export default function Register() {
             value={form.telefono}
             onChange={handleChange}
             pattern="[0-9]{10,15}"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-gray-900 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors"
             placeholder="+54 3757 000000"
           />
         </div>
@@ -176,13 +176,13 @@ export default function Register() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-primary hover:bg-primary-dark disabled:opacity-50 text-white font-bold py-2.5 rounded-lg transition-colors mt-1 cursor-pointer disabled:cursor-not-allowed"
+          className="w-full bg-primary hover:bg-primary-dark disabled:opacity-50 text-white font-bold py-2.5 rounded-lg transition-colors cursor-pointer disabled:cursor-not-allowed"
         >
           {loading ? 'Creando cuenta...' : 'Registrarse'}
         </button>
       </form>
 
-      <div className="mt-6 pt-5 border-t border-gray-100 text-center">
+      <div className="mt-5 pt-4 border-t border-gray-100 text-center">
         <p className="text-sm text-gray-500">
           ¿Ya tenés cuenta?{' '}
           <Link to="/login" className="text-accent hover:text-accent/80 font-bold transition-colors inline-flex items-center gap-1">
