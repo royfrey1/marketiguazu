@@ -382,29 +382,33 @@ function CheckoutContent() {
           <CheckoutReview onEditAddress={handleEditAddress} />
 
           {/* Payment method */}
-          <fieldset className="mt-6 sm:mt-8">
+          {/* lang="es": el guionado de xl (fila de 3) usa reglas de español */}
+          <fieldset className="mt-6 sm:mt-8" lang="es">
             <legend className="text-sm font-bold text-primary-dark mb-3">Medio de pago</legend>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
               {PAYMENT_METHOD_OPTIONS.map(option => {
                 const selected = paymentMethod === option.value
                 return (
                   <label
                     key={option.value}
-                    className={`flex items-center gap-3 rounded-xl border p-3 sm:p-4 cursor-pointer transition-colors sm:last:odd:col-span-2 ${
+                    className={`flex items-center gap-3 rounded-xl border p-3 sm:p-4 cursor-pointer transition-colors sm:max-xl:last:odd:col-span-2 xl:flex-col xl:items-start xl:gap-2 ${
                       selected ? 'border-accent bg-accent/5' : 'border-gray-200 hover:border-gray-300'
                     } ${isPaying ? 'opacity-60 cursor-not-allowed' : ''}`}
                   >
-                    <input
-                      type="radio"
-                      name="payment-method"
-                      value={option.value}
-                      checked={selected}
-                      onChange={() => setPaymentMethod(option.value)}
-                      disabled={isPaying}
-                      className="accent-accent w-4 h-4 shrink-0"
-                    />
-                    <option.icon className={`w-5 h-5 shrink-0 ${selected ? 'text-accent' : 'text-gray-400'}`} aria-hidden="true" />
-                    <span className="min-w-0">
+                    {/* Desde xl el radio y el ícono van arriba y el texto usa todo el ancho de la tarjeta */}
+                    <span className="contents xl:flex xl:items-center xl:gap-3">
+                      <input
+                        type="radio"
+                        name="payment-method"
+                        value={option.value}
+                        checked={selected}
+                        onChange={() => setPaymentMethod(option.value)}
+                        disabled={isPaying}
+                        className="accent-accent w-4 h-4 shrink-0"
+                      />
+                      <option.icon className={`w-5 h-5 shrink-0 ${selected ? 'text-accent' : 'text-gray-400'}`} aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0 xl:hyphens-auto">
                       <span className="block text-sm font-semibold text-primary-dark">{option.label}</span>
                       <span className="block text-xs text-gray-400">{option.hint}</span>
                     </span>
