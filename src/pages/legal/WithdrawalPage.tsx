@@ -10,6 +10,7 @@ import { withdrawalService } from '../../services/withdrawal.service'
 import type { WithdrawalError, WithdrawalReceipt, WithdrawalRequestPayload } from '../../types/withdrawal'
 import { whatsappUrl } from '../../lib/whatsapp'
 import { LEGAL } from '../../config/legal'
+import Seo from '../../components/seo/Seo'
 
 const MOTIVO_MAX = 500
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -450,6 +451,11 @@ export default function WithdrawalPage() {
 
   return (
     <div className="min-h-screen bg-white">
+      <Seo
+        title="Botón de arrepentimiento"
+        description="Solicitá el arrepentimiento de tu compra con tu número de pedido y recibí un número de solicitud como constancia."
+        canonicalPath="/arrepentimiento"
+      />
       <div className="store-container py-8 sm:py-10">
         <nav className="breadcrumb">
           <Link to="/" className="breadcrumb-link">Inicio</Link>

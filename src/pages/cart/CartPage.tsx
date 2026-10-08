@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import Seo from '../../components/seo/Seo'
 import { motion } from 'framer-motion'
 import { ShoppingCart, AlertTriangle } from 'lucide-react'
 import useCart from '../../hooks/useCart'
@@ -7,7 +8,7 @@ import CartSummary from '../../components/cart/CartSummary'
 import CartEmpty from '../../components/cart/CartEmpty'
 import CartLoading from '../../components/cart/CartLoading'
 
-export default function CartPage() {
+function CartPageContent() {
   const { items, itemCount, loading, error, syncPending, unavailableItems, availabilityChecked } = useCart()
 
   if (loading || syncPending) {
@@ -116,5 +117,15 @@ export default function CartPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+// noindex en todos los estados (cargando, error, vacío), no solo en el render principal
+export default function CartPage() {
+  return (
+    <>
+      <Seo noindex title="Carrito de compras" />
+      <CartPageContent />
+    </>
   )
 }

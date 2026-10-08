@@ -8,6 +8,7 @@ import type { SortOption } from '../../services/products.service'
 import ProductCard from '../../components/home/ProductCard'
 import { ProductGrid, ProductGridSkeleton } from '../../components/store/ProductGrid'
 import { getCategoryIcon } from '../../lib/categoryIcons'
+import Seo from '../../components/seo/Seo'
 
 export default function CategoryPage() {
   const { slug } = useParams<{ slug: string }>()
@@ -199,6 +200,7 @@ export default function CategoryPage() {
   if (errorCat || !categoria) {
     return (
       <div className="min-h-screen bg-white">
+        <Seo noindex title="Categoría no encontrada" />
         <div className="store-container py-8 sm:py-10">
           <div className="breadcrumb">
             <Link to="/" className="breadcrumb-link">Inicio</Link>
@@ -317,6 +319,11 @@ export default function CategoryPage() {
 
   return (
     <div className="min-h-screen bg-white overflow-x-hidden">
+      <Seo
+        title={categoria.nombre}
+        description={`Comprá ${categoria.nombre} con envío gratis a todo el país.`}
+        canonicalPath={`/categoria/${categoria.slug}`}
+      />
       <div className="store-container py-8 sm:py-10">
         {/* Breadcrumb */}
         <nav className="breadcrumb">

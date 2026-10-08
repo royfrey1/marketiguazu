@@ -1,4 +1,5 @@
 import { Link, useSearchParams } from 'react-router-dom'
+import Seo from '../../components/seo/Seo'
 import { motion } from 'framer-motion'
 import { XCircle, RefreshCw, ArrowRight } from 'lucide-react'
 import Button from '../../components/ui/Button'
@@ -11,6 +12,7 @@ export default function PaymentFailurePage() {
 
   return (
     <div className="bg-white min-h-screen">
+      <Seo noindex title="Pago con error" />
       <div className="store-container section-spacing">
         <nav className="breadcrumb mb-4" aria-label="Breadcrumb">
           <ol className="flex items-center gap-2 text-sm">

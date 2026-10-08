@@ -13,6 +13,8 @@ import { ProductGrid } from '../../components/store/ProductGrid'
 import ProductImageViewer, { type ProductViewerImage } from '../../components/product/ProductImageViewer'
 import VariantDropdown from '../../components/product/VariantDropdown'
 import { PAYMENT_METHODS } from '../../components/store/paymentMethods'
+import Seo from '../../components/seo/Seo'
+import { SITE_URL } from '../../config/site'
 
 const MAX_VISIBLE_THUMBS = 5
 const SIN_IMAGENES: ProductImage[] = []
@@ -382,6 +384,7 @@ export default function DetalleProducto() {
   if (!producto) {
     return (
       <div className="min-h-screen bg-white">
+        <Seo noindex title="Producto no encontrado" />
         <div className="store-container py-8 sm:py-10">
           <nav className="breadcrumb">
             <Link to="/" className="breadcrumb-link">Inicio</Link>
@@ -403,10 +406,53 @@ export default function DetalleProducto() {
 
   const categorySlug = (producto as ProductWithPrimaryImage & { categories?: { slug?: string | null } }).categories?.slug
 
+  const cleanDesc = producto.descripcion?.replace(/\s+/g, ' ').trim()
+  const seoDescription = cleanDesc
+    ? cleanDesc.length > 155
+      ? `${cleanDesc.slice(0, 152).trimEnd()}...`
+      : cleanDesc
+    : `${producto.titulo}${producto.categories ? ` en ${producto.categories.nombre}` : ''}. Comprá con envío gratis a todo el país.`
+  const orderedImages = (producto.product_images ?? [])
+    .slice()
+    .sort(
+      (a, b) => (b.es_principal ? 1 : 0) - (a.es_principal ? 1 : 0) || a.sort_order - b.sort_order
+    )
+  const absUrl = (u: string) => (/^https?:\/\//.test(u) ? u : `${SITE_URL}${u.startsWith('/') ? u : `/${u}`}`)
+  const seoImage = orderedImages[0]?.url || producto.imagen_url || undefined
+  const productJsonLd =
+    producto.precio != null
+      ? {
+          '@context': 'https://schema.org',
+          '@type': 'Product',
+          name: producto.titulo,
+          ...(orderedImages.length ? { image: orderedImages.map(img => absUrl(img.url)) } : {}),
+          description: seoDescription,
+          ...(producto.marca ? { brand: { '@type': 'Brand', name: producto.marca } } : {}),
+          offers: {
+            '@type': 'Offer',
+            price: Number(producto.precio.toFixed(2)),
+            priceCurrency: 'ARS',
+            availability:
+              (producto.available ?? 0) > 0
+                ? 'https://schema.org/InStock'
+                : 'https://schema.org/OutOfStock',
+            url: `${SITE_URL}/producto/${producto.slug}`,
+          },
+        }
+      : undefined
+
   const showVariantSelector = hasVariants && !variantesLoading && !variantesError && attributeGroups.length > 0
 
   return (
     <div className="min-h-screen bg-white">
+      <Seo
+        title={producto.titulo}
+        description={seoDescription}
+        canonicalPath={`/producto/${producto.slug}`}
+        image={seoImage}
+        type="product"
+        jsonLd={productJsonLd}
+      />
       <div className="store-container py-8 sm:py-10">
         {/* Breadcrumb */}
         <nav className="breadcrumb">

@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import Seo from '../../components/seo/Seo'
 import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { CreditCard, AlertTriangle, ArrowLeft, Truck, Coins, Landmark } from 'lucide-react'
@@ -457,8 +458,10 @@ function CheckoutContent() {
 }
 
 export default function CheckoutPage() {
+  // noindex en todos los estados (cargando, error, vacío), no solo en el render principal
   return (
     <CheckoutProvider>
+      <Seo noindex title="Finalizar compra" />
       <CheckoutContent />
     </CheckoutProvider>
   )

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Mail, MapPin, Truck, Copy, Check, Flag, RotateCcw, ShieldCheck, ArrowRight, Info } from 'lucide-react'
 import { LEGAL } from '../../config/legal'
 import { whatsappUrl } from '../../lib/whatsapp'
+import Seo from '../../components/seo/Seo'
 
 // Mismo ícono que el botón flotante de WhatsApp (StorefrontFloatingActions)
 function WhatsAppIcon({ className = 'w-5 h-5' }: { className?: string }) {
@@ -48,6 +49,11 @@ export default function ContactPage() {
 
   return (
     <div className="min-h-screen bg-white">
+      <Seo
+        title="Contacto"
+        description="Escribinos y te ayudamos con tu compra: consultas sobre productos, pedidos y pagos."
+        canonicalPath="/contacto"
+      />
       <div className="store-container py-8 sm:py-10">
         <nav className="breadcrumb">
           <Link to="/" className="breadcrumb-link">Inicio</Link>

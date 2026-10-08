@@ -2,6 +2,7 @@ import { useEffect, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '../../components/ui/accordion'
 import { LEGAL } from '../../config/legal'
+import Seo from '../../components/seo/Seo'
 
 interface FaqItem {
   id: string
@@ -102,6 +103,11 @@ export default function FaqPage() {
 
   return (
     <div className="min-h-screen bg-white">
+      <Seo
+        title="Preguntas frecuentes"
+        description="Dudas sobre pagos, plazos, estado de los productos, garantía, arrepentimiento y contacto."
+        canonicalPath="/preguntas-frecuentes"
+      />
       <div className="store-container py-8 sm:py-10">
         <nav className="breadcrumb">
           <Link to="/" className="breadcrumb-link">Inicio</Link>

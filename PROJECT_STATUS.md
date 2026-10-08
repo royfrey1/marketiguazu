@@ -1,6 +1,6 @@
 # Iguazú Marketplace — Estado del Proyecto
 
-**Última actualización:** 2026-10-07
+**Última actualización:** 2026-10-08
 **Fuente:** QA manual del usuario + auditoría de opencode con verificación en vivo (repo, BD remota y Supabase CLI) el 2026-10-07
 
 > Este documento es la fuente de verdad de en qué fase estamos. Actualizarlo después de cada sesión de trabajo relevante (no hace falta después de cada micro-tarea).
@@ -36,6 +36,7 @@ Estamos en la **recta final previa al lanzamiento**: QA de producción, requisit
 - **2026-10-07** — **Frontend de transferencia y tanda informativa:** tercer método "Transferencia bancaria" en el checkout con página `/pago/transferencia`, etiqueta de transferencia en Mis pedidos y en el admin; Términos 1.6.3 y ajustes en 1.4/1.6/1.7/1.8 y devoluciones 3.2/3.5; páginas informativas nuevas Nosotros, Preguntas frecuentes, Envíos, Medios de pago y Contacto; TopBar mobile; envío gratis a todo el país en todos los productos; plazo de entrega de 6 a 7 días hábiles.
 - **2026-10-07** — **QA manual de punta a punta del pago por transferencia en producción (hecho por el dueño):** creación del pedido, reserva de stock, confirmación manual desde el admin y baja de stock; sin errores funcionales detectados en el flujo. Queda anotado como pendiente, a resolver por el dueño, la limpieza de los datos de ese QA manual (pedidos de prueba y ajuste de stock).
 - **2026-10-07** — **Ajustes visuales del checkout y de las páginas de pago:** selector de medios de pago en fila de 3 desde 1280 px (xl); `/pago/transferencia` solo permite copiar el alias y el CBU (titular y banco son texto fijo); `/pago/transferencia` y `/pago/usdt` en 2 columnas desde 1024 px (lg).
+- **2026-10-08** — **SEO base (fase 1):** `<html lang="es">`, meta description y Open Graph/Twitter por defecto en `index.html` (con `noscript`), favicon liviano y `apple-touch-icon`, `public/og-default.png` (1200×630 con el logo sobre el color de marca) y `public/robots.txt` (con `Disallow` de rutas privadas, sin línea `Sitemap` todavía). Componente `Seo` propio sin dependencias (`src/components/seo/Seo.tsx`): título, descripción, canonical, og/twitter, robots y JSON-LD por página, con restauración de los valores por defecto al salir de la ruta. JSON-LD Organization + WebSite (con SearchAction a `/busqueda?q=`) en la Home y Product en la ficha (precio numérico en ARS y disponibilidad según stock real; sin `itemCondition`, sin ratings y sin `sku` porque la tabla `products` no tiene ese campo). `noindex` en carrito, checkout, cuenta, pagos, auth, admin, report, búsqueda (`noindex,follow`) y 404. La URL base vive en una única constante: `SITE_URL` en `src/config/site.ts` — cambiarla al conseguir dominio propio, junto con `robots.txt`, `sitemap.xml`, CORS y `SITE_URL` de Supabase.
 - **Commits recientes (todos pusheado al cerrar esta sesión):** `8fc4a5c`, `b8dc73a`, `6f52bc6`, `a39767a`, `d1ba6cc`, `2a5fbb7`, `fbd7cff`, `739706e`, `4f63f32`, `a039a94`, `6fe9152`, `c5ddfc4`, `f16ace3`, `04be7bb`, `925f9b6`, `00b9ab7`, `ccaa8c3`.
 
 ---
@@ -66,7 +67,7 @@ Estamos en la **recta final previa al lanzamiento**: QA de producción, requisit
 | 9 — Envíos | 🔶 Parcial | Proveedores manuales + cotizador Correo Argentino; `create-quote` existe en el repo pero **no está desplegada** y hoy nada la invoca desde el frontend (ver Deuda técnica) |
 | 10 — Admin | 🔶 Parcial | Falta módulo **Clientes** (sin verificar) |
 | 11 — Seguridad/QA | 🔶 Parcial | RLS cerrado y verificado en vivo; QA manual de los flujos principales hecho; seguridad del repo auditada (2026-10-06); queda el checklist de casos extremos (stock 0, pago duplicado, compras simultáneas) (sin verificar) |
-| 12 — SEO/Performance | 🔶 Parcial | Verificado 2026-10-05: sigue `lang="en"` en `index.html`, sin meta description/OG, sin `robots.txt` ni `sitemap.xml` |
+| 12 — SEO/Performance | 🔶 Parcial | **Fase 1 hecha (2026-10-08):** `lang="es"`, meta description/OG/Twitter por defecto, `robots.txt`, metadatos y JSON-LD por página, `noindex` en rutas privadas. Quedan `sitemap.xml` (fase 2), la vista previa Open Graph de producto en WhatsApp/Facebook y performance |
 | 13 — Lanzamiento | ⬜ No iniciada | Dependiente de los bloqueadores de arriba |
 
 **Edge Functions desplegadas** (verificadas con `supabase functions list` el 2026-10-07): `create-payment` (v33), `mp-webhook` (v24), `admin-verify-payment` (v15), `create-payment-usdt` (v17), `create-payment-transfer` (v1), `send-order-email` (v15), `request-withdrawal` (v6) — todas ACTIVE. `create-quote` solo existe en el repo (no desplegada).
@@ -91,14 +92,14 @@ La lista completa vive en **🚨 Bloqueadores críticos** (única fuente de verd
 - `npx tsc -b` tiene 52 errores preexistentes (verificado 2026-10-06; el build de Vite compila bien); lint en 67 problemas (58 errores, 9 warnings) como línea base.
 - `sort_order=0` cosmético en galerías; la galería se comparte entre variantes de distinta capacidad.
 - Chunk de build >500 kB, sin script `typecheck`, sin tests, `tailwind.config.js` duplicado.
-- SEO pendiente (Fase 12): `lang="en"` en `index.html`, sin meta description/OG, sin `robots.txt` ni `sitemap.xml`.
-- Hardcodeos vigentes (verificado 2026-10-05): `'DEMO-SKU-001'` como fallback de SKU en `ProductPage.tsx` y link a portfolio personal en `Footer.tsx`.
+- ~~SEO pendiente (Fase 12): `lang="en"` en `index.html`, sin meta description/OG, sin `robots.txt`~~ — **fase 1 hecha** (2026-10-08): queda `sitemap.xml` y el resto de la fase 2.
+- Hardcodeos vigentes (verificado 2026-10-05): SKU inventado en la ficha de producto — `ProductPage.tsx` (~línea 587) arma un SKU desde el slug y usa `'DEMO-SKU-001'` como último recurso (la tabla `products` no tiene campo SKU): corregir antes del lanzamiento; y link a portfolio personal en `Footer.tsx`.
 - `create-quote`: **no se usa actualmente desde el frontend** — solo la referencia `src/services/shipping.service.ts`, cuya función `fetchShippingQuote` no es llamada por ningún componente; decidir si se despliega o se elimina.
 - Fixtures QA (productos 1007/1008): el inventario 31 (producto 1008) tiene movimientos de fixtures del 16/09 y un ajuste manual sin referencia, así que muestra una discrepancia contra el libro de movimientos; se resuelve al borrar/ocultar los productos QA antes del lanzamiento.
 - ~~QA de punta a punta de la transferencia con la cuenta QA **después** del deploy del frontend~~ — **hecho** (ver "Hechos confirmados por QA manual", 2026-10-07, transferencia punta a punta en producción).
 - Limpieza de los datos del QA manual de transferencia (pedidos de prueba y ajuste de stock): a resolver por el dueño.
 - Warning de React preexistente en `src/pages/checkout/CheckoutStepEnvio.tsx:165` (`onComplete` llamado durante el render).
-- `index.html` sigue con `lang="en"`: resolver en la tarea de SEO (Fase 12).
+- `index.html` ~~sigue con `lang="en"`~~ — **resuelto** (2026-10-08): ahora es `lang="es"` con metadatos por defecto (SEO fase 1).
 - `PaymentOrderSummary` tiene `max-w-md` fijo, anulado desde el wrapper.
 - Desborde estético de ~10 px de una palabra en el selector de medios de pago a 1024 px.
 - Mejora futura: botón "Cancelar este pedido" en las páginas de pago para que el cliente libere un pedido manual pendiente (hoy un cliente con un pago manual pendiente no puede iniciar otra compra hasta que se pague o se cancele, hasta 25 h).
@@ -106,6 +107,11 @@ La lista completa vive en **🚨 Bloqueadores críticos** (única fuente de verd
 - `src/pages/checkout/CheckoutContext.tsx:75`: el comentario dice "ambos métodos" y ya son tres.
 - `PaymentUsdtPage` promete confirmar el pago por WhatsApp o email; la confirmación real llega por email (o a mano desde el admin).
 - Automatizar la reposición de stock al cancelar pedidos con pago aprobado (hoy es manual, con aviso en el admin).
+- SEO fase 2: `sitemap.xml` dinámico con productos y categorías (función de Vercel); vista previa Open Graph por producto para WhatsApp/Facebook (no ejecutan JavaScript); soft 404 por el rewrite global de `vercel.json`.
+- `public/og-default.png` es provisoria: reemplazar por una imagen diseñada.
+- `ProductPage.tsx` muestra un SKU inventado (armado desde el slug, con `'DEMO-SKU-001'` de último recurso): unificado en la entrada de "Hardcodeos vigentes", corregir antes del lanzamiento.
+- `ProtectedRoute` muestra su pantalla de carga sin `Seo` mientras resuelve la sesión (sin impacto: redirige a `/login`, que tiene `noindex`).
+- `public/favicon.svg` y `public/icons.svg` son restos de la plantilla de Vite sin uso: revisar y borrar luego.
 
 ---
 
@@ -120,6 +126,8 @@ La lista completa vive en **🚨 Bloqueadores críticos** (única fuente de verd
 ---
 
 ## 🗂️ Historial de sesiones
+
+- **2026-10-08** — **SEO base (fase 1) commiteado:** componente `Seo` sin dependencias (title, description, canonical, og/twitter, robots y JSON-LD por página, con restauración de defaults al salir), `index.html` con `lang="es"`, metadatos por defecto, noscript y favicon/`apple-touch-icon` livianos, `robots.txt` con `Disallow` de rutas privadas, `og-default.png` 1200×630, JSON-LD Organization + WebSite en Home y Product en la ficha, `noindex` en páginas privadas, de pago, auth, admin, búsqueda (follow) y 404, y URL base única en `src/config/site.ts`. `PROJECT_STATUS.md` actualizado (lang=en resuelto, deuda nueva de fase 2). Verificado contra la línea base (`tsc -b` 52, lint 67, build OK) y escaneo de secretos sin matches.
 
 - **2026-10-07 (noche)** — Commit de los ajustes visuales del checkout y de las páginas de pago: selector de medios de pago en fila de 3 desde xl, `/pago/transferencia` copiando solo alias y CBU (titular y banco como texto fijo), `/pago/transferencia` y `/pago/usdt` en 2 columnas desde lg; `PROJECT_STATUS.md` actualizado con el QA de punta a punta de transferencia del dueño (hecho; su limpieza de datos queda como pendiente) y deuda técnica nueva (warning de React en `CheckoutStepEnvio`, `max-w-md` de `PaymentOrderSummary`, desborde del selector a 1024 px, `lang="en"` para la tarea de SEO, botón de cancelación en páginas de pago y la limpieza del QA). Verificado contra la línea base (`tsc -b` 52, lint 67, build OK, escaneo de secretos sin matches).
 - **2026-10-07 (tarde)** — Tanda de transferencia + frontend: `create-payment-transfer` desplegada (v1) y `create-payment`/`create-payment-usdt` redeployadas con el guard `PENDING_TRANSFER_ORDER` (v33/v17); QA completo de la función con la cuenta QA (401 gateway, 200 con payment `transfer`, 409 en los tres métodos, stock restaurado exacto y datos de prueba sin huérfanos); reconciliación de versiones (el código desplegado coincidía 100% con el repo). Frontend sin commitear hasta ahora: tercer método de pago con `/pago/transferencia`, páginas Nosotros/Preguntas frecuentes/Envíos/Medios de pago/Contacto, TopBar mobile, envío gratis y plazo de entrega 6-7 días hábiles, Términos 1.6.3 y devoluciones 3.2/3.5. Verificado contra la línea base (build Vite, `tsc -b` 52, lint 67, `deno check` OK) y escaneo de secretos sin matches.

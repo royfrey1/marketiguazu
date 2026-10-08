@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import Seo from '../../components/seo/Seo'
 import { motion } from 'framer-motion'
 import { ShoppingBag, AlertTriangle, RefreshCw } from 'lucide-react'
 import { useOrders } from '../../hooks/useOrders'
@@ -6,7 +7,7 @@ import OrderCard from '../../components/account/OrderCard'
 import Button from '../../components/ui/Button'
 import Skeleton from '../../components/ui/Skeleton'
 
-export default function OrdersPage() {
+function OrdersPageContent() {
   const { data: orders, loading, error, refetch } = useOrders()
 
   if (loading) {
@@ -110,5 +111,15 @@ export default function OrdersPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+// noindex en todos los estados (cargando, error, vacío), no solo en el render principal
+export default function OrdersPage() {
+  return (
+    <>
+      <Seo noindex title="Mis pedidos" />
+      <OrdersPageContent />
+    </>
   )
 }

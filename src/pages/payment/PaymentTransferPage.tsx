@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import Seo from '../../components/seo/Seo'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Landmark, ShoppingBag, CheckCircle, Clock, MessageCircle, AlertTriangle, Info } from 'lucide-react'
@@ -82,6 +83,7 @@ export default function PaymentTransferPage() {
 
   return (
     <div className="bg-white min-h-screen">
+      <Seo noindex title="Pago por transferencia" />
       <div className={`store-container section-spacing ${twoColumns ? 'lg:py-6' : ''}`}>
         <nav className="breadcrumb mb-4" aria-label="Breadcrumb">
           <ol className="flex items-center gap-2 text-sm">

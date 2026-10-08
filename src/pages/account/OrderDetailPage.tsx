@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import Seo from '../../components/seo/Seo'
 import { useParams, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
@@ -157,7 +158,7 @@ function LoadingSkeleton() {
 // Main component
 // ---------------------------------------------------------------------------
 
-export default function OrderDetailPage() {
+function OrderDetailPageContent() {
   const { id } = useParams<{ id: string }>()
   const orderId = id ? Number(id) : NaN
   const isValidId = !isNaN(orderId) && orderId > 0
@@ -488,5 +489,15 @@ export default function OrderDetailPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+// noindex en todos los estados (cargando, error, vacío), no solo en el render principal
+export default function OrderDetailPage() {
+  return (
+    <>
+      <Seo noindex title="Detalle del pedido" />
+      <OrderDetailPageContent />
+    </>
   )
 }

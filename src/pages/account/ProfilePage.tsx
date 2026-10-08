@@ -1,8 +1,9 @@
 import useAuth from '../../hooks/useAuth'
+import Seo from '../../components/seo/Seo'
 import CustomerProfile from '../../components/account/CustomerProfile'
 import AdminProfile from '../../components/account/AdminProfile'
 
-export default function ProfilePage() {
+function ProfilePageContent() {
   const { profile, loading } = useAuth()
 
   if (loading) {
@@ -27,5 +28,15 @@ export default function ProfilePage() {
         </div>
       </div>
     </div>
+  )
+}
+
+// noindex en todos los estados (cargando, error, vacío), no solo en el render principal
+export default function ProfilePage() {
+  return (
+    <>
+      <Seo noindex title="Mi perfil" />
+      <ProfilePageContent />
+    </>
   )
 }

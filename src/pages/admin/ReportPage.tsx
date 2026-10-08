@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import Seo from '../../components/seo/Seo'
 import { useNavigate, Link } from 'react-router-dom'
 import { AlertTriangle, Bug, Paintbrush, Lightbulb, HelpCircle, Send, ArrowLeft, CheckCircle2, Shield } from 'lucide-react'
 import useAuth from '../../hooks/useAuth'
@@ -21,7 +22,7 @@ const TIPOS_ERROR = [
   { value: 'otro', label: 'Otro motivo', icon: HelpCircle, desc: 'Otro tipo de problema' },
 ]
 
-export default function ReportarProblema() {
+function ReportarProblemaContent() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [enviando, setEnviando] = useState(false)
@@ -322,5 +323,15 @@ export default function ReportarProblema() {
         </form>
       </div>
     </div>
+  )
+}
+
+// noindex en todos los estados (cargando, error, vacío), no solo en el render principal
+export default function ReportarProblema() {
+  return (
+    <>
+      <Seo noindex title="Reportar un problema" />
+      <ReportarProblemaContent />
+    </>
   )
 }

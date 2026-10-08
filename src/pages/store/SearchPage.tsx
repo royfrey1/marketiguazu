@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { SlidersHorizontal, X, ChevronDown, ChevronRight } from 'lucide-react'
 import { useCatalog, useBrands } from '../../hooks/useProducts'
+import Seo from '../../components/seo/Seo'
 import { categoriesService, type Category } from '../../services/categories.service'
 import type { SortOption } from '../../services/products.service'
 import ProductCard from '../../components/home/ProductCard'
@@ -355,6 +356,13 @@ export default function Busqueda() {
 
   return (
     <div className="min-h-screen bg-white overflow-x-hidden">
+      <Seo
+        title={q ? `Resultados para "${q.slice(0, 30)}"` : 'Búsqueda de productos'}
+        description="Buscá productos por nombre o marca y filtrá por categoría y precio en Iguazú Marketplace."
+        canonicalPath="/busqueda"
+        noindex
+        follow
+      />
       <div className="store-container py-8 sm:py-10">
         {/* Breadcrumb */}
         <nav className="breadcrumb">

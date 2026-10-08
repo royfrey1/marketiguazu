@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { categoriesService, type Category } from '../../services/categories.service'
 import { getCategoryIcon } from '../../lib/categoryIcons'
+import Seo from '../../components/seo/Seo'
 
 interface CategoryWithChildren extends Category {
   children: Category[]
@@ -98,6 +99,11 @@ export default function CategoryIndexPage() {
 
   return (
     <div className="min-h-screen bg-white">
+      <Seo
+        title="Categorías"
+        description="Todas las categorías de productos de la tienda, organizadas para que encuentres rápido lo que buscás."
+        canonicalPath="/categoria"
+      />
       <div className="store-container py-8 sm:py-10">
         {/* Breadcrumb */}
         <nav className="breadcrumb">

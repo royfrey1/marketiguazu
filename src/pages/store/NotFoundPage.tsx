@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom'
+import Seo from '../../components/seo/Seo'
 import { motion } from 'framer-motion'
 
 export default function NotFoundPage() {
   return (
     <div className="min-h-screen bg-white">
+      <Seo noindex title="Página no encontrada" />
       <div className="store-container py-8 sm:py-10">
         <nav className="breadcrumb">
           <Link to="/" className="breadcrumb-link">Inicio</Link>

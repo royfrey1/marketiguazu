@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, startTransition } from 'react'
+import Seo from '../components/seo/Seo'
 import { Outlet, Link, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, Package, ShoppingCart, Tag, ClipboardList,
@@ -158,6 +159,7 @@ export default function AdminLayout({ dark, onToggleTheme }: { dark: boolean; on
 
   return (
     <div className={`flex h-screen overflow-hidden transition-colors duration-200 ${dark ? 'dark bg-[#0F1A17]' : 'bg-[#F7F8FA]'}`}>
+      <Seo noindex />
 
       {/* Mobile overlay */}
       {mobileOpen && (

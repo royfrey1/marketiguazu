@@ -1,4 +1,5 @@
 import { Link, useSearchParams } from 'react-router-dom'
+import Seo from '../../components/seo/Seo'
 import { motion } from 'framer-motion'
 import { CheckCircle, ArrowRight, Home } from 'lucide-react'
 import Button from '../../components/ui/Button'
@@ -15,6 +16,7 @@ export default function PaymentSuccessPage() {
 
   return (
     <div className="bg-white min-h-screen">
+      <Seo noindex title="Pago exitoso" />
       <div className="store-container section-spacing">
         <nav className="breadcrumb mb-4" aria-label="Breadcrumb">
           <ol className="flex items-center gap-2 text-sm">

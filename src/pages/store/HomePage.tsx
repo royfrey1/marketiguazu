@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { productsService, type ProductWithPrimaryImage } from '../../services/products.service'
 import { categoriesService, type Category } from '../../services/categories.service'
+import Seo from '../../components/seo/Seo'
+import { SITE_NAME, SITE_URL } from '../../config/site'
 import HeroSection from '../../components/home/HeroSection'
 import TrustBar from '../../components/home/TrustBar'
 import PaymentMethodsTicker from '../../components/store/PaymentMethodsTicker'
@@ -92,6 +94,32 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-white">
+      <Seo
+        canonicalPath="/"
+        jsonLd={[
+          {
+            '@context': 'https://schema.org',
+            '@type': 'Organization',
+            name: SITE_NAME,
+            url: SITE_URL,
+            logo: `${SITE_URL}/apple-touch-icon.png`,
+          },
+          {
+            '@context': 'https://schema.org',
+            '@type': 'WebSite',
+            name: SITE_NAME,
+            url: SITE_URL,
+            potentialAction: {
+              '@type': 'SearchAction',
+              target: {
+                '@type': 'EntryPoint',
+                urlTemplate: `${SITE_URL}/busqueda?q={search_term_string}`,
+              },
+              'query-input': 'required name=search_term_string',
+            },
+          },
+        ]}
+      />
       <main>
         <HeroSection />
         <PaymentMethodsTicker />
