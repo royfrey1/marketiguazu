@@ -19,8 +19,8 @@ const benefits = [
   },
   {
     icon: BadgeCheck,
-    title: 'Garantía incluida',
-    desc: 'Todos nuestros productos cuentan con garantía oficial. Comprá con tranquilidad.',
+    title: 'Garantía legal',
+    desc: 'Todos nuestros productos tienen garantía legal de 6 meses desde la entrega. Comprá con tranquilidad.',
   },
 ]
 

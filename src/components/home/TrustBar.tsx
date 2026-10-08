@@ -5,7 +5,7 @@ const benefits = [
   { icon: Truck, label: 'Envíos a todo el país', desc: 'Recibí tu pedido donde estés' },
   { icon: ShieldCheck, label: 'Compra segura', desc: 'Tus datos protegidos' },
   { icon: Headphones, label: 'Atención personalizada', desc: 'Te ayudamos en cada paso' },
-  { icon: BadgeCheck, label: 'Garantía incluida', desc: 'Productos con garantía oficial' },
+  { icon: BadgeCheck, label: 'Garantía legal', desc: '6 meses de garantía legal' },
 ]
 
 export default function TrustBar() {

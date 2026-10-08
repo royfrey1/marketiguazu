@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useParams, Link, Navigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { sileo } from 'sileo'
-import { ShoppingCart, Share2, Minus, Plus, Package, ChevronLeft, ChevronRight, Star, MessageSquare, Truck } from 'lucide-react'
+import { ShoppingCart, Share2, Minus, Plus, Package, ChevronLeft, ChevronRight, Truck } from 'lucide-react'
 import { productsService, type ProductWithPrimaryImage } from '../../services/products.service'
 import { productImagesService, type ProductImage } from '../../services/productImages.service'
 import { productVariantsService, type VariantWithInventory } from '../../services/productVariants.service'
@@ -417,6 +417,9 @@ export default function DetalleProducto() {
     .sort(
       (a, b) => (b.es_principal ? 1 : 0) - (a.es_principal ? 1 : 0) || a.sort_order - b.sort_order
     )
+  // SKU real: el de la variante seleccionada o, si hay una sola, el de esa. Sin variante no se muestra
+  const skuVariant = selectedVariant ?? (variantes.length === 1 ? variantes[0] : null)
+  const realSku = skuVariant?.sku?.trim() || null
   const absUrl = (u: string) => (/^https?:\/\//.test(u) ? u : `${SITE_URL}${u.startsWith('/') ? u : `/${u}`}`)
   const seoImage = orderedImages[0]?.url || producto.imagen_url || undefined
   const productJsonLd =
@@ -427,6 +430,7 @@ export default function DetalleProducto() {
           name: producto.titulo,
           ...(orderedImages.length ? { image: orderedImages.map(img => absUrl(img.url)) } : {}),
           description: seoDescription,
+          ...(realSku ? { sku: realSku } : {}),
           ...(producto.marca ? { brand: { '@type': 'Brand', name: producto.marca } } : {}),
           offers: {
             '@type': 'Offer',
@@ -580,12 +584,10 @@ export default function DetalleProducto() {
                     ) : (
                       <span className="text-meta">{producto.categories.nombre}</span>
                     )}
-                    <span className="text-meta" aria-hidden="true">·</span>
+                    {realSku && <span className="text-meta" aria-hidden="true">·</span>}
                   </>
                 )}
-                <span className="text-meta">
-                  SKU: {selectedVariant?.sku || producto.slug?.toUpperCase().slice(0, 20) || 'DEMO-SKU-001'}
-                </span>
+                {realSku && <span className="text-meta">SKU: {realSku}</span>}
               </div>
               <button
                 type="button"
@@ -809,62 +811,6 @@ export default function DetalleProducto() {
             </div>
           </motion.section>
         )}
-
-        {/* ── Reviews section (demo) ── */}
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="mt-12 sm:mt-16"
-        >
-          <h2 className="text-h2 text-xl sm:text-2xl mb-4">Reseñas y calificaciones</h2>
-          <div className="border-t border-gray-100 pt-6">
-            <div className="inline-flex items-center gap-2 mb-6 px-3 py-1 bg-amber-50 border border-amber-200 rounded-lg">
-              <span className="text-xs font-bold uppercase tracking-wider text-amber-600">Demostración</span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-[200px_1fr] gap-8 max-w-3xl">
-              {/* Rating summary */}
-              <div className="text-center sm:text-left">
-                <p className="text-5xl font-black text-primary-dark mb-1">4,8</p>
-                <div className="flex items-center justify-center sm:justify-start gap-0.5 mb-1">
-                  {[1, 2, 3, 4, 5].map(s => (
-                    <Star key={s} className={`w-5 h-5 ${s <= 4 ? 'fill-amber-400 text-amber-400' : 'fill-amber-200 text-amber-200'}`} />
-                  ))}
-                </div>
-                <p className="text-body text-xs">Basado en datos de ejemplo</p>
-              </div>
-
-              {/* Demo reviews */}
-              <div className="space-y-4">
-                {[
-                  { name: 'Ejemplo 1', text: 'Excelente producto, muy conforme con la compra. Esta es una reseña de demostración.' },
-                  { name: 'Ejemplo 2', text: 'Buena calidad y envío rápido. Opinión ilustrativa, no real.' },
-                ].map((r, i) => (
-                  <div key={i} className="p-4 bg-gray-50 rounded-xl">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-8 h-8 rounded-full bg-primary-light/30 flex items-center justify-center">
-                        <span className="text-xs font-bold text-primary-dark">{r.name.charAt(0)}</span>
-                      </div>
-                      <span className="text-sm font-medium text-primary-dark">{r.name}</span>
-                    </div>
-                    <div className="flex gap-0.5 mb-2">
-                      {[1, 2, 3, 4, 5].map(s => (
-                        <Star key={s} className={`w-3.5 h-3.5 ${s <= 4 ? 'fill-amber-400 text-amber-400' : 'fill-gray-200 text-gray-200'}`} />
-                      ))}
-                    </div>
-                    <p className="text-body text-sm">{r.text}</p>
-                  </div>
-                ))}
-                <p className="text-xs text-gray-400 italic flex items-center gap-1.5">
-                  <MessageSquare className="w-3.5 h-3.5" />
-                  Contenido ilustrativo, no opiniones reales de clientes.
-                </p>
-              </div>
-            </div>
-          </div>
-        </motion.section>
 
         {/* Related products */}
         {related.length > 0 && (
