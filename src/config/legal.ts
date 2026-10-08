@@ -8,19 +8,19 @@
 
 export const LEGAL = {
   // Nombre completo de la persona titular o razón social de la empresa
-  NOMBRE_O_RAZON_SOCIAL: '[NOMBRE O RAZÓN SOCIAL]',
+  NOMBRE_O_RAZON_SOCIAL: 'Roy Walter Martinez Frey',
   // CUIT del titular (ej: 20-12345678-9)
-  CUIT: '[CUIT]',
+  CUIT: '20-40914461-7',
   // Domicilio legal / fiscal completo
-  DOMICILIO: '[DOMICILIO]',
+  DOMICILIO: 'Barrio Primavera, calle Salto Yaboty (sin numeración), casa N.º 1350, Puerto Iguazú, Misiones, CP 3370, Argentina',
   // Condición frente al IVA (ej: "Responsable Monotributo", "Responsable Inscripto")
   CONDICION_FISCAL: '[CONDICIÓN FISCAL]',
   // Plazo estimado de entrega desde la confirmación del pago (también se usa en /envios)
   PLAZO_ENTREGA: '6 a 7 días hábiles',
   // Herramientas de analíticas usadas (ej: "Vercel Analytics, que no usa cookies")
-  ANALITICAS: '[ANALÍTICAS]',
+  ANALITICAS: 'Vercel Analytics, que mide las visitas al sitio de forma agregada',
   // Fecha de publicación de los textos (ej: "15 de octubre de 2026")
-  FECHA_PUBLICACION: '[FECHA DE PUBLICACIÓN]',
+  FECHA_PUBLICACION: '1 de noviembre de 2026',
   // Email de contacto que se muestra en los textos legales
   EMAIL_CONTACTO: 'royfrey@outlook.com',
   // Ruta del botón de arrepentimiento (la página todavía no existe)
