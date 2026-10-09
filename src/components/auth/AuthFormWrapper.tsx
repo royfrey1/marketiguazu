@@ -119,6 +119,7 @@ function DesktopSwitch({
           en vez de recortarse. El centrado vertical va en el wrapper interno (min-h-full),
           no en el panel con overflow, para no cortar el principio del contenido. */}
       <motion.div
+        data-scroll-container
         className="absolute top-0 left-1/2 w-1/2 h-full bg-white z-20 overflow-y-auto px-16 xl:px-20"
         animate={{ x: isLogin ? '0%' : '-100%', opacity: isLogin ? 0.95 : 1 }}
         transition={{ duration: panelDuration, ease: panelEase }}

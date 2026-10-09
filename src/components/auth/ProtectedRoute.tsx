@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
 import useAuth from '../../hooks/useAuth'
+import LoadingScreen from '../ui/LoadingScreen'
 
 export default function ProtectedRoute() {
   const navigate = useNavigate()
@@ -13,11 +14,7 @@ export default function ProtectedRoute() {
   }, [loading, user, navigate])
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <p className="text-cyan-400 animate-pulse">Cargando...</p>
-      </div>
-    )
+    return <LoadingScreen label="Cargando..." />
   }
 
   if (!user) return null

@@ -12,11 +12,15 @@ const MOBILE_CATEGORIES_ID = 'mobile-menu-categories'
 // Filas y botones del menú mobile: target táctil de al menos 44 px
 const MOBILE_ROW = 'flex items-center gap-3 w-full min-h-11 px-3 rounded-lg text-sm font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
 
+// Desde cuántos px de scroll el header pasa al estado "scrolled" (sombra más marcada)
+const SCROLL_THRESHOLD = 50
+
 export default function NavBar() {
   const { user, loading, signOut } = useAuth()
   const { itemCount } = useCart()
   const [menuOpen, setMenuOpen] = useState(false)
-  const [isScrolled, setIsScrolled] = useState(false)
+  const [isScrolled, setIsScrolled] = useState(() => window.scrollY > SCROLL_THRESHOLD)
+  const scrolledRef = useRef(isScrolled)
   const [busqueda, setBusqueda] = useState('')
   const [desktopOpen, setDesktopOpen] = useState(false)
   const navigate = useNavigate()
@@ -51,8 +55,16 @@ export default function NavBar() {
     closeMenu()
   }
 
+  // El estado "scrolled" solo cambia la sombra (nada que altere el alto del header):
+  // si cambiara la altura, el contenido se correría y scrollY cruzaría el umbral en bucle (titileo)
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 50)
+    const handleScroll = () => {
+      const next = window.scrollY > SCROLL_THRESHOLD
+      if (next !== scrolledRef.current) {
+        scrolledRef.current = next
+        setIsScrolled(next)
+      }
+    }
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
@@ -156,20 +168,17 @@ export default function NavBar() {
         />
       )}
     </AnimatePresence>
-    <header ref={headerRef} className="relative sticky top-0 left-0 right-0 z-50 bg-white border-b border-gray-100 shadow-sm transition-all duration-300">
-      <div className={`
-        max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 transition-all duration-300
-        ${isScrolled ? 'py-2' : 'py-3'}
-      `}>
-        {/* Logo */}
+    <header
+      ref={headerRef}
+      className={`relative sticky top-0 left-0 right-0 z-50 bg-white border-b border-gray-100 transition-shadow duration-300 ${
+        isScrolled ? 'shadow-md' : 'shadow-sm'
+      }`}
+    >
+      {/* Alto fijo: el padding y el alto del logo no cambian con el scroll */}
+      <div className="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 py-3">
+        {/* Logo: siempre del mismo tamaño, con o sin scroll */}
         <Link to="/" className="flex-shrink-0">
-          <img
-            src={logo}
-            alt="Iguazú Marketplace"
-            className={`transition-all duration-500 object-contain ${
-              isScrolled ? 'h-11 md:h-12' : 'h-14 md:h-18'
-            }`}
-          />
+          <img src={logo} alt="Iguazú Marketplace" className="h-14 md:h-18 object-contain" />
         </Link>
 
         {/* Categorías - Desktop */}

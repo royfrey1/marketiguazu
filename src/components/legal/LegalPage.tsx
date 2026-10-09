@@ -1,5 +1,5 @@
-import { useEffect, useMemo, type ReactNode } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { useMemo, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { fillLegalPlaceholders } from '../../config/legal'
 import { parseLegalMarkdown, type LegalBlock } from '../../lib/legalMarkdown'
 
@@ -81,16 +81,10 @@ function Block({ block }: { block: LegalBlock }) {
 
 /** Página legal a partir de un Markdown de src/content/legal (título = primer "#"). */
 export default function LegalPage({ markdown }: { markdown: string }) {
-  const { pathname } = useLocation()
   const blocks = useMemo(() => parseLegalMarkdown(fillLegalPlaceholders(markdown)), [markdown])
   const titleBlock = blocks.find(b => b.type === 'heading' && b.level === 1)
   const title = titleBlock?.type === 'heading' ? titleBlock.text : ''
   const body = blocks.filter(b => b !== titleBlock)
-
-  // Al navegar entre páginas legales (o llegar desde el footer), arrancar desde arriba
-  useEffect(() => {
-    window.scrollTo(0, 0)
-  }, [pathname])
 
   return (
     <div className="min-h-screen bg-white">

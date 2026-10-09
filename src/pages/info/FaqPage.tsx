@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react'
+import { type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '../../components/ui/accordion'
 import { LEGAL } from '../../config/legal'
@@ -97,10 +97,6 @@ const FAQ: FaqItem[] = [
 ]
 
 export default function FaqPage() {
-  useEffect(() => {
-    window.scrollTo(0, 0)
-  }, [])
-
   return (
     <div className="min-h-screen bg-white">
       <Seo

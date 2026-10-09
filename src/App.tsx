@@ -8,6 +8,8 @@ import AuthLayout from './layouts/AuthLayout'
 import AdminLayout from './layouts/AdminLayout'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 import AdminRoute from './components/auth/AdminRoute'
+import LoadingScreen from './components/ui/LoadingScreen'
+import ScrollManager from './components/layout/ScrollManager'
 
 const THEME_KEY = 'admin.theme'
 const mobileQuery = typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)') : null
@@ -53,12 +55,9 @@ const ShippingPage = lazy(() => import('./pages/info/ShippingPage'))
 const PaymentMethodsPage = lazy(() => import('./pages/info/PaymentMethodsPage'))
 const WithdrawalsAdminPage = lazy(() => import('./pages/admin/WithdrawalsAdminPage'))
 
+// Fallback de las páginas lazy: espera un instante antes de mostrarse para no destellar en cargas rápidas
 function Loading() {
-  return (
-    <div className="min-h-screen flex items-center justify-center">
-      <p className="text-gray-400 animate-pulse">Cargando...</p>
-    </div>
-  )
+  return <LoadingScreen variant="page" delayMs={250} />
 }
 
 function App() {
@@ -101,9 +100,10 @@ function App() {
           }}
         />
         <BrowserRouter>
+          <ScrollManager />
           <Suspense fallback={<Loading />}>
             <Routes>
-            <Route element={<AdminRoute />}>
+            <Route element={<AdminRoute dark={dark} />}>
               <Route element={<AdminLayout dark={dark} onToggleTheme={toggleTheme} />}>
                 <Route path="admin" element={<DashboardAdminPage />} />
                 <Route path="admin/productos/nuevo" element={<ProductCreatePage />} />

@@ -530,7 +530,8 @@ export default function AdminLayout({ dark, onToggleTheme }: { dark: boolean; on
         </div>
 
         {/* ── Page content ──────────────────────────────────────────────── */}
-        <main className={`
+        {/* data-scroll-container: el contenido del admin scrollea acá (no en window); ScrollManager lo resetea al navegar */}
+        <main data-scroll-container className={`
           flex-1 min-h-0 overflow-auto transition-colors duration-200
           ${dark ? 'bg-[#0F1A17]' : 'bg-[#F7F8FA]'}
         `}>

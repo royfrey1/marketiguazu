@@ -1,8 +1,10 @@
 import { useEffect } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
 import useAuth from '../../hooks/useAuth'
+import LoadingScreen, { ErrorScreen } from '../ui/LoadingScreen'
 
-export default function AdminRoute() {
+// dark: tema elegido en el admin (el mismo que recibe AdminLayout), para no destellar en otro color
+export default function AdminRoute({ dark = false }: { dark?: boolean }) {
   const navigate = useNavigate()
   const { user, profile, loading } = useAuth()
 
@@ -17,29 +19,20 @@ export default function AdminRoute() {
   }, [loading, user, profile, navigate])
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <p className="text-cyan-400 animate-pulse">Verificando credenciales...</p>
-      </div>
-    )
+    return <LoadingScreen label="Verificando credenciales..." tone={dark ? 'dark' : 'light'} />
   }
 
   if (!user) return null
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-400 text-lg font-semibold">Error al cargar el perfil</p>
-          <p className="text-gray-500 text-sm mt-2">No se pudo obtener la información del usuario.</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="mt-4 px-4 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700 cursor-pointer"
-          >
-            Reintentar
-          </button>
-        </div>
-      </div>
+      <ErrorScreen
+        title="Error al cargar el perfil"
+        description="No se pudo obtener la información del usuario."
+        actionLabel="Reintentar"
+        onAction={() => window.location.reload()}
+        tone={dark ? 'dark' : 'light'}
+      />
     )
   }
 
