@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Package, Image as ImageIcon, Loader2 } from 'lucide-react'
+import { sileo } from 'sileo'
 import useAuth from '../../hooks/useAuth'
 import { categoriesService, type Category } from '../../services/categories.service'
 import { productsService } from '../../services/products.service'
@@ -84,6 +85,7 @@ export default function ProductCreatePage() {
           precio_anterior: data.precio_anterior || null,
           activo: data.activo,
           destacado: data.destacado,
+          en_oferta: data.en_oferta,
           peso_envio_gramos: data.peso_envio_gramos || null,
           alto_paquete_cm: data.alto_paquete_cm || null,
           ancho_paquete_cm: data.ancho_paquete_cm || null,
@@ -112,6 +114,8 @@ export default function ProductCreatePage() {
       navigate(`/admin/productos/${product.id}/editar`)
     } catch (err) {
       const msg = (err as Error).message
+      // El mensaje de la base (por ejemplo las validaciones de la oferta) se muestra tal cual
+      sileo.error({ title: 'No se pudo crear el producto', description: msg || 'Error al crear el producto' })
       if (msg.includes('duplicate key') || msg.includes('slug')) {
         setError('Ya existe un producto con ese slug')
       } else if (msg.includes('foreign key') || msg.includes('categories')) {

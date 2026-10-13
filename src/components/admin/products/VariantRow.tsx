@@ -1,6 +1,18 @@
 import { Loader2, Pencil, Trash2, ToggleLeft, ToggleRight, History } from 'lucide-react'
 import type { VariantWithInventory } from '../../../services/productVariants.service'
 import type { VariantImageSummary } from '../../../services/productImages.service'
+import { offerDiscountPct } from '../../../lib/offers'
+
+/** Badge "Oferta -X%" de una variante marcada en oferta (con descuento real) */
+function VariantOfferBadge({ variant, compact = false }: { variant: VariantWithInventory; compact?: boolean }) {
+  const pct = variant.en_oferta ? offerDiscountPct(variant.precio, variant.precio_anterior) : null
+  if (pct === null) return null
+  return (
+    <span className={`${compact ? 'text-[9px] leading-none px-1 py-0.5' : 'text-[10px] px-1.5 py-0.5'} rounded bg-[#1CAAA8]/15 text-[#0D3732] dark:text-[#1CAAA8] font-bold shrink-0`}>
+      Oferta -{pct}%
+    </span>
+  )
+}
 
 const GRID_COLS = 'sm:grid-cols-[1fr_100px_100px_80px_120px]'
 
@@ -86,6 +98,7 @@ export default function VariantRow({ variant, imageInfo, deleteLoading, onEdit, 
           <div className="min-w-0">
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-sm font-medium text-gray-800 dark:text-white/80 truncate min-w-0">{variant.nombre}</span>
+              <VariantOfferBadge variant={variant} />
               {!variant.activo && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-200 dark:bg-white/10 text-gray-500 dark:text-white/40 font-medium shrink-0">
                   INACTIVA
@@ -169,6 +182,7 @@ export default function VariantRow({ variant, imageInfo, deleteLoading, onEdit, 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-sm font-medium text-gray-800 dark:text-white/80 truncate flex-1 min-w-0">{variant.nombre}</span>
+              <VariantOfferBadge variant={variant} compact />
               {!variant.activo && (
                 <span className="text-[9px] leading-none px-1 py-0.5 rounded bg-gray-200 dark:bg-white/10 text-gray-500 dark:text-white/40 font-medium tracking-wide shrink-0">
                   INACTIVA

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Plus, Loader2, Package, Layers, EyeOff } from 'lucide-react'
 import {
   productVariantsService,
@@ -17,13 +17,15 @@ import Modal from '../../ui/Modal'
 
 interface ProductVariantsManagerProps {
   productId: number
+  /** Avisa al editor cuando cambian las variantes (por ejemplo, para saber si hay variantes activas) */
+  onVariantsChange?: (variants: VariantWithInventory[]) => void
 }
 
 interface EditingVariantData extends VariantFormData {
   id: number
 }
 
-export default function ProductVariantsManager({ productId }: ProductVariantsManagerProps) {
+export default function ProductVariantsManager({ productId, onVariantsChange }: ProductVariantsManagerProps) {
   const [variants, setVariants] = useState<VariantWithInventory[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -39,6 +41,9 @@ export default function ProductVariantsManager({ productId }: ProductVariantsMan
   const [inactiveOpen, setInactiveOpen] = useState(false)
   // Galerías propias de cada variante (cantidad + foto principal), en una sola consulta por producto
   const [imageSummary, setImageSummary] = useState<Map<number, VariantImageSummary>>(new Map())
+  // El callback se lee de un ref: así la carga no se repite cada vez que el editor re-renderiza
+  const onVariantsChangeRef = useRef(onVariantsChange)
+  useEffect(() => { onVariantsChangeRef.current = onVariantsChange }, [onVariantsChange])
 
   useEffect(() => {
     let cancelled = false
@@ -56,6 +61,7 @@ export default function ProductVariantsManager({ productId }: ProductVariantsMan
           setError(fetchError.message)
         } else {
           setVariants(data || [])
+          onVariantsChangeRef.current?.(data || [])
           // Si ya no quedan inactivas (p. ej. se activó la última desde el modal), cerrarlo
           if (!(data || []).some(v => !v.activo)) setInactiveOpen(false)
         }
@@ -88,6 +94,7 @@ export default function ProductVariantsManager({ productId }: ProductVariantsMan
       atributos: (variant.atributos as Record<string, string>) || null,
       imagen_url: variant.imagen_url,
       activo: variant.activo,
+      en_oferta: variant.en_oferta,
       id: variant.id,
     })
     setDialogMode('edit')

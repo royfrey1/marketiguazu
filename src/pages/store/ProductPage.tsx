@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { useParams, Link, Navigate } from 'react-router-dom'
+import { useParams, useSearchParams, Link, Navigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { sileo } from 'sileo'
 import { ShoppingCart, Share2, Minus, Plus, Package, ChevronLeft, ChevronRight, Truck } from 'lucide-react'
@@ -15,6 +15,7 @@ import VariantDropdown from '../../components/product/VariantDropdown'
 import { PAYMENT_METHODS } from '../../components/store/paymentMethods'
 import Seo from '../../components/seo/Seo'
 import { SITE_URL } from '../../config/site'
+import { isOfferShown, offerDiscountPct } from '../../lib/offers'
 
 const MAX_VISIBLE_THUMBS = 5
 const SIN_IMAGENES: ProductImage[] = []
@@ -82,6 +83,9 @@ const INSTALLMENT_SURCHARGE_RATE = 0.20
 
 export default function DetalleProducto() {
   const { id, slug } = useParams<{ id: string; slug: string }>()
+  // ?variante=<id>: variante a preseleccionar (por ejemplo desde una tarjeta de ofertas)
+  const [searchParams] = useSearchParams()
+  const varianteParam = Number(searchParams.get('variante'))
   const [producto, setProducto] = useState<ProductWithPrimaryImage | null>(null)
   const [imagenes, setImagenes] = useState<ProductImage[]>([])
   // Galerías propias de variantes, por id de variante (se cargan al seleccionarla)
@@ -172,7 +176,11 @@ export default function DetalleProducto() {
     if (!hasVariants || variantesLoading || variantAvail.size === 0) return
     if (Object.keys(selectedAttributes).length > 0) return
     autoSelectedRef.current = true
-    const firstAvailable = variantes.find(v => (variantAvail.get(v.id) ?? 0) > 0)
+    // La variante pedida por URL si existe, está activa (solo se cargan activas) y tiene stock;
+    // si no, la primera con stock
+    const hasStock = (v: VariantWithInventory) => (variantAvail.get(v.id) ?? 0) > 0
+    const requested = varianteParam > 0 ? variantes.find(v => v.id === varianteParam && hasStock(v)) : undefined
+    const firstAvailable = requested ?? variantes.find(hasStock)
     if (firstAvailable?.atributos && typeof firstAvailable.atributos === 'object') {
       setSelectedAttributes(firstAvailable.atributos as AttributeMap)
     }
@@ -218,10 +226,18 @@ export default function DetalleProducto() {
     return producto?.precio ?? 0
   }, [selectedVariant, producto])
 
-  const effectivePriceAnterior = useMemo(() => {
-    if (selectedVariant) return selectedVariant.precio_anterior
-    return producto?.precio_anterior ?? null
-  }, [selectedVariant, producto])
+  // Regla visual única: tachado y % solo con la oferta marcada (de la variante seleccionada o,
+  // sin variantes, del producto) y precio anterior mayor. Con variantes, el flag del producto no cuenta
+  const offerPriceAnterior = useMemo(() => {
+    if (selectedVariant) {
+      return isOfferShown(selectedVariant.en_oferta, selectedVariant.precio, selectedVariant.precio_anterior)
+        ? selectedVariant.precio_anterior
+        : null
+    }
+    if (hasVariants || !producto) return null
+    return isOfferShown(producto.en_oferta, producto.precio, producto.precio_anterior) ? producto.precio_anterior : null
+  }, [selectedVariant, hasVariants, producto])
+  const offerDiscount = offerDiscountPct(effectivePrice, offerPriceAnterior)
 
   const installmentAmount = useMemo(
     () => (effectivePrice * (1 + INSTALLMENT_SURCHARGE_RATE)) / INSTALLMENT_COUNT,
@@ -434,7 +450,8 @@ export default function DetalleProducto() {
           ...(producto.marca ? { brand: { '@type': 'Brand', name: producto.marca } } : {}),
           offers: {
             '@type': 'Offer',
-            price: Number(producto.precio.toFixed(2)),
+            // Precio efectivo: el de la variante seleccionada si hay, si no el del producto
+            price: Number(effectivePrice.toFixed(2)),
             priceCurrency: 'ARS',
             availability:
               (producto.available ?? 0) > 0
@@ -612,10 +629,16 @@ export default function DetalleProducto() {
 
             {/* Price */}
             <div className="mb-4">
-              {effectivePriceAnterior && effectivePriceAnterior > effectivePrice && (
-                <span className="text-price-strike block mb-1">
-                  ${effectivePriceAnterior.toLocaleString('es-AR')}
-                </span>
+              {offerPriceAnterior !== null && (
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-price-strike">
+                    <span className="sr-only">Precio anterior: </span>
+                    ${offerPriceAnterior.toLocaleString('es-AR')}
+                  </span>
+                  <span className="inline-flex items-center rounded-md bg-fuchsia-700 px-2 py-0.5 text-[11px] font-black uppercase tracking-wider text-white">
+                    Oferta{offerDiscount !== null && <> -{offerDiscount}%</>}
+                  </span>
+                </div>
               )}
               <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">
                 Precio por transferencia

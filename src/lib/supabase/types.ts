@@ -665,6 +665,7 @@ export type Database = {
           activo: boolean
           atributos: Json | null
           created_at: string
+          en_oferta: boolean
           id: number
           imagen_url: string | null
           nombre: string
@@ -679,6 +680,7 @@ export type Database = {
           activo?: boolean
           atributos?: Json | null
           created_at?: string
+          en_oferta?: boolean
           id?: never
           imagen_url?: string | null
           nombre: string
@@ -693,6 +695,7 @@ export type Database = {
           activo?: boolean
           atributos?: Json | null
           created_at?: string
+          en_oferta?: boolean
           id?: never
           imagen_url?: string | null
           nombre?: string
@@ -722,6 +725,7 @@ export type Database = {
           created_at: string
           descripcion: string | null
           destacado: boolean
+          en_oferta: boolean
           fts: unknown
           id: number
           imagen_url: string | null
@@ -742,6 +746,7 @@ export type Database = {
           created_at?: string
           descripcion?: string | null
           destacado?: boolean
+          en_oferta?: boolean
           fts?: unknown
           id?: never
           imagen_url?: string | null
@@ -762,6 +767,7 @@ export type Database = {
           created_at?: string
           descripcion?: string | null
           destacado?: boolean
+          en_oferta?: boolean
           fts?: unknown
           id?: never
           imagen_url?: string | null
@@ -1003,6 +1009,44 @@ export type Database = {
           },
         ]
       }
+      products_ofertas: {
+        Row: {
+          activo: boolean | null
+          alto_paquete_cm: number | null
+          ancho_paquete_cm: number | null
+          category_id: number | null
+          created_at: string | null
+          descripcion: string | null
+          destacado: boolean | null
+          en_oferta: boolean | null
+          en_oferta_efectivo: boolean | null
+          fts: unknown
+          id: number | null
+          imagen_url: string | null
+          largo_paquete_cm: number | null
+          marca: string | null
+          oferta_descuento: number | null
+          oferta_precio: number | null
+          oferta_precio_anterior: number | null
+          oferta_variant_id: number | null
+          oferta_variantes_count: number | null
+          peso_envio_gramos: number | null
+          precio: number | null
+          precio_anterior: number | null
+          slug: string | null
+          titulo: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       admin_update_withdrawal: {
@@ -1054,6 +1098,7 @@ export type Database = {
           p_category_id: number
           p_descripcion?: string
           p_destacado?: boolean
+          p_en_oferta?: boolean
           p_largo_paquete_cm?: number
           p_marca?: string
           p_peso_envio_gramos?: number
@@ -1068,6 +1113,7 @@ export type Database = {
         Args: {
           p_activo?: boolean
           p_atributos?: Json
+          p_en_oferta?: boolean
           p_imagen_url?: string
           p_nombre: string
           p_precio: number
@@ -1079,6 +1125,7 @@ export type Database = {
           activo: boolean
           atributos: Json | null
           created_at: string
+          en_oferta: boolean
           id: number
           imagen_url: string | null
           nombre: string
@@ -1153,6 +1200,7 @@ export type Database = {
           p_category_id: number
           p_descripcion?: string
           p_destacado?: boolean
+          p_en_oferta?: boolean
           p_largo_paquete_cm?: number
           p_marca?: string
           p_peso_envio_gramos?: number
@@ -1176,6 +1224,7 @@ export type Database = {
         Args: {
           p_activo?: boolean
           p_atributos?: Json
+          p_en_oferta?: boolean
           p_imagen_url?: string
           p_nombre: string
           p_precio: number
@@ -1187,6 +1236,7 @@ export type Database = {
           activo: boolean
           atributos: Json | null
           created_at: string
+          en_oferta: boolean
           id: number
           imagen_url: string | null
           nombre: string

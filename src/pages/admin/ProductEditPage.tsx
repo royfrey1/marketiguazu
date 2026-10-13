@@ -1,10 +1,12 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
+import { sileo } from 'sileo'
 import useAuth from '../../hooks/useAuth'
 import { categoriesService, type Category } from '../../services/categories.service'
 import { productsService, type Product } from '../../services/products.service'
 import { productSpecificationsService } from '../../services/productSpecifications.service'
+import { productVariantsService } from '../../services/productVariants.service'
 import { useProductSpecifications } from '../../hooks/useProductSpecifications'
 import ProductForm from '../../components/admin/products/ProductForm'
 import ProductImagesManager from '../../components/admin/products/ProductImagesManager'
@@ -25,6 +27,8 @@ export default function ProductEditPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [specsWarning, setSpecsWarning] = useState<string | null>(null)
+  // Con variantes activas la oferta se marca en cada variante, no en el producto
+  const [hasActiveVariants, setHasActiveVariants] = useState(false)
 
   const productId = product?.id ?? null
   const specsHook = useProductSpecifications(productId)
@@ -63,9 +67,10 @@ export default function ProductEditPage() {
           throw new Error('ID de producto invalido')
         }
 
-        const [productRes, catsRes] = await Promise.all([
+        const [productRes, catsRes, activeVariantsRes] = await Promise.all([
           productsService.getById(productIdNum),
           categoriesService.getActive(),
+          productVariantsService.getActiveByProductId(productIdNum),
         ])
 
         if (productRes.error) throw productRes.error
@@ -74,6 +79,7 @@ export default function ProductEditPage() {
         if (!cancelled) {
           setProduct(productRes.data)
           setCategories(catsRes.data ?? [])
+          setHasActiveVariants((activeVariantsRes.data ?? []).length > 0)
         }
       } catch (err) {
         if (!cancelled) setError((err as Error).message || 'Error al cargar el producto')
@@ -130,6 +136,8 @@ export default function ProductEditPage() {
           precio_anterior: data.precio_anterior || null,
           activo: data.activo,
           destacado: data.destacado,
+          // Siempre se manda (true/false). Con variantes activas va false: el flag del producto no cuenta
+          en_oferta: hasActiveVariants ? false : data.en_oferta,
           peso_envio_gramos: data.peso_envio_gramos || null,
           alto_paquete_cm: data.alto_paquete_cm || null,
           ancho_paquete_cm: data.ancho_paquete_cm || null,
@@ -166,6 +174,8 @@ export default function ProductEditPage() {
       navigate('/admin/productos')
     } catch (err) {
       const msg = (err as Error).message
+      // El mensaje de la base (por ejemplo las validaciones de la oferta) se muestra tal cual
+      sileo.error({ title: 'No se pudo guardar el producto', description: msg || 'Error al guardar el producto' })
       if (msg.includes('duplicate key') || msg.includes('slug')) {
         setError('Ya existe otro producto con ese slug')
       } else if (msg.includes('foreign key') || msg.includes('categories')) {
@@ -283,6 +293,7 @@ export default function ProductEditPage() {
           onSubmit={handleSubmit}
           onCancel={() => navigate('/admin/productos')}
           loading={submitting}
+          hasActiveVariants={hasActiveVariants}
           extraSections={
             <>
               {/* Images */}
@@ -313,7 +324,10 @@ export default function ProductEditPage() {
       {product && (
         <div className="bg-white dark:bg-[#162420] rounded-xl border border-gray-200 dark:border-white/5 p-6">
           <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-4">Variantes</h2>
-          <ProductVariantsManager productId={product.id} />
+          <ProductVariantsManager
+            productId={product.id}
+            onVariantsChange={variants => setHasActiveVariants(variants.some(v => v.activo))}
+          />
         </div>
       )}
     </div>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { SlidersHorizontal, X, ChevronDown, ChevronRight } from 'lucide-react'
+import { SlidersHorizontal, X, ChevronDown, ChevronRight, BadgePercent } from 'lucide-react'
 import { useCatalog, useBrands } from '../../hooks/useProducts'
 import Seo from '../../components/seo/Seo'
 import { categoriesService, type Category } from '../../services/categories.service'
@@ -9,16 +9,33 @@ import type { SortOption } from '../../services/products.service'
 import ProductCard from '../../components/home/ProductCard'
 import { ProductGrid, ProductGridSkeleton } from '../../components/store/ProductGrid'
 import { getCategoryIcon } from '../../lib/categoryIcons'
+import { OFFER_CARD_FRAME_CLASS } from '../../lib/offers'
 
-export default function Busqueda() {
+// Modo ofertas (paleta del bloque de ofertas de la home): solo se suman clases cuando está activo
+const OFFERS_FILTERS_CLASS =
+  '[&_.filter-option-active]:bg-fuchsia-50 [&_.filter-option-active]:text-fuchsia-700 [&_.filter-chip]:bg-fuchsia-100 [&_.filter-chip]:text-fuchsia-800'
+
+interface BusquedaProps {
+  /** /ofertas: el modo ofertas queda fijo (con su título, encabezado y Seo propios) */
+  offersPage?: boolean
+}
+
+export default function Busqueda({ offersPage = false }: BusquedaProps) {
   const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
 
   const q = searchParams.get('q') || ''
   const cat = searchParams.get('cat') || ''
   const min = searchParams.get('min') || ''
   const max = searchParams.get('max') || ''
   const marca = searchParams.get('marca') || ''
-  const sort = (searchParams.get('sort') || 'recent') as SortOption
+  // Modo ofertas: /ofertas o /busqueda?ofertas=1 (se comportan igual)
+  const onlyOffers = offersPage || searchParams.get('ofertas') === '1'
+  const sortParam = searchParams.get('sort') as SortOption | null
+  // "Mayor descuento" solo existe en modo ofertas, donde es el orden por defecto
+  const sort: SortOption = onlyOffers
+    ? sortParam || 'discount'
+    : sortParam && sortParam !== 'discount' ? sortParam : 'recent'
   const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
 
   const [inputMin, setInputMin] = useState(min)
@@ -59,7 +76,8 @@ export default function Busqueda() {
     max_price: max ? Number(max) : undefined,
     marca: marca || undefined,
     sort,
-  }), [q, cat, min, max, marca, sort])
+    ...(onlyOffers ? { only_offers: true } : {}),
+  }), [q, cat, min, max, marca, sort, onlyOffers])
 
   const {
     data: productos,
@@ -116,7 +134,8 @@ export default function Busqueda() {
   }
 
   const handleClearFilters = () => {
-    setSearchParams({}, { replace: true })
+    // El modo ofertas no es un filtro más: limpiar deja el modo como está
+    setSearchParams(onlyOffers && !offersPage ? { ofertas: '1' } : {}, { replace: true })
     setInputMin('')
     setInputMax('')
   }
@@ -124,6 +143,20 @@ export default function Busqueda() {
   const handlePageChange = (newPage: number) => {
     goToPage(newPage)
     updateParams({ page: newPage > 1 ? String(newPage) : '' })
+  }
+
+  const handleOffersToggle = () => {
+    if (offersPage) {
+      // Desde /ofertas: la misma búsqueda en todo el catálogo
+      const next = new URLSearchParams(searchParams)
+      next.delete('page')
+      if (next.get('sort') === 'discount') next.delete('sort')
+      const qs = next.toString()
+      navigate(`/busqueda${qs ? `?${qs}` : ''}`)
+      return
+    }
+    // Solo cambia la query: el scroll queda donde está
+    updateParams(onlyOffers ? { ofertas: '', ...(sortParam === 'discount' ? { sort: '' } : {}) } : { ofertas: '1' })
   }
 
   const hasActiveFilters = q || cat || min || max || marca
@@ -274,6 +307,28 @@ export default function Busqueda() {
     )
   }
 
+  const offersToggle = (
+    <div className={onlyOffers ? 'filter-section border-fuchsia-300 bg-fuchsia-50' : 'filter-section'}>
+      <label className="flex min-h-11 cursor-pointer items-center justify-between gap-3">
+        <span className={`flex items-center gap-2 text-sm font-bold ${onlyOffers ? 'text-fuchsia-700' : 'text-primary-dark'}`}>
+          <BadgePercent className="w-4 h-4" aria-hidden="true" />
+          Solo ofertas
+        </span>
+        <input
+          type="checkbox"
+          role="switch"
+          checked={onlyOffers}
+          onChange={handleOffersToggle}
+          className="peer sr-only"
+        />
+        <span
+          aria-hidden="true"
+          className="relative h-6 w-11 shrink-0 rounded-full bg-gray-300 transition-colors duration-200 peer-checked:bg-fuchsia-600 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-fuchsia-500 after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow-sm after:transition-transform after:duration-200 peer-checked:after:translate-x-5 motion-reduce:transition-none motion-reduce:after:transition-none"
+        />
+      </label>
+    </div>
+  )
+
   const sidebarContent = (
     <>
       {hasActiveFilters && (
@@ -293,6 +348,8 @@ export default function Busqueda() {
           </div>
         </div>
       )}
+
+      {offersToggle}
 
       <div className="filter-section">
         <h3 className="filter-title">Categorías</h3>
@@ -355,20 +412,28 @@ export default function Busqueda() {
   )
 
   return (
-    <div className="min-h-screen bg-white overflow-x-hidden">
-      <Seo
-        title={q ? `Resultados para "${q.slice(0, 30)}"` : 'Búsqueda de productos'}
-        description="Buscá productos por nombre o marca y filtrá por categoría y precio en Iguazú Marketplace."
-        canonicalPath="/busqueda"
-        noindex
-        follow
-      />
+    <div className={onlyOffers ? 'min-h-screen bg-violet-50 overflow-x-hidden' : 'min-h-screen bg-white overflow-x-hidden'}>
+      {offersPage ? (
+        <Seo
+          title={q ? `Ofertas: "${q.slice(0, 30)}"` : 'Ofertas'}
+          description="Productos con precio rebajado en Iguazú Marketplace: mirá las ofertas vigentes con su descuento y filtralas por categoría, marca y precio."
+          canonicalPath="/ofertas"
+        />
+      ) : (
+        <Seo
+          title={q ? `Resultados para "${q.slice(0, 30)}"` : 'Búsqueda de productos'}
+          description="Buscá productos por nombre o marca y filtrá por categoría y precio en Iguazú Marketplace."
+          canonicalPath={onlyOffers ? '/ofertas' : '/busqueda'}
+          noindex
+          follow
+        />
+      )}
       <div className="store-container py-8 sm:py-10">
         {/* Breadcrumb */}
         <nav className="breadcrumb">
           <Link to="/" className="breadcrumb-link">Inicio</Link>
           <span>/</span>
-          <span className="breadcrumb-current">Productos</span>
+          <span className="breadcrumb-current">{onlyOffers ? 'Ofertas' : 'Productos'}</span>
         </nav>
 
         {/* Search bar */}
@@ -407,12 +472,32 @@ export default function Busqueda() {
           transition={{ duration: 0.5 }}
           className="mb-8"
         >
-          <h1 className="text-h2 text-2xl sm:text-3xl">
-            {q ? `Resultados para "${q}"` : 'Todos los productos'}
-          </h1>
-          <p className="text-body mt-1">
-            {total} producto{total !== 1 ? 's' : ''} encontrado{total !== 1 ? 's' : ''}
-          </p>
+          {onlyOffers ? (
+            <>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-fuchsia-700 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-white">
+                <BadgePercent className="w-3.5 h-3.5" aria-hidden="true" />
+                Precios rebajados
+              </span>
+              <h1 className="text-h2 text-2xl sm:text-3xl mt-3">
+                <span className="bg-gradient-to-r from-violet-600 via-fuchsia-600 to-fuchsia-500 bg-clip-text text-transparent">
+                  {q ? `Ofertas para "${q}"` : 'Ofertas'}
+                </span>
+              </h1>
+              <div aria-hidden="true" className="mt-3 h-px w-14 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-violet-500" />
+              <p className="text-body mt-3">
+                {total} oferta{total !== 1 ? 's' : ''} disponible{total !== 1 ? 's' : ''}
+              </p>
+            </>
+          ) : (
+            <>
+              <h1 className="text-h2 text-2xl sm:text-3xl">
+                {q ? `Resultados para "${q}"` : 'Todos los productos'}
+              </h1>
+              <p className="text-body mt-1">
+                {total} producto{total !== 1 ? 's' : ''} encontrado{total !== 1 ? 's' : ''}
+              </p>
+            </>
+          )}
         </motion.div>
 
         {/* Mobile filter toggle */}
@@ -422,8 +507,8 @@ export default function Busqueda() {
         >
           <SlidersHorizontal className="w-4 h-4" />
           Filtros
-          {hasActiveFilters && (
-            <span className="w-2 h-2 rounded-full bg-accent" />
+          {(hasActiveFilters || (onlyOffers && !offersPage)) && (
+            <span className={`w-2 h-2 rounded-full ${onlyOffers ? 'bg-fuchsia-600' : 'bg-accent'}`} />
           )}
         </button>
 
@@ -440,7 +525,7 @@ export default function Busqueda() {
                   <X className="w-5 h-5 text-gray-500" />
                 </button>
               </div>
-              <div className="space-y-4">
+              <div className={onlyOffers ? `space-y-4 ${OFFERS_FILTERS_CLASS}` : 'space-y-4'}>
                 {sidebarContent}
               </div>
             </div>
@@ -449,7 +534,7 @@ export default function Busqueda() {
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Sidebar desktop */}
-          <aside className="hidden lg:block lg:col-span-1 space-y-4">
+          <aside className={onlyOffers ? `hidden lg:block lg:col-span-1 space-y-4 ${OFFERS_FILTERS_CLASS}` : 'hidden lg:block lg:col-span-1 space-y-4'}>
             {sidebarContent}
           </aside>
 
@@ -463,8 +548,9 @@ export default function Busqueda() {
               <select
                 value={sort}
                 onChange={(e) => handleSortChange(e.target.value)}
-                className="sort-select"
+                className={onlyOffers ? 'sort-select border-fuchsia-300 focus:border-fuchsia-500' : 'sort-select'}
               >
+                {onlyOffers && <option value="discount">Mayor descuento</option>}
                 <option value="recent">Más recientes</option>
                 <option value="price_asc">Menor precio</option>
                 <option value="price_desc">Mayor precio</option>
@@ -479,6 +565,22 @@ export default function Busqueda() {
             ) : error ? (
               <div className="text-center py-20">
                 <p className="text-body text-lg">{error}</p>
+              </div>
+            ) : productos.length === 0 && onlyOffers ? (
+              <div className="text-center py-16 px-4 rounded-2xl border border-dashed border-violet-300 bg-white">
+                <BadgePercent className="w-10 h-10 mx-auto mb-4 text-fuchsia-600" aria-hidden="true" />
+                <p className="text-h3 text-lg mb-2">Todavía no hay ofertas con estos filtros</p>
+                <p className="text-body">Probá con otros filtros o mirá todo el catálogo.</p>
+                <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+                  {hasActiveFilters && (
+                    <button onClick={handleClearFilters} className="btn-sale">
+                      Limpiar filtros
+                    </button>
+                  )}
+                  <Link to="/busqueda" className="btn-primary-sm">
+                    Ver todo el catálogo
+                  </Link>
+                </div>
               </div>
             ) : productos.length === 0 ? (
               <div className="text-center py-20">
@@ -505,7 +607,13 @@ export default function Busqueda() {
                       viewport={{ once: true }}
                       transition={{ duration: 0.4 }}
                     >
-                      <ProductCard product={prod} />
+                      {onlyOffers ? (
+                        <div className={OFFER_CARD_FRAME_CLASS}>
+                          <ProductCard product={prod} offerContext="offers" />
+                        </div>
+                      ) : (
+                        <ProductCard product={prod} />
+                      )}
                     </motion.div>
                   ))}
                 </ProductGrid>

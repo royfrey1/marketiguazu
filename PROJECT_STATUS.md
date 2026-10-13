@@ -1,6 +1,6 @@
 # Iguazú Marketplace — Estado del Proyecto
 
-**Última actualización:** 2026-10-08
+**Última actualización:** 2026-10-13
 **Fuente:** QA manual del usuario + auditoría de opencode con verificación en vivo (repo, BD remota y Supabase CLI) el 2026-10-07
 
 > Este documento es la fuente de verdad de en qué fase estamos. Actualizarlo después de cada sesión de trabajo relevante (no hace falta después de cada micro-tarea).
@@ -77,6 +77,36 @@ Estamos en la **recta final previa al lanzamiento**: QA de producción, requisit
 
 ---
 
+## 🏷️ Ofertas (2026-10)
+
+**Modelo:** columna `en_oferta` en `products` y `product_variants`; CHECKs de descuento real (`precio_anterior > precio`) y tope del 90% (`precio_anterior <= precio * 10`); índices parciales sobre `en_oferta AND activo`. `precio` es el precio vigente (el de oferta) y `precio_anterior` el normal, así el checkout no cambia (no hay segundo campo de precio).
+
+**Regla:** un producto **sin variantes activas** tiene la oferta a nivel producto; un producto **con variantes activas** tiene la oferta por variante (el flag del producto se ignora y marcarlo da error).
+
+**Vista `products_ofertas`** (con `security_invoker`, lectura para `anon`/`authenticated`) que usan las listas de la tienda: `en_oferta_efectivo`, `oferta_precio`, `oferta_precio_anterior`, `oferta_descuento`, `oferta_variantes_count` y `oferta_variant_id`.
+
+**RPCs de admin** recreadas con el parámetro `p_en_oferta` (en las CREATE con default `false`; en las UPDATE con default `NULL` = no cambiar). Quedan `SECURITY DEFINER`.
+
+**Admin:** sección `/admin/ofertas` y campo de oferta en producto y variante; advertencia de UI desde el 50% de descuento.
+
+**Tienda:** tarjetas, ficha (según la variante seleccionada, `?variante=<id>`), bloque de la home, ruta `/ofertas` y filtro "Solo ofertas" en `/busqueda` (estilo violeta/fucsia solo en ese modo).
+
+**Regla visual única:** tachado, porcentaje y badge solo si la oferta está marcada **y** `precio_anterior > precio`.
+
+**Sin fechas de inicio/fin:** las ofertas se manejan a mano.
+
+**Pendientes anotados:**
+
+- Filtro "Solo ofertas" en `/categoria`.
+- Fechas de inicio y fin de la oferta.
+- Link "Ofertas" en navbar y footer.
+- El filtro `cat` de `/busqueda` no incluye subcategorías (`CategoryPage` sí).
+- Página fuera de rango en `/busqueda` muestra "Requested range not satisfiable".
+- `products.precio` no se sincroniza con el precio de las variantes (hay desfasajes en algunos productos; los corrige el dueño desde el admin).
+- Los productos en oferta sin stock no aparecen en las listas.
+
+---
+
 ## 🧹 Deuda técnica y pendientes
 
 ### Antes del lanzamiento (bloqueantes)
@@ -92,7 +122,7 @@ La lista completa vive en **🚨 Bloqueadores críticos** (única fuente de verd
 - Validar el teléfono de la dirección en el **backend** (hoy la validación es solo de frontend; las Edge Functions no lo exigen).
 - En Mi cuenta, el botón "+ Nueva" no limpia el formulario si antes se canceló una edición.
 - Precargar el teléfono de la dirección desde `profiles`.
-- `npx tsc -b` tiene 52 errores preexistentes (verificado 2026-10-06; el build de Vite compila bien); lint en 67 problemas (58 errores, 9 warnings) como línea base.
+- `npx tsc -b` tiene 52 errores preexistentes (verificado 2026-10-13; el build de Vite compila bien); lint en 66 problemas (57 errores, 9 warnings) como línea base.
 - `sort_order=0` cosmético en galerías; la galería se comparte entre variantes de distinta capacidad.
 - Chunk de build >500 kB, sin script `typecheck`, sin tests, `tailwind.config.js` duplicado.
 - ~~SEO pendiente (Fase 12): `lang="en"` en `index.html`, sin meta description/OG, sin `robots.txt`~~ — **fase 1 hecha** (2026-10-08): queda `sitemap.xml` y el resto de la fase 2.

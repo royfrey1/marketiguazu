@@ -4,16 +4,21 @@ import { motion } from 'framer-motion'
 import { productsService, type ProductWithPrimaryImage } from '../../services/products.service'
 import ProductFavorite from '../product/ProductFavorite'
 import { getCategoryIcon } from '../../lib/categoryIcons'
+import { getCardOffer, type OfferContext } from '../../lib/offers'
 
 interface ProductCardProps {
   product: ProductWithPrimaryImage
   badge?: string
   badgeColor?: string
+  /** 'offers': bloque de ofertas y modo ofertas; 'catalog' (por defecto): resto de la tienda */
+  offerContext?: OfferContext
 }
 
-export default function ProductCard({ product, badge, badgeColor = 'bg-accent' }: ProductCardProps) {
+export default function ProductCard({ product, badge, badgeColor = 'bg-accent', offerContext = 'catalog' }: ProductCardProps) {
   const imageUrl = productsService.resolveImageUrl(product)
-  const productUrl = `/producto/${product.slug}`
+  const offer = getCardOffer(product, offerContext)
+  // Oferta de variante (contexto ofertas): la ficha abre con esa variante seleccionada
+  const productUrl = `/producto/${product.slug}${offer.variantId ? `?variante=${offer.variantId}` : ''}`
   const outOfStock = !product.available || product.available <= 0
 
   return (
@@ -24,7 +29,12 @@ export default function ProductCard({ product, badge, badgeColor = 'bg-accent' }
       >
         <ProductFavorite productId={product.id} />
 
-        {badge && (
+        {/* El badge de oferta reemplaza al decorativo (comparten la esquina) */}
+        {offer.badge ? (
+          <span className="badge-product bg-fuchsia-700">
+            Oferta{offer.descuento !== null && <> -{offer.descuento}%</>}
+          </span>
+        ) : badge && (
           <span className={`badge-product ${badgeColor}`}>
             {badge}
           </span>
@@ -67,14 +77,19 @@ export default function ProductCard({ product, badge, badgeColor = 'bg-accent' }
           </h3>
 
           <div className="mt-auto">
-            {product.precio_anterior && product.precio_anterior > product.precio && (
+            {offer.precioAnterior !== null && (
               <span className="text-price-strike block">
-                ${product.precio_anterior.toLocaleString('es-AR')}
+                <span className="sr-only">Precio anterior: </span>
+                ${offer.precioAnterior.toLocaleString('es-AR')}
               </span>
             )}
             <p className="text-price">
-              ${product.precio?.toLocaleString('es-AR')}
+              {offer.desde && <><span className="text-xs font-bold text-gray-500">desde</span>{' '}</>}
+              ${offer.precio?.toLocaleString('es-AR')}
             </p>
+            {offer.variantes && (
+              <p className="text-xs font-medium text-fuchsia-700">{offer.variantes}</p>
+            )}
             {outOfStock && (
               <p className="text-xs font-medium text-red-500 mt-1">Sin stock</p>
             )}

@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from 'framer-motion'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import ProductCard from './ProductCard'
 import type { ProductWithPrimaryImage } from '../../services/products.service'
+import { OFFER_CARD_FRAME_CLASS } from '../../lib/offers'
 
 interface PromoBlockProps {
   products: ProductWithPrimaryImage[]
@@ -11,13 +12,6 @@ interface PromoBlockProps {
 }
 
 const DRAG_THRESHOLD_PX = 6
-
-function hasRealOffer(product: ProductWithPrimaryImage) {
-  return Boolean(
-    product.precio_anterior &&
-    product.precio_anterior > product.precio
-  )
-}
 
 export default function PromoBlock({ products, loading }: PromoBlockProps) {
   const reduceMotion = useReducedMotion()
@@ -142,6 +136,9 @@ export default function PromoBlock({ products, loading }: PromoBlockProps) {
         transition: { duration: 0.2 },
       }
 
+  // Sin ofertas la sección no se muestra (ni bloque vacío ni relleno con otros productos)
+  if (!loading && products.length === 0) return null
+
   const arrowClass =
     'flex items-center justify-center w-11 h-11 rounded-full border border-violet-500/45 bg-white text-violet-600 shadow-sm transition-all duration-200 hover:border-fuchsia-500 hover:text-fuchsia-600 hover:shadow-[0_6px_18px_-6px_rgba(217,70,239,0.45)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fuchsia-500 disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:border-violet-500/45 disabled:hover:text-violet-600 disabled:hover:shadow-none motion-reduce:transition-none cursor-pointer'
 
@@ -180,7 +177,7 @@ export default function PromoBlock({ products, loading }: PromoBlockProps) {
           </p>
 
           <Link
-            to="/busqueda"
+            to="/ofertas"
             className="btn-sale ring-1 ring-violet-500/40 hover:ring-fuchsia-500/70 hover:shadow-[0_8px_22px_-8px_rgba(217,70,239,0.5)] motion-reduce:transition-none"
           >
             Ver todas las ofertas
@@ -202,10 +199,6 @@ export default function PromoBlock({ products, loading }: PromoBlockProps) {
                 />
               ))}
             </div>
-          ) : products.length === 0 ? (
-            <p className="text-gray-400 text-sm text-center py-10">
-              No hay productos disponibles por el momento.
-            </p>
           ) : (
             <>
               <div
@@ -232,12 +225,8 @@ export default function PromoBlock({ products, loading }: PromoBlockProps) {
                     data-carousel-item
                     className="snap-start shrink-0 w-[85%] sm:w-[46%] md:w-[34%] lg:w-[calc(25%-0.75rem)] min-w-[240px] max-w-[340px]"
                   >
-                    <div className="h-full rounded-xl border border-violet-400/45 bg-white p-1.5 shadow-[0_4px_18px_-8px_rgba(139,92,246,0.28)] transition-all duration-200 hover:border-fuchsia-500/80 hover:shadow-[0_12px_28px_-10px_rgba(217,70,239,0.4)] focus-within:border-fuchsia-500/80 motion-reduce:transition-none [&_.card]:border-0 [&_.card]:shadow-none [&_.card]:hover:shadow-none">
-                      <ProductCard
-                        product={product}
-                        badge={hasRealOffer(product) ? 'Oferta' : undefined}
-                        badgeColor="bg-fuchsia-600"
-                      />
+                    <div className={OFFER_CARD_FRAME_CLASS}>
+                      <ProductCard product={product} offerContext="offers" />
                     </div>
                   </div>
                 ))}

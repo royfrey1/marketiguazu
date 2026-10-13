@@ -40,7 +40,7 @@ export default function FeaturedProducts({ products, loading }: FeaturedProducts
           <ProductGridSkeleton variant="full" count={4} />
         ) : products.length === 0 ? (
           <p className="text-gray-400 text-sm text-center py-12">
-            No hay productos destacados en este momento.
+            No hay productos disponibles por el momento.
           </p>
         ) : (
           <ProductGrid variant="full">

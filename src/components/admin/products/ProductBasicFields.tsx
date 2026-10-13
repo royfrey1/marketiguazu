@@ -1,6 +1,8 @@
 import type { UseFormReturn } from 'react-hook-form'
 import { Controller } from 'react-hook-form'
+import { Info } from 'lucide-react'
 import type { Category } from '../../../services/categories.service'
+import OfferPricePreview from '../offers/OfferPricePreview'
 
 interface ProductBasicFieldsProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -9,6 +11,16 @@ interface ProductBasicFieldsProps {
   isEditing: boolean
   slugExists: boolean | null
   onSlugCheck: (slug: string) => void
+  /** Con variantes activas la oferta se define en cada variante: el casillero del producto no aplica */
+  hasActiveVariants?: boolean
+  /** El producto tenía en_oferta = true a nivel producto (ya no cuenta si tiene variantes) */
+  legacyProductOffer?: boolean
+}
+
+const toNumber = (value: unknown): number | null => {
+  if (value === '' || value === null || value === undefined) return null
+  const n = Number(value)
+  return Number.isFinite(n) ? n : null
 }
 
 export default function ProductBasicFields({
@@ -17,6 +29,8 @@ export default function ProductBasicFields({
   isEditing,
   slugExists,
   onSlugCheck,
+  hasActiveVariants = false,
+  legacyProductOffer = false,
 }: ProductBasicFieldsProps) {
   const {
     register,
@@ -27,6 +41,9 @@ export default function ProductBasicFields({
   } = form
 
   const slugValue = watch('slug')
+  const enOferta = !!watch('en_oferta')
+  const precioValue = toNumber(watch('precio'))
+  const precioAnteriorValue = toNumber(watch('precio_anterior'))
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const title = e.target.value
@@ -181,7 +198,7 @@ export default function ProductBasicFields({
           </div>
           <div>
             <label htmlFor="precio_anterior" className="block text-sm font-medium text-gray-700 dark:text-white/70 mb-1.5">
-              Precio anterior
+              Precio anterior {enOferta && !hasActiveVariants && <span className="text-red-500">*</span>}
             </label>
             <input
               id="precio_anterior"
@@ -196,6 +213,49 @@ export default function ProductBasicFields({
               <p className="mt-1.5 text-sm text-red-600 dark:text-red-400">{(errors.precio_anterior as { message?: string }).message}</p>
             )}
           </div>
+        </div>
+
+        {/* Oferta */}
+        <div className="rounded-lg border border-gray-200 dark:border-white/10 p-4 space-y-3">
+          {hasActiveVariants ? (
+            <p className="flex items-start gap-2 text-sm text-gray-600 dark:text-white/60">
+              <Info className="w-4 h-4 mt-0.5 shrink-0 text-[#185749] dark:text-[#1CAAA8]" aria-hidden="true" />
+              <span>
+                Este producto tiene variantes: marcá la oferta en cada variante.
+                {legacyProductOffer && (
+                  <span className="block mt-1 text-amber-700 dark:text-amber-400">
+                    Estaba marcado en oferta como producto, pero ya no se muestra así porque tiene variantes. Al guardar se desmarca.
+                  </span>
+                )}
+              </span>
+            </p>
+          ) : (
+            <>
+              <div className="flex items-start gap-2">
+                <input
+                  id="en_oferta"
+                  type="checkbox"
+                  {...register('en_oferta')}
+                  className="mt-0.5 rounded border-gray-300 dark:border-white/20 cursor-pointer"
+                />
+                <div>
+                  <label htmlFor="en_oferta" className="text-sm font-medium text-gray-700 dark:text-white/70 cursor-pointer">
+                    Mostrar en Ofertas
+                  </label>
+                  <p className="text-xs text-gray-500 dark:text-white/40 mt-0.5">
+                    El precio anterior es el precio normal vigente antes de la oferta y tiene que ser un precio real de venta.
+                  </p>
+                </div>
+              </div>
+              {/* El error en vivo se oculta cuando zod ya lo muestra en el campo, para no duplicarlo */}
+              {enOferta && <OfferPricePreview precio={precioValue} precioAnterior={precioAnteriorValue} showError={!errors.precio_anterior} />}
+              {!isEditing && (
+                <p className="text-xs text-gray-400 dark:text-white/30">
+                  Si luego agregás variantes, la oferta se define en cada variante.
+                </p>
+              )}
+            </>
+          )}
         </div>
       </div>
     </div>

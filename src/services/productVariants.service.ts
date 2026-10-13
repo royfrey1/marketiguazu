@@ -24,6 +24,8 @@ export interface VariantFormData {
   atributos?: Record<string, string> | null
   imagen_url?: string | null
   activo: boolean
+  /** Oferta en esta variante. En crear, si falta, va false; en editar, si falta, la RPC no lo cambia */
+  en_oferta?: boolean
 }
 
 export const productVariantsService = {
@@ -78,6 +80,7 @@ export const productVariantsService = {
         p_atributos: form.atributos ? JSON.parse(JSON.stringify(form.atributos)) : null,
         p_imagen_url: form.imagen_url ?? null,
         p_activo: form.activo,
+        p_en_oferta: form.en_oferta ?? false,
       })
       .single()
 
@@ -96,6 +99,7 @@ export const productVariantsService = {
         p_atributos: form.atributos ? JSON.parse(JSON.stringify(form.atributos)) : null,
         p_imagen_url: form.imagen_url ?? null,
         p_activo: form.activo,
+        p_en_oferta: form.en_oferta,
       })
       .single()
 

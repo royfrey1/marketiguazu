@@ -16,6 +16,7 @@ const mobileQuery = typeof window !== 'undefined' ? window.matchMedia('(max-widt
 
 const HomePage = lazy(() => import('./pages/store/HomePage'))
 const SearchPage = lazy(() => import('./pages/store/SearchPage'))
+const OffersPage = lazy(() => import('./pages/store/OffersPage'))
 const ProductPage = lazy(() => import('./pages/store/ProductPage'))
 const CategoryPage = lazy(() => import('./pages/store/CategoryPage'))
 const ReportPage = lazy(() => import('./pages/admin/ReportPage'))
@@ -32,6 +33,7 @@ const ProductCreatePage = lazy(() => import('./pages/admin/ProductCreatePage'))
 const ProductEditPage = lazy(() => import('./pages/admin/ProductEditPage'))
 const CategoriesAdminPage = lazy(() => import('./pages/admin/CategoriesAdminPage'))
 const InventoryAdminPage = lazy(() => import('./pages/admin/InventoryAdminPage'))
+const OffersAdminPage = lazy(() => import('./pages/admin/OffersAdminPage'))
 const OrdersAdminPage = lazy(() => import('./pages/admin/OrdersAdminPage'))
 const AdminOrderDetailPage = lazy(() => import('./pages/admin/AdminOrderDetailPage'))
 const AdminAccountPage = lazy(() => import('./pages/admin/AdminAccountPage'))
@@ -111,6 +113,7 @@ function App() {
                 <Route path="admin/productos" element={<ProductsAdminPage />} />
                 <Route path="admin/categorias" element={<CategoriesAdminPage />} />
                 <Route path="admin/inventario" element={<InventoryAdminPage />} />
+                <Route path="admin/ofertas" element={<OffersAdminPage />} />
                 <Route path="admin/pedido/:id" element={<AdminOrderDetailPage />} />
                 <Route path="admin/pedidos" element={<OrdersAdminPage />} />
                 <Route path="admin/arrepentimientos" element={<WithdrawalsAdminPage />} />
@@ -136,6 +139,7 @@ function App() {
             <Route element={<StoreLayout />}>
               <Route index element={<HomePage />} />
               <Route path="busqueda" element={<SearchPage />} />
+              <Route path="ofertas" element={<OffersPage />} />
               <Route path="categoria" element={<CategoryIndexPage />} />
               <Route path="categoria/:slug" element={<CategoryPage />} />
               <Route path="producto/:slug" element={<ProductPage />} />

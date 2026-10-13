@@ -4,6 +4,8 @@ import type { VariantFormData } from '../../../services/productVariants.service'
 import Modal from '../../ui/Modal'
 import { sanitizeAttributeName } from '../../../lib/variantAttributes'
 import VariantImagesManager from './VariantImagesManager'
+import OfferPricePreview from '../offers/OfferPricePreview'
+import { offerPriceError } from '../../../lib/offers'
 
 interface VariantFormDialogProps {
   productId: number
@@ -23,6 +25,7 @@ const EMPTY_FORM: VariantFormData = {
   atributos: null,
   imagen_url: null,
   activo: true,
+  en_oferta: false,
 }
 
 export default function VariantFormDialog({ productId, mode, initialData, onConfirm, onClose, loading, error }: VariantFormDialogProps) {
@@ -36,6 +39,7 @@ export default function VariantFormDialog({ productId, mode, initialData, onConf
         atributos: initialData.atributos || null,
         imagen_url: initialData.imagen_url || null,
         activo: initialData.activo ?? true,
+        en_oferta: initialData.en_oferta ?? false,
       }
     }
     return EMPTY_FORM
@@ -72,6 +76,10 @@ export default function VariantFormDialog({ productId, mode, initialData, onConf
     return obj
   }
 
+  // Con la oferta marcada, los precios tienen que ser válidos (mismas reglas que la base)
+  const offerError = form.en_oferta ? offerPriceError(form.precio, form.precio_anterior) : null
+  const canSubmit = !!form.sku.trim() && !!form.nombre.trim() && form.precio >= 0 && !offerError
+
   const handleSubmit = async () => {
     await onConfirm({
       ...form,
@@ -98,9 +106,9 @@ export default function VariantFormDialog({ productId, mode, initialData, onConf
           </button>
           <button
             onClick={handleSubmit}
-            disabled={!form.sku.trim() || !form.nombre.trim() || form.precio < 0 || loading}
+            disabled={!canSubmit || loading}
             className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer ${
-              form.sku.trim() && form.nombre.trim() && form.precio >= 0
+              canSubmit
                 ? 'bg-[#185749] text-white hover:bg-[#0D3732] dark:bg-[#1CAAA8] dark:hover:bg-[#1CAAA8]/90'
                 : 'bg-gray-100 dark:bg-white/5 text-gray-400 dark:text-white/20 cursor-not-allowed'
             }`}
@@ -147,7 +155,9 @@ export default function VariantFormDialog({ productId, mode, initialData, onConf
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-white/70 mb-1.5">Precio anterior</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-white/70 mb-1.5">
+            Precio anterior {form.en_oferta && <span className="text-red-500">*</span>}
+          </label>
           <input
             type="number"
             min="0"
@@ -157,6 +167,28 @@ export default function VariantFormDialog({ productId, mode, initialData, onConf
             className={inputClasses}
           />
         </div>
+      </div>
+
+      {/* Oferta de la variante */}
+      <div className="rounded-lg border border-gray-200 dark:border-white/10 p-3 space-y-2">
+        <div className="flex items-start gap-2">
+          <input
+            type="checkbox"
+            id="variant-en-oferta"
+            checked={!!form.en_oferta}
+            onChange={(e) => setForm({ ...form, en_oferta: e.target.checked })}
+            className="mt-0.5 rounded border-gray-300 dark:border-white/20 cursor-pointer"
+          />
+          <div>
+            <label htmlFor="variant-en-oferta" className="text-sm font-medium text-gray-700 dark:text-white/70 cursor-pointer">
+              Oferta en esta variante
+            </label>
+            <p className="text-xs text-gray-500 dark:text-white/40 mt-0.5">
+              El precio anterior es el precio normal vigente antes de la oferta y tiene que ser un precio real de venta.
+            </p>
+          </div>
+        </div>
+        {form.en_oferta && <OfferPricePreview precio={form.precio} precioAnterior={form.precio_anterior} />}
       </div>
 
       <div>

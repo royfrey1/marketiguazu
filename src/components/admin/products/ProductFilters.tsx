@@ -26,7 +26,7 @@ export default function ProductFilters({
     onFiltersChange({ ...filters, ...patch })
   }
 
-  const hasActiveFilters = filters.search || filters.category_id || filters.activo !== undefined
+  const hasActiveFilters = filters.search || filters.category_id || filters.activo !== undefined || filters.en_oferta
 
   return (
     <div className="bg-white dark:bg-[#162420] rounded-xl border border-gray-200 dark:border-white/5 p-4">
@@ -67,6 +67,17 @@ export default function ProductFilters({
           <option value="true">Activos</option>
           <option value="false">Inactivos</option>
         </select>
+
+        {/* Ofertas */}
+        <label className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-white/70 border border-gray-200 dark:border-white/10 rounded-lg cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={!!filters.en_oferta}
+            onChange={(e) => update({ en_oferta: e.target.checked || undefined })}
+            className="rounded border-gray-300 dark:border-white/20"
+          />
+          En oferta
+        </label>
 
         {/* Sort */}
         <div className="relative">

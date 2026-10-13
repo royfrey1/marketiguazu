@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { requiredText, optionalText, positiveNumber, nonNegativeNumber } from './common'
+import { offerPriceError } from '../offers'
 
 const slugRegex = /^[a-z0-9]+(?:-[a-z0-9]*)*$/
 
@@ -54,6 +55,8 @@ export const adminProductSchema = z
       .transform((val) => (val === '' || val === undefined ? null : val)),
     activo: z.boolean().default(true),
     destacado: z.boolean().default(false),
+    // Mostrar en Ofertas: exige precio anterior real (> precio) y como máximo 90% de descuento
+    en_oferta: z.boolean().default(false),
     ...logisticsFields,
   })
   .superRefine((val, ctx) => {
@@ -63,6 +66,12 @@ export const adminProductSchema = z
         message: 'Completá todos los campos de logística o dejalos todos vacíos',
         path: ['peso_envio_gramos'],
       })
+    }
+    if (val.en_oferta) {
+      const offerError = offerPriceError(val.precio, val.precio_anterior)
+      if (offerError) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: offerError, path: ['precio_anterior'] })
+      }
     }
   })
 

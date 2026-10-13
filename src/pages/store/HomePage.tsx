@@ -14,6 +14,8 @@ import TrendingSection from '../../components/home/TrendingSection'
 import BenefitsSection from '../../components/home/BenefitsSection'
 import IdentityCTA from '../../components/home/IdentityCTA'
 
+const FEATURED_COUNT = 4
+
 export default function Home() {
   const [categorias, setCategorias] = useState<Category[]>([])
   const [destacados, setDestacados] = useState<ProductWithPrimaryImage[]>([])
@@ -38,9 +40,17 @@ export default function Home() {
     async function load() {
       try {
         setLoadingDestacados(true)
-        const { data, error } = await productsService.getRecent(4)
+        // Los marcados como destacados; si son menos de 4, se completa con los más recientes (sin repetir)
+        const { data: featured, error } = await productsService.getFeatured(FEATURED_COUNT)
         if (error) throw error
-        if (!cancelled && data) setDestacados(data as ProductWithPrimaryImage[])
+        let list = (featured || []) as ProductWithPrimaryImage[]
+        if (list.length < FEATURED_COUNT) {
+          const { data: recent } = await productsService.getRecent(FEATURED_COUNT + list.length)
+          const ids = new Set(list.map(p => p.id))
+          const extra = ((recent || []) as ProductWithPrimaryImage[]).filter(p => !ids.has(p.id))
+          list = [...list, ...extra].slice(0, FEATURED_COUNT)
+        }
+        if (!cancelled) setDestacados(list)
       } catch (err) {
         console.error('Error cargando destacados:', (err as Error).message)
       } finally {
@@ -74,14 +84,10 @@ export default function Home() {
     async function load() {
       try {
         setLoadingOffers(true)
-        const { data: featured, error } = await productsService.getFeatured(8)
+        // Solo productos con oferta efectiva; sin ofertas, el bloque no se muestra
+        const { data, error } = await productsService.getOffers(8)
         if (error) throw error
-        let list = (featured || []) as ProductWithPrimaryImage[]
-        if (list.length === 0) {
-          const { data: recent } = await productsService.getRecent(8)
-          list = (recent || []) as ProductWithPrimaryImage[]
-        }
-        if (!cancelled) setOffers(list)
+        if (!cancelled) setOffers((data || []) as ProductWithPrimaryImage[])
       } catch (err) {
         console.error('Error cargando ofertas:', (err as Error).message)
       } finally {

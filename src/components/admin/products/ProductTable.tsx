@@ -10,6 +10,20 @@ interface ProductTableProps {
   actionLoading: number | null
 }
 
+/** Oferta efectiva: del producto ("Oferta -X%") o de sus variantes ("Oferta en N variantes") */
+function OfferBadge({ product }: { product: ProductAdminRow }) {
+  const offer = product.oferta
+  if (!offer) return null
+  const label = offer.variantes > 0
+    ? `Oferta en ${offer.variantes} variante${offer.variantes !== 1 ? 's' : ''}`
+    : `Oferta${offer.descuento !== null ? ` -${offer.descuento}%` : ''}`
+  return (
+    <span className="inline-flex items-center mt-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#1CAAA8]/15 text-[#0D3732] dark:text-[#1CAAA8]">
+      {label}
+    </span>
+  )
+}
+
 function StockBadge({ product }: { product: ProductAdminRow }) {
   const inv = product.inventory?.[0]
   const stock = inv?.quantity ?? 0
@@ -153,6 +167,7 @@ export default function ProductTable({ products, onToggleActive, onToggleDestaca
                     {product.marca && (
                       <div className="text-xs text-gray-400 dark:text-white/25 mt-0.5">{product.marca}</div>
                     )}
+                    <OfferBadge product={product} />
                   </td>
                   <td className="px-4 py-3">
                     <span className="text-gray-600 dark:text-white/50">
@@ -257,6 +272,7 @@ export default function ProductTable({ products, onToggleActive, onToggleDestaca
                       {product.marca && (
                         <p className="text-xs text-gray-400 dark:text-white/25 mt-0.5">{product.marca}</p>
                       )}
+                      <OfferBadge product={product} />
                     </div>
                     <button
                       onClick={() => onToggleActive(product)}

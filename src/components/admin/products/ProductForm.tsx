@@ -19,6 +19,8 @@ interface ProductFormProps {
   loading?: boolean
   submitLabel?: string
   extraSections?: ReactNode
+  /** Con variantes activas, la oferta se marca en cada variante (el casillero del producto no aplica) */
+  hasActiveVariants?: boolean
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -32,6 +34,7 @@ export default function ProductForm({
   loading = false,
   submitLabel,
   extraSections,
+  hasActiveVariants = false,
 }: ProductFormProps) {
   const isEditing = !!product
   const [slugExists, setSlugExists] = useState<boolean | null>(null)
@@ -49,6 +52,8 @@ export default function ProductForm({
       precio_anterior: product?.precio_anterior ?? '',
       activo: product?.activo ?? true,
       destacado: product?.destacado ?? false,
+      // Con variantes activas el flag del producto no cuenta: se guarda en false (la RPC rechaza true)
+      en_oferta: hasActiveVariants ? false : product?.en_oferta ?? false,
       peso_envio_gramos: product?.peso_envio_gramos ?? '',
       alto_paquete_cm: product?.alto_paquete_cm ?? '',
       ancho_paquete_cm: product?.ancho_paquete_cm ?? '',
@@ -56,7 +61,12 @@ export default function ProductForm({
     } as never,
   })
 
-  const { handleSubmit } = form
+  const { handleSubmit, setValue } = form
+
+  // Si se activan variantes con el formulario abierto, la oferta pasa a definirse por variante
+  useEffect(() => {
+    if (hasActiveVariants) setValue('en_oferta', false)
+  }, [hasActiveVariants, setValue])
 
   const handleSlugCheck = useCallback(async (slug: string) => {
     if (!slug) return
@@ -93,6 +103,8 @@ export default function ProductForm({
         isEditing={isEditing}
         slugExists={slugExists}
         onSlugCheck={handleSlugCheck}
+        hasActiveVariants={hasActiveVariants}
+        legacyProductOffer={!!product?.en_oferta}
       />
 
       <ProductShippingFields form={form as unknown as AnyFormReturn} />

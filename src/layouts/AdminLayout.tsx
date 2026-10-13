@@ -4,7 +4,7 @@ import { Outlet, Link, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, Package, ShoppingCart, Tag, ClipboardList,
   ChevronLeft, ChevronRight, LogOut, ExternalLink, Menu,
-  Search, Moon, Sun, Bell, X, RotateCcw,
+  Search, Moon, Sun, Bell, X, RotateCcw, BadgePercent,
 } from 'lucide-react'
 import useAuth from '../hooks/useAuth'
 import { withdrawalService } from '../services/withdrawal.service'
@@ -17,6 +17,7 @@ import { WITHDRAWALS_CHANGED_EVENT } from '../types/withdrawal'
 const NAV_ITEMS = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/admin/productos', label: 'Productos', icon: Package },
+  { to: '/admin/ofertas', label: 'Ofertas', icon: BadgePercent },
   { to: '/admin/pedidos', label: 'Pedidos', icon: ShoppingCart },
   { to: '/admin/categorias', label: 'Categorías', icon: Tag },
   { to: '/admin/inventario', label: 'Inventario', icon: ClipboardList },
