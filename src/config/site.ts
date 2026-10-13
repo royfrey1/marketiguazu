@@ -1,4 +1,4 @@
-export const SITE_URL = 'https://market-iguazu.vercel.app'
+export const SITE_URL = 'https://www.iguazumarketplace.com.ar'
 export const SITE_NAME = 'Iguazú Marketplace'
 export const DEFAULT_TITLE = 'Iguazú Marketplace | Tecnología con envío gratis'
 export const DEFAULT_DESCRIPTION =

@@ -30,7 +30,9 @@ cp .env.example .env
 | --- | --- |
 | `VITE_SUPABASE_URL` | URL del proyecto Supabase |
 | `VITE_SUPABASE_ANON_KEY` | Clave anon/public de Supabase |
-| `VITE_APP_URL` | URL pública de la app |
+| `VITE_APP_URL` | URL pública de la app (producción: `https://www.iguazumarketplace.com.ar`) |
+
+En producción el sitio vive en **`https://www.iguazumarketplace.com.ar`** (dominio propio; el apex sin www redirige a www y `market-iguazu.vercel.app` redirige 301 al dominio nuevo).
 | `VITE_WHATSAPP_URL` | Link de WhatsApp de atención |
 
 Los secretos de las Edge Functions (`MERCADOPAGO_ACCESS_TOKEN`, `SITE_URL`,

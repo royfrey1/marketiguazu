@@ -36,7 +36,8 @@ import {
 // sigue siendo las back_urls de Mercado Pago.)
 const ALLOWED_ORIGINS: ReadonlySet<string> = new Set(
   [
-    "https://market-iguazu.vercel.app", // producción (Vercel)
+    "https://www.iguazumarketplace.com.ar", // producción (dominio propio)
+    "https://iguazumarketplace.com.ar", // apex (redirige a www)
     "http://localhost:5173", // Vite dev server
     "http://127.0.0.1:5173",
     Deno.env.get("SITE_URL"),
@@ -125,7 +126,7 @@ serve(async (req: Request): Promise<Response> => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const mpAccessToken = Deno.env.get("MERCADOPAGO_ACCESS_TOKEN");
-    const siteUrl = Deno.env.get("SITE_URL") || "https://market-iguazu.vercel.app";
+    const siteUrl = Deno.env.get("SITE_URL") || "https://www.iguazumarketplace.com.ar";
 
     if (!mpAccessToken) {
       return errResp(

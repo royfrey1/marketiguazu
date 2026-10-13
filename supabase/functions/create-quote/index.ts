@@ -15,7 +15,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 // ============================================================
 
 const CORS_HEADERS: Record<string, string> = {
-  "Access-Control-Allow-Origin": Deno.env.get("SITE_URL") || "*",
+  "Access-Control-Allow-Origin": Deno.env.get("SITE_URL") || "https://www.iguazumarketplace.com.ar",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",

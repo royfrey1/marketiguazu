@@ -46,7 +46,8 @@ import { sendEmail } from "../_shared/email.ts";
 // la función maneja headers de auth, nada de "*".
 const ALLOWED_ORIGINS: ReadonlySet<string> = new Set(
   [
-    "https://market-iguazu.vercel.app",
+    "https://www.iguazumarketplace.com.ar",
+    "https://iguazumarketplace.com.ar",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     Deno.env.get("SITE_URL"),
