@@ -81,21 +81,72 @@
 /* ── Sileo: brand integration ─────────────────────────────────────────── */
 
 :root {
-  --sileo-state-success: #389C52;
-  --sileo-state-error: #DC2626;
-  --sileo-state-warning: #D97706;
-  --sileo-state-info: #1CAAA8;
   --sileo-width: 350px;
+  /* Toaster abajo a la derecha (el viewport suma 0.75rem de padding): ~20px del borde, más el safe-area */
+  --toast-offset-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+  --toast-offset-right: calc(0.5rem + env(safe-area-inset-right, 0px));
 }
 
+/* Tienda: los toasts van a la izquierda de la columna de WhatsApp / volver arriba (right 1rem, 44px de ancho) */
+:root:has([data-floating-actions]) {
+  --toast-offset-right: calc(3.75rem + env(safe-area-inset-right, 0px));
+}
+
+/* Por encima de menús y paneles (z-40/z-50); debajo del visor de imágenes a pantalla completa (z-100) */
+:root [data-sileo-viewport] {
+  z-index: 60;
+  /* Iconos por tipo sobre el relleno oscuro (primary-dark), todos con contraste >= 3:1. En el viewport y no en
+     :root porque Sileo inyecta su propio :root con estas variables después de esta hoja */
+  --sileo-state-success: #5CBF74;
+  --sileo-state-error: #F87171;
+  --sileo-state-warning: #D97706;
+  --sileo-state-info: #1CAAA8;
+}
+
+/* Toast oscuro: título blanco y descripción primary-light; el borde claro lo separa de fondos oscuros (footer, admin) */
+:root [data-sileo-viewport] [data-sileo-title] {
+  color: #FFFFFF;
+}
+
+:root [data-sileo-viewport] [data-sileo-description] {
+  color: var(--color-primary-light);
+}
+
+:root [data-sileo-viewport] [data-sileo-svg] {
+  --toast-outline: rgb(181 227 212 / 0.55);
+  /* Contorno de 1px (cuatro sombras sin desenfoque: sigue la forma del SVG) y sombra suave */
+  filter: drop-shadow(1px 0 0 var(--toast-outline)) drop-shadow(-1px 0 0 var(--toast-outline))
+    drop-shadow(0 1px 0 var(--toast-outline)) drop-shadow(0 -1px 0 var(--toast-outline))
+    drop-shadow(0 6px 14px rgb(0 0 0 / 0.22));
+}
+
+/*
+ * Mobile: Sileo dibuja la pastilla y el fondo sobre 350px fijos (en su JS), así que un ancho menor la corre
+ * fuera del toast. Se mantiene 350px y se achica el margen lateral para que entre desde 360px.
+ */
 @media (max-width: 640px) {
   :root {
-    --sileo-width: min(320px, calc(100vw - 2rem));
+    --sileo-width: min(350px, calc(100vw - 0.625rem));
+    --toast-offset-right: env(safe-area-inset-right, 0px);
   }
 
-  [data-sileo-viewport] {
+  /* Tienda: no entra al costado de los botones flotantes; va arriba de la columna (4.5rem + 2 x 44px + 8px) */
+  :root:has([data-floating-actions]) {
+    --toast-offset-right: env(safe-area-inset-right, 0px);
+    --toast-offset-bottom: calc(10.5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  :root [data-sileo-viewport] {
+    padding: clamp(0.3125rem, calc((100vw - 350px) / 2), 0.75rem);
+    max-width: 100vw;
     overflow: hidden;
   }
+}
+
+/* Edge muestra su propio ojo en los campos de contraseña: se oculta donde ya está el de PasswordInput */
+[data-password-input]::-ms-reveal,
+[data-password-input]::-ms-clear {
+  display: none;
 }
 
 @media (max-width: 340px) {

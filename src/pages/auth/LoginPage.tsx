@@ -91,6 +91,7 @@ export default function Login() {
         <Input
           label="Contraseña"
           type="password"
+          revealable
           name="password"
           value={form.password}
           onChange={handleChange}

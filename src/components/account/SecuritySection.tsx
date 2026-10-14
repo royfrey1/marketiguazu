@@ -94,6 +94,8 @@ export default function SecuritySection({ email }: SecuritySectionProps) {
         <Input
           label="Contraseña actual"
           type="password"
+          revealable
+          autoComplete="current-password"
           value={currentPass}
           onChange={e => { setCurrentPass(e.target.value); setVerifyError('') }}
           disabled={verified}
@@ -135,6 +137,8 @@ export default function SecuritySection({ email }: SecuritySectionProps) {
         <Input
           label="Nueva contraseña"
           type="password"
+          revealable
+          autoComplete="new-password"
           value={newPassword}
           onChange={e => setNewPassword(e.target.value)}
           disabled={!verified}

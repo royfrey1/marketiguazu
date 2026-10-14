@@ -47,6 +47,7 @@ export default function StorefrontFloatingActions() {
 
   return (
     <div
+      data-floating-actions
       className="fixed z-40 flex flex-col gap-2 items-end"
       style={{
         right: 'max(1rem, env(safe-area-inset-right, 0px) + 1rem)',

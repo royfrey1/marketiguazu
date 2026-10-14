@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { sileo } from 'sileo'
 import { supabase } from '../../lib/supabase/client'
+import PasswordInput from '../../components/ui/PasswordInput'
 
 export default function RestablecerPassword() {
   const [nuevaPassword, setNuevaPassword] = useState('')
@@ -18,10 +19,10 @@ export default function RestablecerPassword() {
 
       if (error) throw error
 
-      sileo.success("¡Contraseña actualizada con éxito! Ya podés iniciar sesión.")
+      sileo.success({ title: "¡Contraseña actualizada con éxito!", description: "Ya podés iniciar sesión." })
       navigate('/login')
     } catch (error) {
-      sileo.error("Error al actualizar la contraseña: " + (error as Error).message)
+      sileo.error({ title: "Error al actualizar la contraseña", description: (error as Error).message })
     } finally {
       setLoading(false)
     }
@@ -41,8 +42,8 @@ export default function RestablecerPassword() {
       <form onSubmit={actualizarPassword} className="space-y-4">
         <div>
           <label className="text-sm font-bold text-gray-700 block mb-1.5">Nueva Contraseña</label>
-          <input
-            type="password"
+          <PasswordInput
+            autoComplete="new-password"
             required
             minLength={6}
             value={nuevaPassword}

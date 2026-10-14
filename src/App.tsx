@@ -12,7 +12,6 @@ import LoadingScreen from './components/ui/LoadingScreen'
 import ScrollManager from './components/layout/ScrollManager'
 
 const THEME_KEY = 'admin.theme'
-const mobileQuery = typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)') : null
 
 const HomePage = lazy(() => import('./pages/store/HomePage'))
 const SearchPage = lazy(() => import('./pages/store/SearchPage'))
@@ -71,15 +70,6 @@ function App() {
     }
   })
 
-  const [isMobile, setIsMobile] = useState(() => mobileQuery?.matches ?? false)
-
-  useEffect(() => {
-    if (!mobileQuery) return
-    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
-    mobileQuery.addEventListener('change', handler)
-    return () => mobileQuery.removeEventListener('change', handler)
-  }, [])
-
   useEffect(() => {
     try { localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light') } catch { /* noop */ }
   }, [dark])
@@ -89,11 +79,14 @@ function App() {
   return (
     <AuthProvider>
       <CartProvider>
+        {/* Márgenes según ancho y botones flotantes: --toast-offset-* en index.css.
+            Siempre oscuras (sin theme: no siguen el tema del admin); colores de texto e iconos en index.css */}
         <Toaster
-          position={isMobile ? 'top-center' : 'top-right'}
-          theme={dark ? 'dark' : 'light'}
-          offset={isMobile ? { top: 124 } : { top: 140, right: 16 }}
+          position="bottom-right"
+          offset={{ bottom: 'var(--toast-offset-bottom)', right: 'var(--toast-offset-right)' }}
           options={{
+            // primary-dark (#0D3732): Sileo lo usa como relleno del SVG, que no acepta var()
+            fill: '#0D3732',
             roundness: 12,
             duration: 5000,
             styles: {

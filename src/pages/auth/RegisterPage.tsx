@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { supabase } from '../../lib/supabase/client'
 import TermsAcceptance from '../../components/legal/TermsAcceptance'
+import PasswordInput from '../../components/ui/PasswordInput'
 
 export default function Register() {
   const navigate = useNavigate()
@@ -125,9 +126,9 @@ export default function Register() {
 
         <div>
           <label className="text-xs font-bold text-gray-700 block mb-1">Contraseña</label>
-          <input
-            type="password"
+          <PasswordInput
             name="password"
+            autoComplete="new-password"
             value={form.password}
             onChange={handleChange}
             required
@@ -139,9 +140,9 @@ export default function Register() {
 
         <div>
           <label className="text-xs font-bold text-gray-700 block mb-1">Confirmar contraseña</label>
-          <input
-            type="password"
+          <PasswordInput
             name="confirmPassword"
+            autoComplete="new-password"
             value={form.confirmPassword}
             onChange={handleChange}
             required

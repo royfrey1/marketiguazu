@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Shield, ShieldCheck, Mail, KeyRound, Check } from 'lucide-react'
 import { supabase } from '../../../lib/supabase/client'
+import PasswordInput from '../../ui/PasswordInput'
 
 interface AdminSecuritySectionProps {
   email: string
@@ -112,9 +113,9 @@ export default function AdminSecuritySection({ email }: AdminSecuritySectionProp
             <label htmlFor="sec-current-pass" className="text-xs font-bold text-gray-800 dark:text-white/70 uppercase mb-1.5 block">
               Contraseña actual
             </label>
-            <input
+            <PasswordInput
               id="sec-current-pass"
-              type="password"
+              autoComplete="current-password"
               value={currentPass}
               onChange={e => { setCurrentPass(e.target.value); setVerifyError('') }}
               disabled={verified}
@@ -203,9 +204,9 @@ export default function AdminSecuritySection({ email }: AdminSecuritySectionProp
             <label htmlFor="sec-new-pass" className="text-xs font-bold text-gray-800 dark:text-white/70 uppercase mb-1.5 block">
               Nueva contraseña
             </label>
-            <input
+            <PasswordInput
               id="sec-new-pass"
-              type="password"
+              autoComplete="new-password"
               value={newPassword}
               onChange={e => setNewPassword(e.target.value)}
               disabled={!verified}
