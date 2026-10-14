@@ -7,6 +7,7 @@ import CartItemCard from '../../components/cart/CartItemCard'
 import CartSummary from '../../components/cart/CartSummary'
 import CartEmpty from '../../components/cart/CartEmpty'
 import CartLoading from '../../components/cart/CartLoading'
+import CartRemovalProvider from '../../components/cart/CartRemovalProvider'
 import { groupCartItems } from '../../lib/cartItemDisplay'
 
 function CartPageContent() {
@@ -64,7 +65,7 @@ function CartPageContent() {
         >
           <div className="flex items-center gap-3 mb-4">
             <ShoppingCart className="w-6 h-6 text-primary-dark" />
-            <h1 className="text-h2 text-2xl sm:text-3xl text-primary-dark">Tu carrito</h1>
+            <h1 data-cart-heading tabIndex={-1} className="text-h2 text-2xl sm:text-3xl text-primary-dark focus:outline-none">Tu carrito</h1>
           </div>
           <p className="text-body text-gray-500 ml-9">
             {itemCount} producto{itemCount !== 1 ? 's' : ''}
@@ -126,7 +127,9 @@ export default function CartPage() {
   return (
     <>
       <Seo noindex title="Carrito de compras" />
-      <CartPageContent />
+      <CartRemovalProvider>
+        <CartPageContent />
+      </CartRemovalProvider>
     </>
   )
 }

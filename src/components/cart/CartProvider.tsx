@@ -394,13 +394,16 @@ export default function CartProvider({ children }: CartProviderProps) {
         if (removeError) throw new Error(removeError.message)
 
         setItems(prev => prev.filter(item => item.id !== itemId))
+        return true
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error al eliminar producto')
+        return false
       } finally {
         setLoading(false)
       }
     } else {
       setLocalItems(prev => prev.filter(item => item.product_id !== itemId))
+      return true
     }
   }, [user])
 

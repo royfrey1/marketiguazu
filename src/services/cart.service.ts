@@ -101,6 +101,23 @@ export const cartService = {
     return { error }
   },
 
+  /**
+   * Stock disponible (cantidad - reservado) de la fila de inventario de una línea (variante o producto base)
+   * y si el producto y la variante siguen activos. Solo lectura; null si no hay fila o falla la consulta.
+   */
+  async getLineStock(productId: number, variantId: number | null): Promise<{ available: number; active: boolean } | null> {
+    let query = supabase
+      .from('inventory')
+      .select('quantity, reserved, products(activo), product_variants(activo)')
+      .eq('product_id', productId)
+    query = variantId == null ? query.is('variant_id', null) : query.eq('variant_id', variantId)
+
+    const { data, error } = await query.maybeSingle()
+    if (error || !data) return null
+    const active = !!data.products?.activo && (variantId == null || !!data.product_variants?.activo)
+    return { available: data.quantity - data.reserved, active }
+  },
+
   async clearCart(cartId: string) {
     const { error } = await supabase
       .from('cart_items')

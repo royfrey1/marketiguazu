@@ -101,6 +101,8 @@
   --sileo-state-error: #F87171;
   --sileo-state-warning: #D97706;
   --sileo-state-info: #1CAAA8;
+  /* Avisos con botón (Deshacer): accent, igual que info (4.58:1 sobre el relleno) */
+  --sileo-state-action: #1CAAA8;
 }
 
 /* Toast oscuro: título blanco y descripción primary-light; el borde claro lo separa de fondos oscuros (footer, admin) */

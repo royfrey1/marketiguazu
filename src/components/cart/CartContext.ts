@@ -15,7 +15,8 @@ export interface CartContextType {
   availabilityChecked: boolean
   addToCart: (productId: number, precioUnitario: number, cantidad?: number, variantId?: number | null) => Promise<void>
   updateQuantity: (itemId: number, cantidad: number) => Promise<void>
-  removeItem: (itemId: number) => Promise<void>
+  /** true si la línea se quitó; false si falló (el error queda en `error`) */
+  removeItem: (itemId: number) => Promise<boolean>
   clearCart: () => Promise<void>
   resolveCartConflict: (strategy: MergeStrategy) => Promise<void>
   checkAvailability: () => Promise<void>

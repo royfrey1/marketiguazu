@@ -2,19 +2,27 @@ import { Minus, Plus, Trash2 } from 'lucide-react'
 import type { CartItemWithProduct } from '../../types/cart'
 import { cartItemImage, cartItemOptionLabel } from '../../lib/cartItemDisplay'
 import useCart from '../../hooks/useCart'
+import useRemoveCartItem from '../../hooks/useRemoveCartItem'
 
 interface CartItemCardProps {
   item: CartItemWithProduct
 }
 
 export default function CartItemCard({ item }: CartItemCardProps) {
-  const { updateQuantity, removeItem, loading } = useCart()
+  const { updateQuantity, loading } = useCart()
+  const requestRemove = useRemoveCartItem()
   const product = item.products
 
   // Foto de la variante si tiene; si no (y para la opción base), la del producto
   const { url: resolvedImageUrl, alt: altText } = cartItemImage(item)
 
   const subtotal = item.precio_unitario * item.cantidad
+
+  // "-" con cantidad 1 quita la línea: pasa por el mismo flujo que la papelera (confirmación + Deshacer)
+  const handleDecrease = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (item.cantidad <= 1) requestRemove(item, e.currentTarget)
+    else updateQuantity(item.id, item.cantidad - 1)
+  }
 
   // "Color: Dreamscape" / "Color: Gris acero" (opción base; solo el nombre si el atributo no es claro)
   const optionLabel = cartItemOptionLabel(item)
@@ -50,7 +58,7 @@ export default function CartItemCard({ item }: CartItemCardProps) {
         <div className="flex items-center justify-between gap-3 ml-[1.75rem]">
           <div className="flex items-center gap-0 border border-gray-200 rounded-lg overflow-hidden">
             <button
-              onClick={() => updateQuantity(item.id, item.cantidad - 1)}
+              onClick={handleDecrease}
               disabled={loading}
               aria-label="Disminuir cantidad"
               className="w-8 h-8 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-40 transition-colors cursor-pointer"
@@ -78,7 +86,7 @@ export default function CartItemCard({ item }: CartItemCardProps) {
           </span>
 
           <button
-            onClick={() => removeItem(item.id)}
+            onClick={e => requestRemove(item, e.currentTarget)}
             disabled={loading}
             aria-label={`Eliminar ${itemName}`}
             className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
@@ -114,7 +122,7 @@ export default function CartItemCard({ item }: CartItemCardProps) {
           <div className="flex items-center justify-between mt-3 gap-2">
             <div className="flex items-center gap-0 border border-gray-200 rounded-lg overflow-hidden">
               <button
-                onClick={() => updateQuantity(item.id, item.cantidad - 1)}
+                onClick={handleDecrease}
                 disabled={loading}
                 aria-label="Disminuir cantidad"
                 className="w-10 h-10 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-40 transition-colors cursor-pointer"
@@ -142,7 +150,7 @@ export default function CartItemCard({ item }: CartItemCardProps) {
                 ${subtotal.toLocaleString('es-AR')}
               </span>
               <button
-                onClick={() => removeItem(item.id)}
+                onClick={e => requestRemove(item, e.currentTarget)}
                 disabled={loading}
                 aria-label={`Eliminar ${itemName}`}
                 className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
