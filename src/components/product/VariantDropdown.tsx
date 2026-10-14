@@ -3,6 +3,8 @@ import { Check, ChevronDown } from 'lucide-react'
 
 export interface VariantOptionState {
   val: string
+  /** Texto visible si difiere del valor (por ejemplo, la opción base del producto) */
+  label?: string
   isSelected: boolean
   isCompatible: boolean
   isAvailable: boolean
@@ -166,12 +168,12 @@ export default function VariantDropdown({ label, options, value, onSelect }: Var
         aria-labelledby={`${labelId} ${baseId}-value`}
         onClick={() => (open ? close(false) : openList())}
         onKeyDown={handleTriggerKeyDown}
-        className={`w-full flex items-center justify-between gap-3 border rounded-lg px-3 py-2.5 text-sm bg-white cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+        className={`w-full max-lg:min-h-11 flex items-center justify-between gap-3 border rounded-lg px-3 py-2.5 text-sm bg-white cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
           open ? 'border-accent' : 'border-gray-200 hover:border-accent'
         }`}
       >
         <span id={`${baseId}-value`} className={`flex-1 min-w-0 truncate text-left ${selectedOption ? 'text-primary-dark font-medium' : 'text-gray-400'}`}>
-          {selectedOption ? selectedOption.val : `Seleccioná ${label}`}
+          {selectedOption ? selectedOption.label ?? selectedOption.val : `Seleccioná ${label}`}
         </span>
         <span className="flex items-center gap-2 shrink-0">
           {selectedOption && !isSelectable(selectedOption) && <StockBadge opt={selectedOption} />}
@@ -217,7 +219,7 @@ export default function VariantDropdown({ label, options, value, onSelect }: Var
                 />
                 {/* Mobile: nombre completo y badge debajo. sm+: misma fila, nombre truncado si no entra. */}
                 <span className="flex-1 min-w-0 flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-                  <span className={`max-w-full break-words sm:truncate ${opt.isSelected ? 'font-semibold' : ''}`}>{opt.val}</span>
+                  <span className={`max-w-full break-words sm:truncate ${opt.isSelected ? 'font-semibold' : ''}`}>{opt.label ?? opt.val}</span>
                   <StockBadge opt={opt} />
                 </span>
               </li>

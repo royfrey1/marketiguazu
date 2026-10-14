@@ -3,6 +3,7 @@ import { Controller } from 'react-hook-form'
 import { Info } from 'lucide-react'
 import type { Category } from '../../../services/categories.service'
 import OfferPricePreview from '../offers/OfferPricePreview'
+import { formatArs } from '../../../lib/offers'
 
 interface ProductBasicFieldsProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -44,6 +45,7 @@ export default function ProductBasicFields({
   const enOferta = !!watch('en_oferta')
   const precioValue = toNumber(watch('precio'))
   const precioAnteriorValue = toNumber(watch('precio_anterior'))
+  const opcionBaseNombre = String(watch('opcion_base_nombre') ?? '')
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const title = e.target.value
@@ -257,6 +259,44 @@ export default function ProductBasicFields({
             </>
           )}
         </div>
+
+        {/* Opción base: solo al editar un producto con variantes activas (en el alta todavía no hay variantes) */}
+        {isEditing && hasActiveVariants && (
+          <div className="rounded-lg border border-gray-200 dark:border-white/10 p-4 space-y-2">
+            <label htmlFor="opcion_base_nombre" className="block text-sm font-medium text-gray-700 dark:text-white/70">
+              Nombre de la opción base
+            </label>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+              <input
+                id="opcion_base_nombre"
+                type="text"
+                maxLength={60}
+                {...register('opcion_base_nombre')}
+                aria-describedby="opcion_base_nombre-ayuda opcion_base_nombre-precio"
+                className="w-full sm:flex-1 px-3 py-2.5 text-sm border border-gray-200 dark:border-white/10 rounded-lg bg-transparent text-gray-800 dark:text-white/80 placeholder:text-gray-400 dark:placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-[#185749]/20 dark:focus:ring-[#1CAAA8]/20 focus:border-[#185749] dark:focus:border-[#1CAAA8] transition-colors"
+                placeholder="Ej.: Gris acero (vacío = no se ofrece)"
+              />
+              <p id="opcion_base_nombre-precio" className="shrink-0 text-sm text-gray-600 dark:text-white/60">
+                Precio de la opción:{' '}
+                <span className="font-semibold text-gray-800 dark:text-white/80">
+                  {precioValue !== null && precioValue > 0 ? formatArs(precioValue) : '—'}
+                </span>
+              </p>
+            </div>
+            {errors.opcion_base_nombre && (
+              <p className="text-sm text-red-600 dark:text-red-400">{(errors.opcion_base_nombre as { message?: string }).message}</p>
+            )}
+            {opcionBaseNombre.trim() !== '' && (precioValue === null || precioValue <= 0) && (
+              <p className="text-sm text-amber-700 dark:text-amber-400">
+                El precio del producto está vacío o en 0: la opción base se ofrecería con ese precio.
+              </p>
+            )}
+            <p id="opcion_base_nombre-ayuda" className="text-xs text-gray-500 dark:text-white/40">
+              Ofrece el producto base como una opción más, junto a las variantes. Usa el precio del producto y el stock
+              que cargues en Inventario para el producto base (sin variante). No entra en ofertas. Dejalo vacío para no ofrecerla.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   )

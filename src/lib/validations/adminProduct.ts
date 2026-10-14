@@ -57,6 +57,12 @@ export const adminProductSchema = z
     destacado: z.boolean().default(false),
     // Mostrar en Ofertas: exige precio anterior real (> precio) y como máximo 90% de descuento
     en_oferta: z.boolean().default(false),
+    // Opción base (solo con variantes activas): vacío = apagada; si no, 1 a 60 caracteres tras recortar
+    opcion_base_nombre: z
+      .string()
+      .trim()
+      .max(60, 'El nombre de la opción base no puede superar 60 caracteres')
+      .default(''),
     ...logisticsFields,
   })
   .superRefine((val, ctx) => {

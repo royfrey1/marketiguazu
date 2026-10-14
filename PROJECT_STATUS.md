@@ -1,6 +1,6 @@
 # Iguazú Marketplace — Estado del Proyecto
 
-**Última actualización:** 2026-10-13
+**Última actualización:** 2026-10-14
 **Fuente:** QA manual del usuario + auditoría de opencode con verificación en vivo (repo, BD remota y Supabase CLI) el 2026-10-07
 
 > Este documento es la fuente de verdad de en qué fase estamos. Actualizarlo después de cada sesión de trabajo relevante (no hace falta después de cada micro-tarea).
@@ -9,7 +9,7 @@
 
 ## 🎯 Momento actual
 
-Estamos en la **recta final previa al lanzamiento**: QA de producción, requisitos legales/dominio y verificación final de datos. La tienda opera end-to-end en producción (checkout con Mercado Pago, webhook, páginas de resultado con pedido real), con pago alternativo en USDT (TRC20) probado de punta a punta, **modelo de stock corregido** (reservas por saldo neto, `confirm_sale` al aprobar), variantes de producto con galería propia, sidebar de subcategorías y teléfono de contacto obligatorio. Desde 2026-10-06 los **textos legales están publicados** (con aceptación en checkout y registro) y el **botón de arrepentimiento está completo** (página pública con constancia, estado en el pedido y gestión en el admin). **Dominio propio activo desde 2026-10-13:** la tienda se sirve en `https://www.iguazumarketplace.com.ar` (www es el principal; el apex sin www redirige con 308; `market-iguazu.vercel.app` redirige 301 al dominio nuevo). **Migración completada (2026-10-14):** `SITE_URL`, CORS de las 6 Edge Functions, Auth de Supabase y SMTP propio (Resend) configurados; el remitente de los emails de pedidos usa el dominio propio (`RESEND_FROM_EMAIL` actualizado) y `create-quote` quedó dada de baja en producción (el código sigue en el repo). **Frontend:** notificaciones (Sileo) abajo a la derecha y siempre oscuras, botón ver/ocultar contraseña (`PasswordInput`) en todos los campos de contraseña y avisos de `ResetPasswordPage` corregidos. Todo el trabajo de la sesión está commiteado (working tree limpio; el push cierra la sesión). El trabajo que queda no es de construcción: es completar datos del titular, dominio/emails, rotar secretos y editar datos de catálogo por cuenta del dueño.
+Estamos en la **recta final previa al lanzamiento**: QA de producción, requisitos legales/dominio y verificación final de datos. La tienda opera end-to-end en producción (checkout con Mercado Pago, webhook, páginas de resultado con pedido real), con pago alternativo en USDT (TRC20) probado de punta a punta, **modelo de stock corregido** (reservas por saldo neto, `confirm_sale` al aprobar), variantes de producto con galería propia, sidebar de subcategorías y teléfono de contacto obligatorio. Desde 2026-10-06 los **textos legales están publicados** (con aceptación en checkout y registro) y el **botón de arrepentimiento está completo** (página pública con constancia, estado en el pedido y gestión en el admin). **Dominio propio activo desde 2026-10-13:** la tienda se sirve en `https://www.iguazumarketplace.com.ar` (www es el principal; el apex sin www redirige con 308; `market-iguazu.vercel.app` redirige 301 al dominio nuevo). **Migración completada (2026-10-14):** `SITE_URL`, CORS de las 6 Edge Functions, Auth de Supabase y SMTP propio (Resend) configurados; el remitente de los emails de pedidos usa el dominio propio (`RESEND_FROM_EMAIL` actualizado) y `create-quote` quedó dada de baja en producción (el código sigue en el repo). **Frontend:** notificaciones (Sileo) abajo a la derecha y siempre oscuras, botón ver/ocultar contraseña (`PasswordInput`) en todos los campos de contraseña y avisos de `ResetPasswordPage` corregidos. **Opción base elegible (2026-10-14):** productos con variantes pueden tener una opción "base" opt-in (`products.opcion_base_nombre`) que usa el precio y el stock propio del producto; BD + servidor + frontend completos (ver sección propia). Todo el trabajo de la sesión está commiteado (working tree limpio; el push cierra la sesión). El trabajo que queda no es de construcción: es completar datos del titular, dominio/emails, rotar secretos y editar datos de catálogo por cuenta del dueño.
 
 ### ✅ Hechos confirmados por QA manual
 
@@ -73,7 +73,7 @@ Estamos en la **recta final previa al lanzamiento**: QA de producción, requisit
 | 12 — SEO/Performance | 🔶 Parcial | **Fase 1 hecha (2026-10-08):** `lang="es"`, meta description/OG/Twitter por defecto, `robots.txt`, metadatos y JSON-LD por página, `noindex` en rutas privadas. Quedan `sitemap.xml` (fase 2), la vista previa Open Graph de producto en WhatsApp/Facebook y performance |
 | 13 — Lanzamiento | ⬜ No iniciada | Dependiente de los bloqueadores de arriba |
 
-**Edge Functions desplegadas** (verificadas con `supabase functions list` el 2026-10-07): `create-payment` (v33), `mp-webhook` (v24), `admin-verify-payment` (v15), `create-payment-usdt` (v17), `create-payment-transfer` (v1), `send-order-email` (v15), `request-withdrawal` (v6) — todas ACTIVE. `create-quote` solo existe en el repo (no desplegada).
+**Edge Functions desplegadas** (verificadas con `supabase functions list` el 2026-10-14): `create-payment` (v42), `mp-webhook` (v31), `admin-verify-payment` (v23), `create-payment-usdt` (v26), `create-payment-transfer` (v10), `send-order-email` (v23), `request-withdrawal` (v14) — todas ACTIVE. `create-quote` solo existe en el repo (no desplegada).
 
 ---
 
@@ -104,6 +104,36 @@ Estamos en la **recta final previa al lanzamiento**: QA de producción, requisit
 - Página fuera de rango en `/busqueda` muestra "Requested range not satisfiable".
 - `products.precio` no se sincroniza con el precio de las variantes (hay desfasajes en algunos productos; los corrige el dueño desde el admin).
 - Los productos en oferta sin stock no aparecen en las listas.
+
+---
+
+## 🧩 Opción base elegible (2026-10)
+
+**Modelo:** columna `products.opcion_base_nombre` (`NULL` = apagada; CHECK 1-60 caracteres). Un producto con variantes activas puede habilitar una opción "base" que representa comprar el producto tal cual (sin elegir variante): usa `products.precio` y el **stock de la fila base** de `inventory` (`variant_id IS NULL`, ya cargable vía `adjust_stock`). La opción base **no entra en ofertas** (la regla de ofertas por variante queda intacta).
+
+**BD + servidor (aplicado en producción 2026-10-14, migración `20261014100000_product_base_option.sql`):**
+
+- `get_product_availability` suma el stock base **solo** cuando `opcion_base_nombre` tiene valor (los productos sin nombre se comportan igual que antes).
+- RPC nueva `get_product_base_availability(p_product_id)` → `{opcion_base_nombre, available}`.
+- `create_admin_product` / `update_admin_product` con `p_opcion_base_nombre` (NULL = no cambiar, `''` = quitar).
+- Regla de servidor en `_shared/order-creation.ts`: un item sin variante de un producto con variantes activas y sin opción base se rechaza con `INVALID_VARIANT` ("Seleccioná una variante del producto"). Las 3 funciones de pago (`create-payment`, `create-payment-usdt`, `create-payment-transfer`) fueron redeployadas.
+
+**Frontend:**
+
+- Admin: campo "Nombre de la opción base" en la edición de productos con variantes activas (vacío = apagada; guardar otros campos conserva el valor).
+- Ficha: la opción base aparece **primera** en el selector de variantes, con precio del producto, stock de la fila base y sin oferta; se agrega al carrito sin `variantId`.
+- Carrito: la muestra con su nombre como línea aparte y bloquea items sin variante de productos con variantes y sin opción base.
+- Inventario: rotula la fila base ("Opción base: `<nombre>`" o "Producto base (sin variante)").
+- Selector de variantes a 44 px por debajo de `lg`.
+
+**Pendientes anotados:**
+
+- Botones "Ajustar stock" / "Historial" de Inventario a 28 px en mobile.
+- Proteger variantes con precio 0 o vacío (admin y BD).
+- Advertencia al agregar la primera variante a un producto con stock propio (el stock base deja de contar).
+- Ofertas para la opción base (futuro).
+- Configurar la opción en productos reales (1053 primero) tras verificar que `products.precio` sea correcto.
+- Precios base desfasados de los productos 8 y 1023.
 
 ---
 
@@ -156,7 +186,7 @@ La lista completa vive en **🚨 Bloqueadores críticos** (única fuente de verd
 - **Los toasts (Sileo) no se apilan:** el segundo reemplaza al primero; si hace falta ver los dos, implementar pila.
 - **Toast con modal abierto:** queda detrás del fondo del diálogo (z-index); revisar los errores que se muestran en diálogos del admin.
 - **Verificar el ojo de contraseña y las notificaciones en pantallas con sesión** (perfil, admin, checkout) y en **Edge** (el CSS de los toasts no fue probado ahí).
-- **ANÁLISIS PENDIENTE — disponibilidad con variantes:** productos con variantes cuyo producto base tiene stock propio **no se muestran en la tienda si las variantes no tienen stock** (afecta también a los destacados); auditar la lógica de disponibilidad con variantes antes de decidir el modelo de stock.
+- **~~ANÁLISIS PENDIENTE — disponibilidad con variantes:~~** ~~productos con variantes cuyo producto base tiene stock propio **no se muestran en la tienda si las variantes no tienen stock** (afecta también a los destacados); auditar la lógica de disponibilidad con variantes antes de decidir el modelo de stock.~~ — **resuelto (2026-10-14)**: modelo de **opción base elegible** (ver sección propia); el stock propio del producto cuenta solo si el dueño habilita la opción con un nombre.
 
 ---
 
@@ -171,6 +201,8 @@ La lista completa vive en **🚨 Bloqueadores críticos** (única fuente de verd
 ---
 
 ## 🗂️ Historial de sesiones
+
+- **2026-10-14 (opción base elegible: BD + servidor + frontend)** — Feature completa opt-in para productos con variantes: columna `products.opcion_base_nombre`, `get_product_availability` suma el stock base cuando hay nombre, RPC `get_product_base_availability`, `p_opcion_base_nombre` en las RPCs de admin, regla de servidor `INVALID_VARIANT` y frontend (campo en admin, opción base primera en el selector de la ficha, línea aparte en el carrito, rótulo en Inventario, selector a 44 px). Migración `20261014100000_product_base_option.sql` aplicada en producción (ensayo previo en transacción con ROLLBACK y verificación byte a byte contra respaldos en `backup/`); `create-payment`, `create-payment-usdt` y `create-payment-transfer` redeplegadas (v42/v26/v10) con preflight OPTIONS y CORS verificados. Tests con mocks de `order-creation` 5/5 (`node supabase/functions/_shared/order-creation.test.ts`); `deno check` OK. Verificado contra la línea base: `tsc -b` **50**, lint **66 (57 errores, 9 warnings)**, build OK.
 
 - **2026-10-14 (frontend: notificaciones, ojo de contraseña, avisos de reset) + cierre de la migración de dominio** — **Notificaciones (Sileo)** ahora aparecen **abajo a la derecha** y **siempre oscuras** (relleno fijo del color `primary-dark`, independiente del tema claro/oscuro del admin). **Botón ver/ocultar contraseña:** componente nuevo `PasswordInput` (prop `revealable` en `Input`) en login, registro, reset, perfil y admin. **Avisos de `ResetPasswordPage` corregidos:** Sileo exige un objeto de opciones, no texto suelto (el resto de las llamadas ya estaba bien). Migración de dominio cerrada: secret `SITE_URL`, CORS de las 6 Edge Functions, Auth de Supabase y SMTP propio (Resend) configurados, `RESEND_FROM_EMAIL` con el remitente del dominio propio, y `create-quote` dada de baja en producción (código en el repo). Verificado contra la línea base: `tsc -b` **50**, lint **66 (57 errores, 9 warnings)**, build OK.
 

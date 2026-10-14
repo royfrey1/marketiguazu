@@ -243,7 +243,7 @@ export async function createPendingOrder(
     } else {
       const { data: product, error: pErr } = await supabase
         .from("products")
-        .select("id, titulo, activo, precio")
+        .select("id, titulo, activo, precio, opcion_base_nombre")
         .eq("id", item.productId)
         .single();
 
@@ -252,6 +252,29 @@ export async function createPendingOrder(
       }
       if (!product.activo) {
         return failure("INVALID_PRODUCT", `Producto ${item.productId} inactivo`);
+      }
+
+      // Producto con variantes activas y sin opcion base:
+      // el item sin variante no es valido (hay que elegir variante).
+      if (!product.opcion_base_nombre) {
+        const { count: activeVariants, error: vCountErr } = await supabase
+          .from("product_variants")
+          .select("id", { count: "exact", head: true })
+          .eq("product_id", item.productId)
+          .eq("activo", true);
+
+        if (vCountErr) {
+          console.error(
+            `createPendingOrder: fallo al contar variantes de ${item.productId}: ${vCountErr.message}`,
+          );
+          return failure("ORDER_CREATION_FAILED", "Error al validar el producto", 500);
+        }
+        if ((activeVariants ?? 0) > 0) {
+          return failure(
+            "INVALID_VARIANT",
+            "Seleccioná una variante del producto",
+          );
+        }
       }
 
       validatedItems.push({

@@ -54,6 +54,8 @@ export default function ProductForm({
       destacado: product?.destacado ?? false,
       // Con variantes activas el flag del producto no cuenta: se guarda en false (la RPC rechaza true)
       en_oferta: hasActiveVariants ? false : product?.en_oferta ?? false,
+      // Parte del valor guardado: un guardado de otros campos lo reenvía tal cual (no lo pisa)
+      opcion_base_nombre: product?.opcion_base_nombre ?? '',
       peso_envio_gramos: product?.peso_envio_gramos ?? '',
       alto_paquete_cm: product?.alto_paquete_cm ?? '',
       ancho_paquete_cm: product?.ancho_paquete_cm ?? '',

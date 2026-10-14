@@ -9,6 +9,16 @@ interface InventoryTableProps {
   onShowMovements: (item: InventoryAdminRow) => void
 }
 
+// Fila base (sin variante) de un producto con variantes activas: es la opción base, no el producto entero
+function rowSubtitle(item: InventoryAdminRow): string {
+  if (item.variant_nombre) return `${item.variant_nombre}${item.variant_sku ? ` · ${item.variant_sku}` : ''}`
+  if (item.variant_id == null && item.product_has_active_variants) {
+    const nombre = item.product_opcion_base_nombre?.trim()
+    return nombre ? `Opción base: ${nombre}` : 'Producto base (sin variante)'
+  }
+  return item.category_nombre || 'Sin categoría'
+}
+
 export default function InventoryTable({ items, onAdjust, onShowMovements }: InventoryTableProps) {
   if (items.length === 0) {
     return (
@@ -64,10 +74,7 @@ export default function InventoryTable({ items, onAdjust, onShowMovements }: Inv
                       {item.product_titulo}
                     </Link>
                     <p className="text-xs text-gray-400 dark:text-white/30 truncate">
-                      {item.variant_nombre
-                        ? `${item.variant_nombre}${item.variant_sku ? ` · ${item.variant_sku}` : ''}`
-                        : item.category_nombre || 'Sin categoría'
-                      }
+                      {rowSubtitle(item)}
                     </p>
                   </div>
                 </div>
@@ -138,10 +145,7 @@ export default function InventoryTable({ items, onAdjust, onShowMovements }: Inv
                       {item.product_titulo}
                     </Link>
                     <p className="text-xs text-gray-400 dark:text-white/30 truncate">
-                      {item.variant_nombre
-                        ? `${item.variant_nombre}${item.variant_sku ? ` · ${item.variant_sku}` : ''}`
-                        : item.category_nombre || 'Sin categoría'
-                      }
+                      {rowSubtitle(item)}
                     </p>
                   </div>
                 </div>

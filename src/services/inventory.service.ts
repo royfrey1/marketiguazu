@@ -28,6 +28,10 @@ export interface InventoryAdminRow {
   variant_sku: string | null
   variant_imagen_url: string | null
   variant_activo: boolean | null
+  /** Solo filas base (sin variante): el producto tiene variantes activas. Lo agrega getAllAdmin (no viene de la vista) */
+  product_has_active_variants?: boolean
+  /** Solo filas base: nombre de la opción base del producto, si está configurada */
+  product_opcion_base_nombre?: string | null
 }
 
 export type AdminInventoryFilters = {
@@ -98,8 +102,28 @@ export const inventoryService = {
     query = query.order(column, { ascending })
 
     const { data, error, count } = await query
+    const rows = data as InventoryAdminRow[] | null
 
-    return { data: data as InventoryAdminRow[] | null, error, count }
+    // Filas base (sin variante): variantes activas y opción base del producto, en una sola consulta para
+    // toda la lista. Si falla, las filas quedan como antes (sin rótulo de opción base)
+    const baseProductIds = [...new Set((rows ?? []).filter(r => r.variant_id == null).map(r => r.product_id))]
+    if (!error && baseProductIds.length > 0) {
+      const { data: products } = await supabase
+        .from('products')
+        .select('id, opcion_base_nombre, product_variants(id)')
+        .in('id', baseProductIds)
+        .eq('product_variants.activo', true)
+
+      const byId = new Map((products ?? []).map(p => [p.id, p]))
+      for (const row of rows ?? []) {
+        const product = row.variant_id == null ? byId.get(row.product_id) : undefined
+        if (!product) continue
+        row.product_has_active_variants = (product.product_variants ?? []).length > 0
+        row.product_opcion_base_nombre = product.opcion_base_nombre
+      }
+    }
+
+    return { data: rows, error, count }
   },
 
   async adjustStock(inventoryId: number, quantity: number, tipo: 'restock' | 'adjustment' | 'return', notas?: string) {

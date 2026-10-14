@@ -15,6 +15,8 @@ export type CartItemWithProduct = CartItemRow & {
     precio: number
     imagen_url: string | null
     activo: boolean
+    /** Opción base: un item sin variante de un producto con variantes se muestra con este nombre */
+    opcion_base_nombre: string | null
     product_images: ProductImageRef[] | null
   } | null
   product_variants: {

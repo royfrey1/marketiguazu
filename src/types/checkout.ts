@@ -47,7 +47,7 @@ export const PAYMENT_ERROR_MESSAGES: Record<PaymentErrorCode, string> = {
   INVALID_PAYLOAD: 'Los datos del checkout son inválidos. Volvé al carrito y revisá el pedido.',
   EMPTY_CART: 'Tu carrito está vacío.',
   INVALID_PRODUCT: 'Uno de los productos del carrito ya no está disponible.',
-  INVALID_VARIANT: 'Una de las variantes del carrito ya no está disponible.',
+  INVALID_VARIANT: 'Una de las opciones elegidas en el carrito ya no está disponible. Quitala del carrito y elegí otra variante del producto.',
   INVALID_QUANTITY: 'Las cantidades del carrito son inválidas.',
   PRICE_CHANGED: 'El precio de un producto cambió. Revisá tu carrito antes de continuar.',
   ADDRESS_NOT_FOUND: 'La dirección de envío seleccionada ya no existe. Elegí una nueva.',

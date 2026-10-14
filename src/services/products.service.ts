@@ -558,6 +558,8 @@ export const productsService = {
         p_largo_paquete_cm: updates.largo_paquete_cm ?? null,
         // undefined = no se manda y la RPC conserva el valor actual (NULL = "no cambiar")
         p_en_oferta: updates.en_oferta,
+        // Opción base: undefined = no se manda y la RPC conserva el valor; '' = quitar; texto = guardar
+        p_opcion_base_nombre: updates.opcion_base_nombre,
       })
       .single()
 
@@ -584,6 +586,27 @@ export const productsService = {
       return new Map<number, number>()
     }
   },
+
+  /**
+   * Opción base de un producto con variantes (stock de la fila de inventario sin variante).
+   * Null si el producto no la tiene configurada, no está activo o falla la consulta.
+   */
+  async getBaseAvailability(productId: number): Promise<BaseOptionAvailability | null> {
+    try {
+      const { data, error } = await supabase.rpc('get_product_base_availability', {
+        p_product_id: productId,
+      })
+      const row = !error && data ? data[0] : undefined
+      return row ? { nombre: row.opcion_base_nombre, available: row.available } : null
+    } catch {
+      return null
+    }
+  },
+}
+
+export interface BaseOptionAvailability {
+  nombre: string
+  available: number
 }
 
 function resolveImageUrl(

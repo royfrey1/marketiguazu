@@ -3,7 +3,7 @@ import { useParams, useSearchParams, Link, Navigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { sileo } from 'sileo'
 import { ShoppingCart, Share2, Minus, Plus, Package, ChevronLeft, ChevronRight, Truck } from 'lucide-react'
-import { productsService, type ProductWithPrimaryImage } from '../../services/products.service'
+import { productsService, type BaseOptionAvailability, type ProductWithPrimaryImage } from '../../services/products.service'
 import { productImagesService, type ProductImage } from '../../services/productImages.service'
 import { productVariantsService, type VariantWithInventory } from '../../services/productVariants.service'
 import { productSpecificationsService, type ProductSpecificationRow } from '../../services/productSpecifications.service'
@@ -11,7 +11,7 @@ import useCart from '../../hooks/useCart'
 import ProductCard from '../../components/home/ProductCard'
 import { ProductGrid } from '../../components/store/ProductGrid'
 import ProductImageViewer, { type ProductViewerImage } from '../../components/product/ProductImageViewer'
-import VariantDropdown from '../../components/product/VariantDropdown'
+import VariantDropdown, { type VariantOptionState } from '../../components/product/VariantDropdown'
 import { PAYMENT_METHODS } from '../../components/store/paymentMethods'
 import Seo from '../../components/seo/Seo'
 import { SITE_URL } from '../../config/site'
@@ -22,6 +22,12 @@ const SIN_IMAGENES: ProductImage[] = []
 const USDT_METHOD = PAYMENT_METHODS.find(m => m.label.startsWith('USDT'))
 
 type AttributeMap = Record<string, string>
+
+/** Opción elegida en el selector: el producto base, una variante (por id) o nada */
+type Selection = 'base' | number | null
+
+// Valor interno de la opción base en el selector (no choca con valores reales de atributos)
+const BASE_OPTION_VALUE = '__opcion_base__'
 
 interface AttributeGroup {
   key: string
@@ -104,6 +110,9 @@ export default function DetalleProducto() {
   const [variantesError, setVariantesError] = useState<string | null>(null)
   const [selectedAttributes, setSelectedAttributes] = useState<AttributeMap>({})
   const [variantAvail, setVariantAvail] = useState<Map<number, number>>(new Map())
+  // Opción base (producto con variantes y opcion_base_nombre): null si no está configurada
+  const [baseOption, setBaseOption] = useState<BaseOptionAvailability | null>(null)
+  const [baseSelected, setBaseSelected] = useState(false)
 
   const [related, setRelated] = useState<ProductWithPrimaryImage[]>([])
   const [specs, setSpecs] = useState<ProductSpecificationRow[]>([])
@@ -141,8 +150,15 @@ export default function DetalleProducto() {
             setVariantesLoading(false)
           }
 
-          const availMap = await productsService.getVariantAvailability(prodData.id)
+          // La opción base solo se consulta si el producto la tiene configurada y tiene variantes
+          const withBase = !!prodData.opcion_base_nombre && (vars?.length ?? 0) > 0
+          const [availMap, baseAvail] = await Promise.all([
+            productsService.getVariantAvailability(prodData.id),
+            withBase ? productsService.getBaseAvailability(prodData.id) : Promise.resolve(null),
+          ])
           if (!cancelled) {
+            // Juntos: la preselección necesita los dos
+            setBaseOption(baseAvail)
             setVariantAvail(availMap)
           }
 
@@ -168,29 +184,37 @@ export default function DetalleProducto() {
   }, [id, slug])
 
   const hasVariants = variantes.length > 0
+  const hasBaseOption = hasVariants && !!producto?.opcion_base_nombre && baseOption !== null
+  const baseAvailable = hasBaseOption ? baseOption!.available : 0
   const attributeGroups = useMemo(() => extractAttributeGroups(variantes), [variantes])
 
   const autoSelectedRef = useRef(false)
   useEffect(() => {
     if (autoSelectedRef.current) return
     if (!hasVariants || variantesLoading || variantAvail.size === 0) return
-    if (Object.keys(selectedAttributes).length > 0) return
+    if (Object.keys(selectedAttributes).length > 0 || baseSelected) return
     autoSelectedRef.current = true
     // La variante pedida por URL si existe, está activa (solo se cargan activas) y tiene stock;
-    // si no, la primera con stock
+    // si no, la primera opción con stock (la base va primero, si tiene stock)
     const hasStock = (v: VariantWithInventory) => (variantAvail.get(v.id) ?? 0) > 0
     const requested = varianteParam > 0 ? variantes.find(v => v.id === varianteParam && hasStock(v)) : undefined
+    if (!requested && baseAvailable > 0) {
+      setBaseSelected(true)
+      return
+    }
     const firstAvailable = requested ?? variantes.find(hasStock)
     if (firstAvailable?.atributos && typeof firstAvailable.atributos === 'object') {
       setSelectedAttributes(firstAvailable.atributos as AttributeMap)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasVariants, variantesLoading, variantAvail, variantes])
+  }, [hasVariants, variantesLoading, variantAvail, variantes, baseAvailable])
 
   const selectedVariant = useMemo(() => {
-    if (Object.keys(selectedAttributes).length === 0) return null
+    if (baseSelected || Object.keys(selectedAttributes).length === 0) return null
     return resolveVariant(variantes, selectedAttributes)
-  }, [variantes, selectedAttributes])
+  }, [baseSelected, variantes, selectedAttributes])
+
+  const selection: Selection = baseSelected ? 'base' : selectedVariant?.id ?? null
 
   const selectedVariantId = selectedVariant?.id
   useEffect(() => {
@@ -210,6 +234,7 @@ export default function DetalleProducto() {
   )
 
   const handleAttributeSelect = useCallback((key: string, value: string) => {
+    setBaseSelected(false)
     setSelectedAttributes(prev => {
       if (prev[key] === value) {
         const next = { ...prev }
@@ -221,6 +246,14 @@ export default function DetalleProducto() {
     setQuantity(1)
   }, [])
 
+  // La opción base no tiene atributos: elegirla limpia la selección de variante
+  const handleBaseSelect = useCallback(() => {
+    setBaseSelected(true)
+    setSelectedAttributes({})
+    setQuantity(1)
+  }, [])
+
+  // Con la opción base, selectedVariant es null: precio del producto y, como hasVariants, sin oferta
   const effectivePrice = useMemo(() => {
     if (selectedVariant) return selectedVariant.precio
     return producto?.precio ?? 0
@@ -245,16 +278,17 @@ export default function DetalleProducto() {
   )
 
   const effectiveStock = useMemo(() => {
+    if (selection === 'base') return baseAvailable
     if (selectedVariant) {
       return variantAvail.get(selectedVariant.id) ?? 0
     }
     if (hasVariants) return 0
     return producto?.available ?? 0
-  }, [selectedVariant, hasVariants, variantAvail, producto])
+  }, [selection, baseAvailable, selectedVariant, hasVariants, variantAvail, producto])
 
   const handleAddToCart = useCallback(async () => {
     if (!producto?.activo || cartLoading) return
-    if (hasVariants && !selectedVariant) {
+    if (hasVariants && selection === null) {
       sileo.error({
         title: 'Falta seleccionar',
         description: 'Seleccioná una variante para continuar',
@@ -264,14 +298,17 @@ export default function DetalleProducto() {
     if (effectiveStock <= 0) {
       sileo.error({
         title: 'Sin disponibilidad',
-        description: selectedVariant
-          ? 'Esta variante no está disponible'
-          : 'Este producto no está disponible',
+        description: selection === 'base'
+          ? 'Esta opción no está disponible'
+          : selectedVariant
+            ? 'Esta variante no está disponible'
+            : 'Este producto no está disponible',
       })
       return
     }
     try {
-      await addToCart(producto.id, effectivePrice, quantity, selectedVariant?.id ?? null)
+      // La opción base va sin variantId (el servidor la acepta solo si el producto la tiene configurada)
+      await addToCart(producto.id, effectivePrice, quantity, selection === 'base' ? null : selectedVariant?.id ?? null)
       sileo.success({ title: 'Producto agregado al carrito' })
     } catch (err) {
       sileo.error({
@@ -279,7 +316,7 @@ export default function DetalleProducto() {
         description: err instanceof Error ? err.message : 'Ocurrió un error inesperado.',
       })
     }
-  }, [producto, cartLoading, hasVariants, selectedVariant, effectiveStock, addToCart, effectivePrice, quantity])
+  }, [producto, cartLoading, hasVariants, selection, selectedVariant, effectiveStock, addToCart, effectivePrice, quantity])
 
   const isVariantProduct = hasVariants || variantesLoading
 
@@ -433,8 +470,8 @@ export default function DetalleProducto() {
     .sort(
       (a, b) => (b.es_principal ? 1 : 0) - (a.es_principal ? 1 : 0) || a.sort_order - b.sort_order
     )
-  // SKU real: el de la variante seleccionada o, si hay una sola, el de esa. Sin variante no se muestra
-  const skuVariant = selectedVariant ?? (variantes.length === 1 ? variantes[0] : null)
+  // SKU real: el de la variante seleccionada o, si hay una sola, el de esa. Sin variante (o con la base) no se muestra
+  const skuVariant = selection === 'base' ? null : selectedVariant ?? (variantes.length === 1 ? variantes[0] : null)
   const realSku = skuVariant?.sku?.trim() || null
   const absUrl = (u: string) => (/^https?:\/\//.test(u) ? u : `${SITE_URL}${u.startsWith('/') ? u : `/${u}`}`)
   const seoImage = orderedImages[0]?.url || producto.imagen_url || undefined
@@ -694,7 +731,9 @@ export default function DetalleProducto() {
                 <div className="min-w-0 flex-1">
                   {showVariantSelector && (
                     <div className="space-y-3">
-                      {attributeGroups.map((group) => {
+                      {attributeGroups.map((group, groupIndex) => {
+                        // La opción base no tiene atributos: elegida, los demás grupos no aplican
+                        if (selection === 'base' && groupIndex > 0) return null
                         const compatible = getCompatibleValues(variantes, group.key, selectedAttributes)
                         const optionStates = group.values.map(val => {
                           const isSelected = selectedAttributes[group.key] === val
@@ -711,14 +750,30 @@ export default function DetalleProducto() {
                             : false
                           return { val, isSelected, isCompatible, isAvailable }
                         })
+                        // La opción base va primero, en el primer selector
+                        const withBase = hasBaseOption && groupIndex === 0
+                        const options: VariantOptionState[] = withBase
+                          ? [
+                              {
+                                val: BASE_OPTION_VALUE,
+                                label: baseOption!.nombre,
+                                isSelected: selection === 'base',
+                                isCompatible: true,
+                                isAvailable: baseAvailable > 0,
+                              },
+                              ...optionStates,
+                            ]
+                          : optionStates
 
                         return (
                           <VariantDropdown
                             key={group.key}
                             label={group.key}
-                            options={optionStates}
-                            value={selectedAttributes[group.key]}
-                            onSelect={(val) => handleAttributeSelect(group.key, val)}
+                            options={options}
+                            value={withBase && selection === 'base' ? BASE_OPTION_VALUE : selectedAttributes[group.key]}
+                            onSelect={(val) =>
+                              val === BASE_OPTION_VALUE ? handleBaseSelect() : handleAttributeSelect(group.key, val)
+                            }
                           />
                         )
                       })}
@@ -760,8 +815,9 @@ export default function DetalleProducto() {
 
             {/* CTA — última acción principal, debajo de toda la información */}
             {(() => {
-              const needsVariant = hasVariants && !selectedVariant
-              const anyVariantAvailable = Array.from(variantAvail.values()).some(s => s > 0)
+              const needsVariant = hasVariants && selection === null
+              // La opción base con stock cuenta como opción disponible
+              const anyVariantAvailable = baseAvailable > 0 || Array.from(variantAvail.values()).some(s => s > 0)
               const outOfStock = effectiveStock <= 0
               const missingVariantBlocked = needsVariant && !anyVariantAvailable
               const isDisabled =

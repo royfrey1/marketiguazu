@@ -134,8 +134,27 @@ export default function CartProvider({ children }: CartProviderProps) {
       }
     }
 
+    // Un item sin variante de un producto con variantes activas solo es válido con la opción base
+    // configurada (el servidor lo rechaza con INVALID_VARIANT): se marca como no disponible
+    const productsWithVariants = new Set<number>()
+    const noVariantProductIds = [...new Set(items.filter(i => i.variant_id == null).map(i => i.product_id))]
+    if (noVariantProductIds.length > 0) {
+      const { data } = await supabase
+        .from('product_variants')
+        .select('product_id')
+        .in('product_id', noVariantProductIds)
+        .eq('activo', true)
+
+      for (const row of data ?? []) productsWithVariants.add(row.product_id)
+    }
+
     const unavailable = new Set<number>()
     for (const item of items) {
+      if (item.variant_id == null && productsWithVariants.has(item.product_id) && !item.products?.opcion_base_nombre) {
+        unavailable.add(item.id)
+        continue
+      }
+
       let available: number | null = null
 
       if (item.variant_id != null) {

@@ -731,6 +731,7 @@ export type Database = {
           imagen_url: string | null
           largo_paquete_cm: number | null
           marca: string | null
+          opcion_base_nombre: string | null
           peso_envio_gramos: number | null
           precio: number
           precio_anterior: number | null
@@ -752,6 +753,7 @@ export type Database = {
           imagen_url?: string | null
           largo_paquete_cm?: number | null
           marca?: string | null
+          opcion_base_nombre?: string | null
           peso_envio_gramos?: number | null
           precio: number
           precio_anterior?: number | null
@@ -773,6 +775,7 @@ export type Database = {
           imagen_url?: string | null
           largo_paquete_cm?: number | null
           marca?: string | null
+          opcion_base_nombre?: string | null
           peso_envio_gramos?: number | null
           precio?: number
           precio_anterior?: number | null
@@ -1030,6 +1033,7 @@ export type Database = {
           oferta_precio_anterior: number | null
           oferta_variant_id: number | null
           oferta_variantes_count: number | null
+          opcion_base_nombre: string | null
           peso_envio_gramos: number | null
           precio: number | null
           precio_anterior: number | null
@@ -1101,6 +1105,7 @@ export type Database = {
           p_en_oferta?: boolean
           p_largo_paquete_cm?: number
           p_marca?: string
+          p_opcion_base_nombre?: string | null
           p_peso_envio_gramos?: number
           p_precio: number
           p_precio_anterior?: number
@@ -1165,6 +1170,13 @@ export type Database = {
           product_id: number
         }[]
       }
+      get_product_base_availability: {
+        Args: { p_product_id: number }
+        Returns: {
+          available: number
+          opcion_base_nombre: string
+        }[]
+      }
       get_variant_availability: {
         Args: { p_product_id: number }
         Returns: {
@@ -1203,6 +1215,7 @@ export type Database = {
           p_en_oferta?: boolean
           p_largo_paquete_cm?: number
           p_marca?: string
+          p_opcion_base_nombre?: string | null
           p_peso_envio_gramos?: number
           p_precio: number
           p_precio_anterior?: number

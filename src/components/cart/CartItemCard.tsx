@@ -32,6 +32,13 @@ export default function CartItemCard({ item }: CartItemCardProps) {
       ? Object.entries(variant.atributos as Record<string, string>)
       : []
 
+  // Item sin variante con opción base configurada: se identifica con su nombre (distinto de las líneas de variantes)
+  const baseOptionName = !variant && item.variant_id == null ? product?.opcion_base_nombre?.trim() || null : null
+  const optionLabel = variant && variantAttrs.length > 0
+    ? variantAttrs.map(([k, v]) => `${k}: ${v}`).join(' · ')
+    : baseOptionName
+  const itemName = `${product?.titulo ?? 'producto'}${optionLabel ? ` - ${optionLabel}` : ''}`
+
   return (
     <div className="bg-white rounded-xl border border-gray-100 hover:border-gray-200 transition-colors">
       {/* Mobile layout */}
@@ -49,10 +56,8 @@ export default function CartItemCard({ item }: CartItemCardProps) {
             <h3 className="text-sm font-bold text-primary-dark truncate">
               {product?.titulo ?? 'Producto'}
             </h3>
-            {variant && variantAttrs.length > 0 && (
-              <p className="text-xs text-gray-500 mt-0.5">
-                {variantAttrs.map(([k, v]) => `${k}: ${v}`).join(' · ')}
-              </p>
+            {optionLabel && (
+              <p className="text-xs text-gray-500 mt-0.5">{optionLabel}</p>
             )}
             <p className="text-xs text-gray-400 mt-0.5">
               ${item.precio_unitario.toLocaleString('es-AR')} c/u
@@ -94,7 +99,7 @@ export default function CartItemCard({ item }: CartItemCardProps) {
           <button
             onClick={() => removeItem(item.id)}
             disabled={loading}
-            aria-label={`Eliminar ${product?.titulo ?? 'producto'}`}
+            aria-label={`Eliminar ${itemName}`}
             className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
           >
             <Trash2 className="w-4 h-4" />
@@ -117,10 +122,8 @@ export default function CartItemCard({ item }: CartItemCardProps) {
             <h3 className="text-base font-bold text-primary-dark truncate">
               {product?.titulo ?? 'Producto'}
             </h3>
-            {variant && variantAttrs.length > 0 && (
-              <p className="text-xs text-gray-500 mt-0.5">
-                {variantAttrs.map(([k, v]) => `${k}: ${v}`).join(' · ')}
-              </p>
+            {optionLabel && (
+              <p className="text-xs text-gray-500 mt-0.5">{optionLabel}</p>
             )}
             <p className="text-xs text-gray-400 mt-0.5">
               ${item.precio_unitario.toLocaleString('es-AR')} c/u
@@ -160,7 +163,7 @@ export default function CartItemCard({ item }: CartItemCardProps) {
               <button
                 onClick={() => removeItem(item.id)}
                 disabled={loading}
-                aria-label={`Eliminar ${product?.titulo ?? 'producto'}`}
+                aria-label={`Eliminar ${itemName}`}
                 className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
               >
                 <Trash2 className="w-4 h-4" />

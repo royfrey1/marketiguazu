@@ -138,6 +138,9 @@ export default function ProductEditPage() {
           destacado: data.destacado,
           // Siempre se manda (true/false). Con variantes activas va false: el flag del producto no cuenta
           en_oferta: hasActiveVariants ? false : data.en_oferta,
+          // Opción base: con el campo visible se manda siempre (el valor actual si no se tocó; '' la quita).
+          // Sin variantes activas el campo no se muestra: undefined = la RPC conserva el valor guardado
+          opcion_base_nombre: hasActiveVariants ? data.opcion_base_nombre : undefined,
           peso_envio_gramos: data.peso_envio_gramos || null,
           alto_paquete_cm: data.alto_paquete_cm || null,
           ancho_paquete_cm: data.ancho_paquete_cm || null,
