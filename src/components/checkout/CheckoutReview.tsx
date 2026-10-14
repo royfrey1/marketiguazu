@@ -3,7 +3,7 @@ import { MapPin, Truck, ShoppingBag, FileText, Pencil } from 'lucide-react'
 import useCart from '../../hooks/useCart'
 import useCheckout from '../../hooks/useCheckout'
 import { getShippingMethodById } from '../../data/shippingMethods'
-import { productImagesService } from '../../services/productImages.service'
+import { cartItemImage, cartItemOptionLabel, groupCartItems } from '../../lib/cartItemDisplay'
 
 interface CheckoutReviewProps {
   onEditAddress: () => void
@@ -38,14 +38,12 @@ export default function CheckoutReview({ onEditAddress }: CheckoutReviewProps) {
         </div>
 
         <div className="space-y-3">
-          {items.map((item) => {
+          {groupCartItems(items).map((item) => {
             const product = item.products
             if (!product) return null
 
-            const imageUrl = productImagesService.resolveImageUrl(
-              product.product_images,
-              product.imagen_url
-            )
+            const { url: imageUrl } = cartItemImage(item)
+            const optionLabel = cartItemOptionLabel(item)
             const subtotalItem = item.precio_unitario * item.cantidad
 
             return (
@@ -65,6 +63,9 @@ export default function CheckoutReview({ onEditAddress }: CheckoutReviewProps) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-primary-dark truncate">{product.titulo}</p>
+                  {optionLabel && (
+                    <p className="text-xs text-gray-500 mt-0.5 truncate">{optionLabel}</p>
+                  )}
                   <p className="text-xs text-gray-400 mt-0.5">
                     x{item.cantidad} × ${item.precio_unitario.toLocaleString('es-AR')}
                   </p>

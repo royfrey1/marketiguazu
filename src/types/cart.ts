@@ -17,7 +17,10 @@ export type CartItemWithProduct = CartItemRow & {
     activo: boolean
     /** Opción base: un item sin variante de un producto con variantes se muestra con este nombre */
     opcion_base_nombre: string | null
-    product_images: ProductImageRef[] | null
+    /** Incluye las fotos de las galerías de variantes (variant_id no nulo) */
+    product_images: (ProductImageRef & { variant_id: number | null })[] | null
+    /** Variantes del producto: el atributo común da el rótulo de la opción base ("Color: Gris acero") */
+    product_variants: { activo: boolean; atributos: Json }[] | null
   } | null
   product_variants: {
     id: number

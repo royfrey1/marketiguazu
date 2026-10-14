@@ -1,6 +1,6 @@
 import { Package } from 'lucide-react'
 import useCart from '../../hooks/useCart'
-import { productImagesService } from '../../services/productImages.service'
+import { cartItemImage, cartItemOptionLabel, groupCartItems } from '../../lib/cartItemDisplay'
 import { getShippingMethodById } from '../../data/shippingMethods'
 
 interface CheckoutSummaryProps {
@@ -56,14 +56,12 @@ export default function CheckoutSummary({ selectedShippingMethodId }: CheckoutSu
             Productos
           </h3>
           <ul className="space-y-2.5 max-h-52 sm:max-h-60 overflow-y-auto">
-            {items.map((item) => {
+            {groupCartItems(items).map((item) => {
               const product = item.products
               if (!product) return null
 
-              const imageUrl = productImagesService.resolveImageUrl(
-                product.product_images,
-                product.imagen_url
-              )
+              const { url: imageUrl } = cartItemImage(item)
+              const optionLabel = cartItemOptionLabel(item)
 
               return (
                 <li
@@ -87,6 +85,9 @@ export default function CheckoutSummary({ selectedShippingMethodId }: CheckoutSu
                     <p className="text-gray-700 font-medium truncate">
                       {product.titulo}
                     </p>
+                    {optionLabel && (
+                      <p className="text-gray-500 text-[10px] truncate">{optionLabel}</p>
+                    )}
                     <p className="text-gray-400 text-[10px]">
                       x{item.cantidad}
                     </p>

@@ -125,6 +125,8 @@ Estamos en la **recta final previa al lanzamiento**: QA de producción, requisit
 - Carrito: la muestra con su nombre como línea aparte y bloquea items sin variante de productos con variantes y sin opción base.
 - Inventario: rotula la fila base ("Opción base: `<nombre>`" o "Producto base (sin variante)").
 - Selector de variantes a 44 px por debajo de `lg`.
+- Carrito/checkout: la línea de la opción base se rotula con el mismo atributo que las variantes cuando todas las variantes activas tienen un único atributo de igual nombre (ej. "Color: Gris acero"); si no, solo el nombre. Las variantes muestran su foto propia (galería de la variante, luego `imagen_url` heredada, luego la del producto); la base usa la del producto. Las líneas del mismo producto se muestran juntas (base primero). El rótulo también aparece en el resumen y en la revisión del checkout (es orden de presentación: no cambia el total ni los items).
+- Portada de producto: sale **solo** de la galería propia (`product_images` con `variant_id NULL`); fallback a `imagen_url` del producto y luego a la principal de la primera variante activa; si no hay nada, ícono de categoría. Corrige que la portada de las tarjetas/SEO pudiera ser la foto de una variante. En la ficha, con una opción elegida que no tiene fotos, el respaldo es solo la foto propia del producto.
 
 **Pendientes anotados:**
 
@@ -134,6 +136,8 @@ Estamos en la **recta final previa al lanzamiento**: QA de producción, requisit
 - Ofertas para la opción base (futuro).
 - Configurar la opción en productos reales (1053 primero) tras verificar que `products.precio` sea correcto.
 - Precios base desfasados de los productos 8 y 1023.
+- Confirmar visualmente en producción la ficha de un producto sin fotos propias (fallback de portada).
+- Confirmación/aviso al eliminar un producto del carrito (próximo).
 
 ---
 
@@ -201,6 +205,8 @@ La lista completa vive en **🚨 Bloqueadores críticos** (única fuente de verd
 ---
 
 ## 🗂️ Historial de sesiones
+
+- **2026-10-14 (carrito: rótulos/fotos de la opción base + portada de la galería propia)** — El carrito y el checkout rotulan la opción base con el atributo común de las variantes cuando es unívoco, muestran la foto propia de cada variante (fallback heredado) y agrupan las líneas del mismo producto (base primero; solo presentación). Las portadas de tarjetas/listas/SEO salen solo de la galería propia del producto, con fallback a `imagen_url` y a la principal de la primera variante activa (corrige portadas que podían ser la foto de una variante). Gate REST verificado contra la BD real con el embed anidado `product_images(..., product_variants(activo, sort_order))`: listas, ficha y ofertas en HTTP 200, conteos iguales a la consulta vieja; el campo anidado llega para las fotos de variantes activas y `null` para las de variantes inactivas (comportamiento esperado por RLS, el código lo maneja). Verificado contra la línea base: `tsc -b` **50**, lint **66 (57 errores, 9 warnings)**, build OK.
 
 - **2026-10-14 (opción base elegible: BD + servidor + frontend)** — Feature completa opt-in para productos con variantes: columna `products.opcion_base_nombre`, `get_product_availability` suma el stock base cuando hay nombre, RPC `get_product_base_availability`, `p_opcion_base_nombre` en las RPCs de admin, regla de servidor `INVALID_VARIANT` y frontend (campo en admin, opción base primera en el selector de la ficha, línea aparte en el carrito, rótulo en Inventario, selector a 44 px). Migración `20261014100000_product_base_option.sql` aplicada en producción (ensayo previo en transacción con ROLLBACK y verificación byte a byte contra respaldos en `backup/`); `create-payment`, `create-payment-usdt` y `create-payment-transfer` redeplegadas (v42/v26/v10) con preflight OPTIONS y CORS verificados. Tests con mocks de `order-creation` 5/5 (`node supabase/functions/_shared/order-creation.test.ts`); `deno check` OK. Verificado contra la línea base: `tsc -b` **50**, lint **66 (57 errores, 9 warnings)**, build OK.
 

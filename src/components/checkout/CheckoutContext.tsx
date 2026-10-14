@@ -2,7 +2,7 @@ import { createContext, useState, useCallback, useMemo, type ReactNode } from 'r
 import useAuth from '../../hooks/useAuth'
 import useCart from '../../hooks/useCart'
 import { getShippingMethodById } from '../../data/shippingMethods'
-import { productImagesService } from '../../services/productImages.service'
+import { cartItemImage } from '../../lib/cartItemDisplay'
 import {
   shippingService,
   isShippingQuoteExpired,
@@ -140,10 +140,8 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
       .filter(item => item.products && item.products.activo)
       .map(item => {
         const product = item.products!
-        const imageUrl = productImagesService.resolveImageUrl(
-          product.product_images,
-          product.imagen_url
-        )
+        // Misma foto que la línea del carrito (la de la variante si tiene)
+        const imageUrl = cartItemImage(item).url
         const variant = item.product_variants
         const variantAtributos = variant?.atributos &&
           typeof variant.atributos === 'object' &&

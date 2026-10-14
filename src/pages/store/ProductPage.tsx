@@ -328,8 +328,11 @@ export default function DetalleProducto() {
     if (imagenes.length > 0) {
       return productImagesService.resolveImageUrl(imagenes, producto?.imagen_url)
     }
-    return productsService.resolveImageUrl(producto)
-  }, [selectedVariant, imagenesVariante, imagenes, producto])
+    // Sin opción elegida, la portada (puede ser la de la primera variante). Con una opción elegida sin
+    // fotos (o la base), solo las del producto: no mostrar la foto de otra variante
+    if (selection === null) return productsService.resolveImageUrl(producto)
+    return productImagesService.resolveImageUrl(productImagesService.ownImages(producto?.product_images), producto?.imagen_url)
+  }, [selection, selectedVariant, imagenesVariante, imagenes, producto])
 
   const effectiveAlt = useMemo(() => {
     if (selectedVariant && imagenesVariante.length > 0) {
@@ -465,7 +468,8 @@ export default function DetalleProducto() {
       ? `${cleanDesc.slice(0, 152).trimEnd()}...`
       : cleanDesc
     : `${producto.titulo}${producto.categories ? ` en ${producto.categories.nombre}` : ''}. Comprá con envío gratis a todo el país.`
-  const orderedImages = (producto.product_images ?? [])
+  // SEO / JSON-LD: solo la galería propia del producto (el embed trae también las de variantes)
+  const orderedImages = productImagesService.ownImages(producto.product_images)
     .slice()
     .sort(
       (a, b) => (b.es_principal ? 1 : 0) - (a.es_principal ? 1 : 0) || a.sort_order - b.sort_order
@@ -474,7 +478,8 @@ export default function DetalleProducto() {
   const skuVariant = selection === 'base' ? null : selectedVariant ?? (variantes.length === 1 ? variantes[0] : null)
   const realSku = skuVariant?.sku?.trim() || null
   const absUrl = (u: string) => (/^https?:\/\//.test(u) ? u : `${SITE_URL}${u.startsWith('/') ? u : `/${u}`}`)
-  const seoImage = orderedImages[0]?.url || producto.imagen_url || undefined
+  // Sin fotos propias ni imagen_url: la de la primera variante activa (mismo criterio que las tarjetas)
+  const seoImage = orderedImages[0]?.url || productsService.resolveImageUrl(producto) || undefined
   const productJsonLd =
     producto.precio != null
       ? {

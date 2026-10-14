@@ -7,6 +7,7 @@ import CartItemCard from '../../components/cart/CartItemCard'
 import CartSummary from '../../components/cart/CartSummary'
 import CartEmpty from '../../components/cart/CartEmpty'
 import CartLoading from '../../components/cart/CartLoading'
+import { groupCartItems } from '../../lib/cartItemDisplay'
 
 function CartPageContent() {
   const { items, itemCount, loading, error, syncPending, unavailableItems, availabilityChecked } = useCart()
@@ -90,7 +91,7 @@ function CartPageContent() {
           {/* Items list */}
           <div className="flex-1 min-w-0">
             <div className="space-y-4">
-              {items.map((item, i) => (
+              {groupCartItems(items).map((item, i) => (
                 <motion.div
                   key={item.id}
                   initial={{ opacity: 0, y: 16 }}

@@ -3,7 +3,7 @@ import type { CartItemInsert, LocalCartItem } from '../types/cart'
 
 const CART_ITEM_SELECT = `
   *,
-  products(id, titulo, slug, precio, imagen_url, activo, opcion_base_nombre, product_images(url, alt_text, sort_order, es_principal)),
+  products(id, titulo, slug, precio, imagen_url, activo, opcion_base_nombre, product_images(url, alt_text, sort_order, es_principal, variant_id), product_variants(activo, atributos)),
   product_variants(id, nombre, sku, precio, atributos, imagen_url)
 `
 

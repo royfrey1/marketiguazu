@@ -16,7 +16,19 @@ export interface ProductImageRef {
   alt_text: string | null
   sort_order: number
   es_principal: boolean
+  /** Null = galería propia del producto; con valor, la foto es de la galería de esa variante */
+  variant_id?: number | null
+  /** Variante dueña de la foto (solo en PRODUCT_IMAGES_EMBED): para el fallback de portada */
+  product_variants?: { activo: boolean; sort_order: number } | null
 }
+
+/**
+ * Embed de fotos de un producto para portadas (tarjetas, listas, SEO). Trae también las de las
+ * galerías de variantes, con su variante, para separarlas en el cliente: filtrarlas en la consulta
+ * dejaría sin datos el fallback a la foto de una variante.
+ */
+export const PRODUCT_IMAGES_EMBED =
+  'product_images(url, alt_text, sort_order, es_principal, variant_id, product_variants(activo, sort_order))'
 
 const BUCKET = 'publicaciones'
 const MAX_FILE_SIZE = 5 * 1024 * 1024
@@ -33,6 +45,39 @@ function resolveImageUrl(
 
   const sorted = [...images].sort((a, b) => a.sort_order - b.sort_order)
   return sorted[0]?.url ?? fallbackUrl ?? null
+}
+
+/** Fotos de la galería propia del producto (sin las de sus variantes) */
+function ownImages<T extends ProductImageRef>(images: T[] | null | undefined): T[] {
+  return (images ?? []).filter((img) => img.variant_id == null)
+}
+
+/**
+ * Portada de un producto: su galería propia (principal / orden) o su imagen_url; si no tiene,
+ * la principal de su primera variante activa (por sort_order); si tampoco, null.
+ */
+function resolveCoverImageUrl(
+  images: ProductImageRef[] | null | undefined,
+  fallbackUrl?: string | null
+): string | null {
+  const own = resolveImageUrl(ownImages(images), fallbackUrl)
+  if (own) return own
+
+  let first: { order: [number, number]; images: ProductImageRef[] } | null = null
+  const byVariant = new Map<number, ProductImageRef[]>()
+  for (const img of images ?? []) {
+    if (img.variant_id == null || !img.product_variants?.activo) continue
+    const list = byVariant.get(img.variant_id) ?? []
+    list.push(img)
+    byVariant.set(img.variant_id, list)
+  }
+  for (const [variantId, list] of byVariant) {
+    const order: [number, number] = [list[0].product_variants!.sort_order, variantId]
+    if (!first || order[0] < first.order[0] || (order[0] === first.order[0] && order[1] < first.order[1])) {
+      first = { order, images: list }
+    }
+  }
+  return first ? resolveImageUrl(first.images) : null
 }
 
 function resolveAltText(
@@ -255,6 +300,8 @@ export const productImagesService = {
   },
 
   resolveImageUrl,
+  resolveCoverImageUrl,
+  ownImages,
   resolveAltText,
   validateFile,
 }

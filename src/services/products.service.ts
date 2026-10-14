@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase/client'
 import type { Database } from '../lib/supabase/types'
-import { productImagesService, type ProductImageRef } from './productImages.service'
+import { productImagesService, PRODUCT_IMAGES_EMBED, type ProductImageRef } from './productImages.service'
 
 type Product = Database['public']['Tables']['products']['Row']
 type ProductInsert = Database['public']['Tables']['products']['Insert']
@@ -73,7 +73,8 @@ export interface CatalogResult {
 
 const DEFAULT_PAGE_SIZE = 24
 
-const IMAGE_SELECT = 'product_images(url, alt_text, sort_order, es_principal)'
+// Incluye las fotos de variantes: resolveImageUrl elige la portada solo entre las propias (con fallback)
+const IMAGE_SELECT = PRODUCT_IMAGES_EMBED
 
 /** Listas de la tienda: la vista tiene todas las columnas del producto más las de oferta efectiva */
 const STORE_SOURCE = 'products_ofertas'
@@ -612,5 +613,5 @@ export interface BaseOptionAvailability {
 function resolveImageUrl(
   product: { product_images?: ProductImageRef[] | null; imagen_url?: string | null } | null | undefined
 ): string | null {
-  return productImagesService.resolveImageUrl(product?.product_images ?? null, product?.imagen_url ?? null)
+  return productImagesService.resolveCoverImageUrl(product?.product_images ?? null, product?.imagen_url ?? null)
 }

@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase/client'
 import { productsService, type Product, type ProductUpdate } from './products.service'
-import { productImagesService, type ProductImageRef } from './productImages.service'
+import { productImagesService, PRODUCT_IMAGES_EMBED, type ProductImageRef } from './productImages.service'
 import { productVariantsService, type ProductVariant, type VariantFormData } from './productVariants.service'
 
 export interface AdminOfferVariant {
@@ -96,7 +96,7 @@ export const offersService = {
     const [productsRes, variantsRes] = await Promise.all([
       supabase
         .from('products')
-        .select('id, product_images(url, alt_text, sort_order, es_principal), inventory(quantity, reserved, variant_id)')
+        .select(`id, ${PRODUCT_IMAGES_EMBED}, inventory(quantity, reserved, variant_id)`)
         .in('id', ids),
       variantProductIds.length > 0
         ? supabase
@@ -142,7 +142,7 @@ export const offersService = {
         productId: id,
         titulo: row.titulo ?? '',
         activo: !!row.activo,
-        imageUrl: productImagesService.resolveImageUrl(product?.product_images, row.imagen_url),
+        imageUrl: productImagesService.resolveCoverImageUrl(product?.product_images, row.imagen_url),
         tipo,
         precio: row.oferta_precio ?? 0,
         precioAnterior: row.oferta_precio_anterior ?? 0,

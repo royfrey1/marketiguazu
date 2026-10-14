@@ -1,7 +1,6 @@
 import { Minus, Plus, Trash2 } from 'lucide-react'
-import { productImagesService } from '../../services/productImages.service'
-import { productsService } from '../../services/products.service'
 import type { CartItemWithProduct } from '../../types/cart'
+import { cartItemImage, cartItemOptionLabel } from '../../lib/cartItemDisplay'
 import useCart from '../../hooks/useCart'
 
 interface CartItemCardProps {
@@ -11,32 +10,14 @@ interface CartItemCardProps {
 export default function CartItemCard({ item }: CartItemCardProps) {
   const { updateQuantity, removeItem, loading } = useCart()
   const product = item.products
-  const variant = item.product_variants
 
-  const resolvedImageUrl = product
-    ? productsService.resolveImageUrl(product)
-    : null
-
-  const altText = product
-    ? productImagesService.resolveAltText(
-        product.product_images?.[0] ?? null,
-        product.titulo
-      )
-    : 'Producto'
+  // Foto de la variante si tiene; si no (y para la opción base), la del producto
+  const { url: resolvedImageUrl, alt: altText } = cartItemImage(item)
 
   const subtotal = item.precio_unitario * item.cantidad
 
-  const variantAttrs = variant?.atributos &&
-    typeof variant.atributos === 'object' &&
-    !Array.isArray(variant.atributos)
-      ? Object.entries(variant.atributos as Record<string, string>)
-      : []
-
-  // Item sin variante con opción base configurada: se identifica con su nombre (distinto de las líneas de variantes)
-  const baseOptionName = !variant && item.variant_id == null ? product?.opcion_base_nombre?.trim() || null : null
-  const optionLabel = variant && variantAttrs.length > 0
-    ? variantAttrs.map(([k, v]) => `${k}: ${v}`).join(' · ')
-    : baseOptionName
+  // "Color: Dreamscape" / "Color: Gris acero" (opción base; solo el nombre si el atributo no es claro)
+  const optionLabel = cartItemOptionLabel(item)
   const itemName = `${product?.titulo ?? 'producto'}${optionLabel ? ` - ${optionLabel}` : ''}`
 
   return (
