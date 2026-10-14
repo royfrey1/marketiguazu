@@ -32,6 +32,10 @@
         n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
         t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
         document,'script','https://connect.facebook.net/en_US/fbevents.js','fb');
+        // Sin autoConfig: Meta no debe registrar clics (SubscribedButtonClick) ni
+        // metadatos de la página; solo los eventos de src/lib/metaPixel.ts.
+        // (el 'set' tiene que ir antes del 'init', según la doc de Meta)
+        fbq('set', 'autoConfig', false, pxid);
         fbq('init', pxid);
         if (!/^\/admin(\/|$)/.test(window.location.pathname)) fbq('track', 'PageView');
       })();
