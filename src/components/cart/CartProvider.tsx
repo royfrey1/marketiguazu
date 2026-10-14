@@ -1,43 +1,25 @@
-import { useEffect, useState, useCallback, useRef, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, useCallback, useRef, type ReactNode } from 'react'
 import { CartContext, type CartContextType, type MergeStrategy } from './CartContext'
 import CartMergeModal from './CartMergeModal'
 import { cartService } from '../../services/cart.service'
 import { supabase } from '../../lib/supabase/client'
 import useAuth from '../../hooks/useAuth'
 import type { CartItemWithProduct, LocalCartItem } from '../../types/cart'
-
-const LOCAL_STORAGE_KEY = 'iguazu_cart'
+import {
+  buildGuestCart,
+  clearLocalCart,
+  guestLineKeyFromId,
+  lineKey,
+  readLocalCart,
+  writeLocalCart,
+  type GuestCartDetails,
+} from '../../lib/guestCart'
 
 interface CartProviderProps {
   children: ReactNode
 }
 
-function readLocalCart(): LocalCartItem[] {
-  try {
-    const raw = localStorage.getItem(LOCAL_STORAGE_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw)
-    if (!Array.isArray(parsed)) return []
-    return parsed.filter(
-      (item: unknown): item is LocalCartItem =>
-        typeof item === 'object' &&
-        item !== null &&
-        'product_id' in item &&
-        'cantidad' in item &&
-        'precio_unitario' in item
-    )
-  } catch {
-    return []
-  }
-}
-
-function writeLocalCart(items: LocalCartItem[]) {
-  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(items))
-}
-
-function clearLocalCart() {
-  localStorage.removeItem(LOCAL_STORAGE_KEY)
-}
+const EMPTY_SET = new Set<number>()
 
 function calcLocalItemCount(items: LocalCartItem[]): number {
   return items.reduce((sum, item) => sum + item.cantidad, 0)
@@ -71,6 +53,47 @@ export default function CartProvider({ children }: CartProviderProps) {
   const prevUserIdRef = useRef<string | null | undefined>(undefined)
   const syncCompletedRef = useRef(false)
 
+  // Invitado: detalles (títulos, precios vigentes, fotos, stock) de sus líneas locales. Se piden recién
+  // cuando una pantalla los necesita (checkAvailability), no en cada página de la tienda
+  const [guestDetails, setGuestDetails] = useState<GuestCartDetails | null>(null)
+  const [guestRequest, setGuestRequest] = useState(0)
+  const fetchedRequestRef = useRef(0)
+  const guestKeys = localItems.map(item => lineKey(item.product_id, item.variant_id)).sort().join('|')
+
+  useEffect(() => {
+    if (user || guestRequest === 0) return
+    // Pedido ya atendido y sin líneas nuevas: alcanza con los detalles que hay (cambiar cantidades o
+    // quitar líneas no vuelve a consultar)
+    const covered = guestDetails && guestKeys.split('|').every(key => !key || guestDetails.keys.has(key))
+    if (covered && fetchedRequestRef.current === guestRequest) return
+    fetchedRequestRef.current = guestRequest
+    let cancelled = false
+    const lines = guestKeys ? guestKeys.split('|').map(key => {
+      const [productId, variant] = key.split(':')
+      return { product_id: Number(productId), variant_id: variant === 'base' ? null : Number(variant) }
+    }) : []
+    cartService.getGuestCartDetails(lines).then(details => {
+      if (cancelled) return
+      if (details) {
+        setGuestDetails(details)
+      } else {
+        setError('No pudimos cargar tu carrito. Intentá de nuevo en unos minutos.')
+      }
+    })
+    return () => { cancelled = true }
+    // guestDetails no va en las dependencias: solo se consulta cuando cambian las líneas o se pide de nuevo
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, guestRequest, guestKeys])
+
+  const guestCart = useMemo(
+    () => (!user && guestDetails ? buildGuestCart(localItems, guestDetails) : null),
+    [user, guestDetails, localItems]
+  )
+  const guestAvailableRef = useRef(new Map<number, number>())
+  useEffect(() => {
+    guestAvailableRef.current = new Map((guestCart?.items ?? []).map(item => [item.id, item.available ?? 0]))
+  }, [guestCart])
+
   const fetchServerCartItems = useCallback(async (cartId: string) => {
     const { data: cartItems, error: itemsError } = await cartService.getCartItems(cartId)
     if (itemsError) throw new Error(itemsError.message)
@@ -96,6 +119,11 @@ export default function CartProvider({ children }: CartProviderProps) {
   }, [fetchServerCartItems])
 
   const checkAvailability = useCallback(async () => {
+    // Invitado: pide (o vuelve a pedir) los detalles y el stock de sus líneas locales
+    if (!user) {
+      setGuestRequest(n => n + 1)
+      return
+    }
     if (items.length === 0) {
       setUnavailableItems(new Set())
       setAvailabilityChecked(true)
@@ -178,7 +206,7 @@ export default function CartProvider({ children }: CartProviderProps) {
 
     setUnavailableItems(unavailable)
     setAvailabilityChecked(true)
-  }, [items])
+  }, [items, user])
 
   const handleResolveConflict = useCallback(async (strategy: MergeStrategy) => {
     if (!user || !cartIdRef.current) return
@@ -229,6 +257,7 @@ export default function CartProvider({ children }: CartProviderProps) {
       syncCompletedRef.current = false
       setSyncPending(false)
       setLocalItems(readLocalCart())
+      setGuestDetails(null)
       return
     }
 
@@ -372,14 +401,17 @@ export default function CartProvider({ children }: CartProviderProps) {
         setLoading(false)
       }
     } else {
+      // Invitado: la línea exacta (producto + variante o base), con tope en el stock conocido
+      const key = guestLineKeyFromId(itemId)
+      if (!key) return
+      const available = guestAvailableRef.current.get(itemId)
       setLocalItems(prev =>
-        prev.map(item => {
-          if (item.product_id === itemId) {
-            if (cantidad <= 0) return null
-            return { ...item, cantidad }
-          }
-          return item
-        }).filter((item): item is LocalCartItem => item !== null)
+        prev.flatMap(item => {
+          if (lineKey(item.product_id, item.variant_id) !== key) return [item]
+          if (cantidad <= 0) return []
+          const next = available !== undefined && cantidad > item.cantidad ? Math.min(cantidad, available) : cantidad
+          return [{ ...item, cantidad: Math.max(1, next) }]
+        })
       )
     }
   }, [user])
@@ -402,10 +434,24 @@ export default function CartProvider({ children }: CartProviderProps) {
         setLoading(false)
       }
     } else {
-      setLocalItems(prev => prev.filter(item => item.product_id !== itemId))
+      // Invitado: solo la línea exacta (antes se quitaban todas las líneas del mismo producto)
+      const key = guestLineKeyFromId(itemId)
+      if (!key) return false
+      setLocalItems(prev => prev.filter(item => lineKey(item.product_id, item.variant_id) !== key))
       return true
     }
   }, [user])
+
+  // Invitado, antes de ir a login: guarda los precios vigentes (misma forma de línea), para que la fusión
+  // con la cuenta no arrastre precios viejos al checkout
+  const syncGuestPrices = useCallback(() => {
+    if (user || !guestCart) return
+    const prices = new Map(guestCart.items.map(item => [lineKey(item.product_id, item.variant_id), item.precio_unitario]))
+    setLocalItems(prev => prev.map(item => {
+      const precio = prices.get(lineKey(item.product_id, item.variant_id))
+      return precio !== undefined && precio !== item.precio_unitario ? { ...item, precio_unitario: precio } : item
+    }))
+  }, [user, guestCart])
 
   const clearCart = useCallback(async () => {
     if (user) {
@@ -430,18 +476,22 @@ export default function CartProvider({ children }: CartProviderProps) {
 
   const isAuth = !!user
   const itemCount = isAuth ? calcItemCount(items) : calcLocalItemCount(localItems)
-  const subtotal = isAuth ? calcSubtotal(items) : calcLocalSubtotal(localItems)
+  // Invitado: líneas armadas desde localStorage (con precios vigentes) cuando ya se pidieron los detalles
+  const subtotal = isAuth
+    ? calcSubtotal(items)
+    : guestCart ? calcSubtotal(guestCart.items) : calcLocalSubtotal(localItems)
 
   const value: CartContextType = {
-    items,
+    items: isAuth ? items : guestCart?.items ?? [],
     localItems,
     itemCount,
     subtotal,
     loading,
     error,
     syncPending,
-    unavailableItems,
-    availabilityChecked,
+    unavailableItems: isAuth ? unavailableItems : guestCart?.unavailable ?? EMPTY_SET,
+    availabilityChecked: isAuth ? availabilityChecked : guestCart !== null,
+    syncGuestPrices,
     addToCart,
     updateQuantity,
     removeItem,

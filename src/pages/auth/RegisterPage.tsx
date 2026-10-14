@@ -1,12 +1,16 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { supabase } from '../../lib/supabase/client'
 import TermsAcceptance from '../../components/legal/TermsAcceptance'
 import PasswordInput from '../../components/ui/PasswordInput'
+import { safeInternalPath, withRedirect } from '../../lib/safeRedirect'
 
 export default function Register() {
   const navigate = useNavigate()
+  // ?redirect=: a dónde volver después de crear la cuenta (solo rutas internas)
+  const [searchParams] = useSearchParams()
+  const redirect = safeInternalPath(searchParams.get('redirect'))
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState({
@@ -71,7 +75,7 @@ export default function Register() {
         })
       if (profileError) throw profileError
 
-      navigate('/')
+      navigate(redirect ?? '/')
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -89,6 +93,12 @@ export default function Register() {
           Unite a Iguazú Marketplace
         </p>
       </div>
+
+      {redirect?.startsWith('/checkout') && (
+        <div role="status" className="bg-primary-light/40 border border-primary-light text-primary-dark text-sm px-4 py-3 rounded-xl mb-3">
+          Iniciá sesión para finalizar tu compra. Tu carrito se guarda.
+        </div>
+      )}
 
       {error && (
         <div role="alert" className="bg-red-50 border border-red-200 text-red-600 text-xs px-3 py-2 rounded-lg mb-3">
@@ -186,7 +196,7 @@ export default function Register() {
       <div className="mt-5 pt-4 border-t border-gray-100 text-center">
         <p className="text-sm text-gray-500">
           ¿Ya tenés cuenta?{' '}
-          <Link to="/login" className="text-accent hover:text-accent/80 font-bold transition-colors inline-flex items-center gap-1">
+          <Link to={withRedirect('/login', redirect)} className="text-accent hover:text-accent/80 font-bold transition-colors inline-flex items-center gap-1">
             <ArrowLeft className="w-3.5 h-3.5" />
             Iniciar sesión
           </Link>

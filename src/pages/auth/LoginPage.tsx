@@ -1,13 +1,17 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { LogIn, ArrowRight } from 'lucide-react'
 import { sileo } from 'sileo'
 import { supabase } from '../../lib/supabase/client'
 import Input from '../../components/ui/Input'
 import Button from '../../components/ui/Button'
+import { safeInternalPath, withRedirect } from '../../lib/safeRedirect'
 
 export default function Login() {
   const navigate = useNavigate()
+  // ?redirect=: a dónde volver después de iniciar sesión (solo rutas internas)
+  const [searchParams] = useSearchParams()
+  const redirect = safeInternalPath(searchParams.get('redirect'))
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState({
@@ -32,7 +36,7 @@ export default function Login() {
 
       if (authError) throw authError
 
-      navigate('/')
+      navigate(redirect ?? '/')
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -69,6 +73,12 @@ export default function Login() {
           Comprá en Iguazú Marketplace
         </p>
       </div>
+
+      {redirect?.startsWith('/checkout') && (
+        <div role="status" className="bg-primary-light/40 border border-primary-light text-primary-dark text-sm px-4 py-3 rounded-xl mb-6">
+          Iniciá sesión para finalizar tu compra. Tu carrito se guarda.
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-xl mb-6" role="alert">
@@ -126,7 +136,7 @@ export default function Login() {
       <div className="mt-8 pt-6 border-t border-gray-100 text-center">
         <p className="text-sm text-gray-500">
           ¿No tenés cuenta?{' '}
-          <Link to="/register" className="text-accent hover:text-accent/80 font-bold transition-colors inline-flex items-center gap-1">
+          <Link to={withRedirect('/register', redirect)} className="text-accent hover:text-accent/80 font-bold transition-colors inline-flex items-center gap-1">
             Crear cuenta
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>

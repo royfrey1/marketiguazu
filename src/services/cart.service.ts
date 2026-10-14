@@ -1,5 +1,8 @@
 import { supabase } from '../lib/supabase/client'
 import type { CartItemInsert, LocalCartItem } from '../types/cart'
+import { guestLineAvailable, lineKey, type GuestCartDetails, type GuestProduct } from '../lib/guestCart'
+import { PRODUCT_IMAGES_EMBED } from './productImages.service'
+import { productsService } from './products.service'
 
 const CART_ITEM_SELECT = `
   *,
@@ -99,6 +102,65 @@ export const cartService = {
       .eq('id', cartItemId)
 
     return { error }
+  },
+
+  /**
+   * Datos para dibujar el carrito de invitado, en lote (sin consultas por línea). Solo lecturas públicas:
+   * 1 consulta de productos (con variantes y fotos) + get_product_availability (si hay productos sin
+   * variantes) + get_variant_availability por producto con líneas de variante + get_product_base_availability
+   * por producto con línea de opción base. Peor caso con MAX_LOCAL_LINES = 30: 31 llamadas (1 + 30), en paralelo.
+   * Null si falla la consulta de productos.
+   */
+  async getGuestCartDetails(lines: Pick<LocalCartItem, 'product_id' | 'variant_id'>[]): Promise<GuestCartDetails | null> {
+    const productIds = [...new Set(lines.map(l => l.product_id))]
+    const details: GuestCartDetails = {
+      products: new Map(),
+      productAvailable: new Map(),
+      variantAvailable: new Map(),
+      baseAvailable: new Map(),
+      keys: new Set(lines.map(l => lineKey(l.product_id, l.variant_id))),
+    }
+    if (productIds.length === 0) return details
+
+    const { data, error } = await supabase
+      .from('products')
+      .select(`id, titulo, slug, precio, imagen_url, activo, opcion_base_nombre, ${PRODUCT_IMAGES_EMBED}, product_variants(id, nombre, sku, precio, atributos, imagen_url, activo)`)
+      .in('id', productIds)
+    if (error || !data) return null
+    for (const p of data as unknown as GuestProduct[]) details.products.set(p.id, p)
+
+    const hasActiveVariants = (id: number) => (details.products.get(id)?.product_variants ?? []).some(v => v.activo)
+    const simpleIds = productIds.filter(id => details.products.has(id) && !hasActiveVariants(id))
+    const variantProductIds = [...new Set(lines.filter(l => l.variant_id != null && hasActiveVariants(l.product_id)).map(l => l.product_id))]
+    const baseProductIds = [...new Set(lines.filter(l => l.variant_id == null && hasActiveVariants(l.product_id) && details.products.get(l.product_id)?.opcion_base_nombre).map(l => l.product_id))]
+
+    await Promise.all([
+      simpleIds.length > 0
+        ? supabase.rpc('get_product_availability').then(({ data: rows }) => {
+            for (const row of rows ?? []) details.productAvailable.set(row.product_id, row.available)
+          })
+        : null,
+      ...variantProductIds.map(id => productsService.getVariantAvailability(id).then(map => {
+        for (const [variantId, available] of map) details.variantAvailable.set(variantId, available)
+      })),
+      ...baseProductIds.map(id => productsService.getBaseAvailability(id).then(base => {
+        if (base) details.baseAvailable.set(id, base.available)
+      })),
+    ])
+    return details
+  },
+
+  /** Stock de una línea con las lecturas públicas (invitado: la tabla inventory no es legible) */
+  async getPublicLineStock(productId: number, variantId: number | null): Promise<{ available: number; active: boolean } | null> {
+    const details = await this.getGuestCartDetails([{ product_id: productId, variant_id: variantId }])
+    if (!details) return null
+    if (!details.products.has(productId)) return { available: 0, active: false }
+    const available = guestLineAvailable(details, productId, variantId)
+    const product = details.products.get(productId)!
+    const active = variantId != null
+      ? !!product.product_variants?.some(v => v.id === variantId && v.activo)
+      : !(product.product_variants ?? []).some(v => v.activo) || !!product.opcion_base_nombre
+    return { available, active }
   },
 
   /**

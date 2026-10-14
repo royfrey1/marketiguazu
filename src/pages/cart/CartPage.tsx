@@ -1,8 +1,10 @@
+import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import Seo from '../../components/seo/Seo'
 import { motion } from 'framer-motion'
 import { ShoppingCart, AlertTriangle } from 'lucide-react'
 import useCart from '../../hooks/useCart'
+import useAuth from '../../hooks/useAuth'
 import CartItemCard from '../../components/cart/CartItemCard'
 import CartSummary from '../../components/cart/CartSummary'
 import CartEmpty from '../../components/cart/CartEmpty'
@@ -11,9 +13,20 @@ import CartRemovalProvider from '../../components/cart/CartRemovalProvider'
 import { groupCartItems } from '../../lib/cartItemDisplay'
 
 function CartPageContent() {
-  const { items, itemCount, loading, error, syncPending, unavailableItems, availabilityChecked } = useCart()
+  const { items, itemCount, loading, error, syncPending, unavailableItems, availabilityChecked, checkAvailability } = useCart()
+  const { user, loading: authLoading } = useAuth()
+  const isGuest = !authLoading && !user
 
-  if (loading || syncPending) {
+  // Invitado: el carrito vive en localStorage; al entrar se piden sus detalles y stock actualizados
+  // (una vez por visita: checkAvailability cambia de identidad cuando el provider se acomoda)
+  const guestRequestedRef = useRef(false)
+  useEffect(() => {
+    if (!isGuest || guestRequestedRef.current) return
+    guestRequestedRef.current = true
+    void checkAvailability()
+  }, [isGuest, checkAvailability])
+
+  if (loading || syncPending || (isGuest && itemCount > 0 && !availabilityChecked && !error)) {
     return (
       <div className="bg-white min-h-screen">
       <div className="store-container m-12">

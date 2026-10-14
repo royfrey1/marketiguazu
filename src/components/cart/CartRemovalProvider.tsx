@@ -3,6 +3,7 @@ import { sileo } from 'sileo'
 import Modal from '../ui/Modal'
 import Button from '../ui/Button'
 import useCart from '../../hooks/useCart'
+import useAuth from '../../hooks/useAuth'
 import { cartService } from '../../services/cart.service'
 import { cartItemImage, cartItemOptionLabel } from '../../lib/cartItemDisplay'
 import type { CartItemWithProduct } from '../../types/cart'
@@ -61,6 +62,7 @@ function focusCartHeading() {
  */
 export default function CartRemovalProvider({ children }: { children: ReactNode }) {
   const { items, removeItem, addToCart } = useCart()
+  const { user } = useAuth()
   const itemsRef = useRef(items)
   useEffect(() => {
     itemsRef.current = items
@@ -113,7 +115,10 @@ export default function CartRemovalProvider({ children }: { children: ReactNode 
     consumedRef.current.add(key)
     bufferRef.current = bufferRef.current.filter(e => e.key !== key)
 
-    const stock = await cartService.getLineStock(entry.productId, entry.variantId)
+    // Invitado: la tabla inventory no es legible; se usan las RPC públicas de disponibilidad
+    const stock = user
+      ? await cartService.getLineStock(entry.productId, entry.variantId)
+      : await cartService.getPublicLineStock(entry.productId, entry.variantId)
     if (!stock || !stock.active) {
       sileo.warning({ title: 'No se pudo deshacer', description: `${entry.nombre} ya no está disponible.` })
       return
@@ -152,7 +157,7 @@ export default function CartRemovalProvider({ children }: { children: ReactNode 
     } else {
       sileo.success({ title, description: restored })
     }
-  }, [addToCart, showUndoToast])
+  }, [addToCart, showUndoToast, user])
 
   useEffect(() => {
     undoRef.current = undo

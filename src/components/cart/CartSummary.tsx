@@ -3,19 +3,25 @@ import { ArrowRight, Truck } from 'lucide-react'
 import Button from '../ui/Button'
 import useCart from '../../hooks/useCart'
 import useAuth from '../../hooks/useAuth'
+import { withRedirect } from '../../lib/safeRedirect'
 
 export default function CartSummary() {
-  const { itemCount, subtotal, loading, syncPending, unavailableItems } = useCart()
+  const { itemCount, subtotal, loading, syncPending, unavailableItems, syncGuestPrices } = useCart()
   const { user } = useAuth()
   const navigate = useNavigate()
 
   const hasUnavailable = unavailableItems.size > 0
-  const canContinue = !loading && !syncPending && itemCount > 0 && !!user && !hasUnavailable
+  // Invitado: también puede continuar; el botón lo lleva a iniciar sesión y vuelve al checkout
+  const canContinue = !loading && !syncPending && itemCount > 0 && !hasUnavailable
 
   const handleContinue = () => {
-    if (canContinue) {
+    if (!canContinue) return
+    if (user) {
       navigate('/checkout')
+      return
     }
+    syncGuestPrices()
+    navigate(withRedirect('/login', '/checkout'))
   }
 
   return (
@@ -59,7 +65,7 @@ export default function CartSummary() {
 
       {!user && itemCount > 0 && (
         <p className="text-xs text-center text-gray-400">
-          Iniciá sesión para continuar con la compra
+          Iniciá sesión para finalizar tu compra. Tu carrito se guarda.
         </p>
       )}
 

@@ -30,6 +30,10 @@ export type CartItemWithProduct = CartItemRow & {
     atributos: Json
     imagen_url: string | null
   } | null
+  /** Solo invitado: precio guardado en localStorage (para avisar si cambió el vigente) */
+  stored_precio_unitario?: number
+  /** Solo invitado: stock disponible de la línea (tope del "+") */
+  available?: number
 }
 
 export interface LocalCartItem {

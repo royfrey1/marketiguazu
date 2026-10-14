@@ -19,7 +19,10 @@ export interface CartContextType {
   removeItem: (itemId: number) => Promise<boolean>
   clearCart: () => Promise<void>
   resolveCartConflict: (strategy: MergeStrategy) => Promise<void>
+  /** Logueado: revisa el stock de las líneas. Invitado: pide (o refresca) los detalles y el stock de sus líneas */
   checkAvailability: () => Promise<void>
+  /** Invitado: guarda en localStorage los precios vigentes antes de ir a iniciar sesión */
+  syncGuestPrices: () => void
 }
 
 export const CartContext = createContext<CartContextType | null>(null)

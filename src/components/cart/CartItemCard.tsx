@@ -18,6 +18,15 @@ export default function CartItemCard({ item }: CartItemCardProps) {
 
   const subtotal = item.precio_unitario * item.cantidad
 
+  // Solo invitado (las líneas logueadas no traen estos campos): tope de stock y aviso de precio cambiado
+  const atMax = item.available !== undefined && item.cantidad >= item.available
+  const priceChanged = item.stored_precio_unitario !== undefined && item.stored_precio_unitario !== item.precio_unitario
+  const priceNotice = priceChanged ? (
+    <p className="text-xs text-amber-700 mt-0.5">
+      El precio cambió (antes ${item.stored_precio_unitario!.toLocaleString('es-AR')})
+    </p>
+  ) : null
+
   // "-" con cantidad 1 quita la línea: pasa por el mismo flujo que la papelera (confirmación + Deshacer)
   const handleDecrease = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (item.cantidad <= 1) requestRemove(item, e.currentTarget)
@@ -51,6 +60,7 @@ export default function CartItemCard({ item }: CartItemCardProps) {
             <p className="text-xs text-gray-400 mt-0.5">
               ${item.precio_unitario.toLocaleString('es-AR')} c/u
             </p>
+            {priceNotice}
           </div>
         </div>
 
@@ -73,7 +83,7 @@ export default function CartItemCard({ item }: CartItemCardProps) {
             </span>
             <button
               onClick={() => updateQuantity(item.id, item.cantidad + 1)}
-              disabled={loading}
+              disabled={loading || atMax}
               aria-label="Aumentar cantidad"
               className="w-8 h-8 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-40 transition-colors cursor-pointer"
             >
@@ -117,6 +127,7 @@ export default function CartItemCard({ item }: CartItemCardProps) {
             <p className="text-xs text-gray-400 mt-0.5">
               ${item.precio_unitario.toLocaleString('es-AR')} c/u
             </p>
+            {priceNotice}
           </div>
 
           <div className="flex items-center justify-between mt-3 gap-2">
@@ -137,7 +148,7 @@ export default function CartItemCard({ item }: CartItemCardProps) {
               </span>
               <button
                 onClick={() => updateQuantity(item.id, item.cantidad + 1)}
-                disabled={loading}
+                disabled={loading || atMax}
                 aria-label="Aumentar cantidad"
                 className="w-10 h-10 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-40 transition-colors cursor-pointer"
               >
