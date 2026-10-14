@@ -6,6 +6,7 @@ import {
 } from '../../../services/productVariants.service'
 import { productsService } from '../../../services/products.service'
 import { sanitizeAttributeName } from '../../../lib/variantAttributes'
+import { PRICE_POSITIVE_MESSAGE, isPriceDbError, priceFieldError } from '../../../lib/priceRules'
 import Modal from '../../ui/Modal'
 
 interface VariantCombinationGeneratorProps {
@@ -81,6 +82,7 @@ function combinationKey(atributos: Record<string, string>) {
 function describeError(err: { message?: string; code?: string } | null) {
   if (!err) return 'Error desconocido'
   if (err.code === '23505') return 'El SKU ya existe'
+  if (isPriceDbError(err)) return PRICE_POSITIVE_MESSAGE
   return err.message || 'Error desconocido'
 }
 
@@ -210,7 +212,7 @@ export default function VariantCombinationGenerator({ productId, existingVariant
   }
 
   const applyBulkPrice = () => {
-    if (bulkPrice === '' || Number(bulkPrice) < 0) return
+    if (priceFieldError(bulkPrice)) return
     setRows(prev => prev.map(r => ({ ...r, precio: bulkPrice })))
   }
 
@@ -231,7 +233,8 @@ export default function VariantCombinationGenerator({ productId, existingVariant
     else if ((skuCounts.get(sku) ?? 0) > 1) errs.sku = 'SKU repetido'
     else if (existingSkus.has(sku)) errs.sku = 'Ya existe en otra variante'
     if (!r.nombre.trim()) errs.nombre = 'Requerido'
-    if (r.precio === '' || Number.isNaN(Number(r.precio)) || Number(r.precio) < 0) errs.precio = 'Precio inválido'
+    const precioError = priceFieldError(r.precio)
+    if (precioError) errs.precio = precioError
     if (Object.keys(errs).length > 0) rowErrors.set(r.key, errs)
   }
 
@@ -511,7 +514,7 @@ export default function VariantCombinationGenerator({ productId, existingVariant
             <button
               type="button"
               onClick={applyBulkPrice}
-              disabled={bulkPrice === '' || Number(bulkPrice) < 0}
+              disabled={!!priceFieldError(bulkPrice)}
               className="px-3 py-2.5 text-xs font-medium text-[#185749] dark:text-[#1CAAA8] bg-[#185749]/5 dark:bg-[#1CAAA8]/5 hover:bg-[#185749]/10 dark:hover:bg-[#1CAAA8]/10 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Aplicar a todas
@@ -611,10 +614,12 @@ export default function VariantCombinationGenerator({ productId, existingVariant
                         onChange={(e) => updateRow(row.key, { precio: e.target.value })}
                         disabled={!row.include}
                         aria-label={`Precio de ${label}`}
+                        aria-invalid={row.include && errs?.precio ? true : undefined}
+                        aria-describedby={row.include && errs?.precio ? fieldId('precio-error') : undefined}
                         placeholder="Precio"
-                        className={`${cellInputClasses} ${row.include && errs?.precio ? errorBorder : okBorder}`}
+                        className={`${cellInputClasses} max-sm:min-h-11 ${row.include && errs?.precio ? errorBorder : okBorder}`}
                       />
-                      {row.include && errs?.precio && <p className="text-[11px] text-red-600 dark:text-red-400 mt-0.5">{errs.precio}</p>}
+                      {row.include && errs?.precio && <p id={fieldId('precio-error')} className="text-[11px] text-red-600 dark:text-red-400 mt-0.5">{errs.precio}</p>}
                     </div>
                   </div>
                 )

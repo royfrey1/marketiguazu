@@ -14,6 +14,7 @@ import PriceHistoryDialog from './PriceHistoryDialog'
 import VariantCombinationGenerator from './VariantCombinationGenerator'
 import VariantRow, { VariantListHeader } from './VariantRow'
 import Modal from '../../ui/Modal'
+import { PRICE_POSITIVE_MESSAGE, isPriceDbError } from '../../../lib/priceRules'
 
 interface ProductVariantsManagerProps {
   productId: number
@@ -33,6 +34,8 @@ export default function ProductVariantsManager({ productId, onVariantsChange }: 
   const [editingVariant, setEditingVariant] = useState<EditingVariantData | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  // Precio rechazado por la base: se muestra en el campo precio del diálogo
+  const [savePriceError, setSavePriceError] = useState<string | null>(null)
   const [deleteLoading, setDeleteLoading] = useState<number | null>(null)
   const [deletingVariant, setDeletingVariant] = useState<VariantWithInventory | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
@@ -83,6 +86,7 @@ export default function ProductVariantsManager({ productId, onVariantsChange }: 
     setEditingVariant(null)
     setDialogMode('create')
     setSaveError(null)
+    setSavePriceError(null)
   }
 
   const handleEdit = (variant: VariantWithInventory) => {
@@ -99,11 +103,13 @@ export default function ProductVariantsManager({ productId, onVariantsChange }: 
     })
     setDialogMode('edit')
     setSaveError(null)
+    setSavePriceError(null)
   }
 
   const handleConfirm = async (data: VariantFormData) => {
     setSaving(true)
     setSaveError(null)
+    setSavePriceError(null)
     try {
       let result
       if (dialogMode === 'create') {
@@ -115,7 +121,8 @@ export default function ProductVariantsManager({ productId, onVariantsChange }: 
       setDialogMode(null)
       setRefreshKey((k) => k + 1)
     } catch (err) {
-      setSaveError((err as Error).message)
+      if (isPriceDbError(err)) setSavePriceError(PRICE_POSITIVE_MESSAGE)
+      else setSaveError((err as Error).message)
     } finally {
       setSaving(false)
     }
@@ -283,9 +290,11 @@ export default function ProductVariantsManager({ productId, onVariantsChange }: 
           mode={dialogMode}
           initialData={editingVariant || undefined}
           onConfirm={handleConfirm}
-          onClose={() => { setDialogMode(null); setSaveError(null); void refreshImageSummary() }}
+          onClose={() => { setDialogMode(null); setSaveError(null); setSavePriceError(null); void refreshImageSummary() }}
           loading={saving}
           error={saveError}
+          priceError={savePriceError}
+          onPriceChange={() => setSavePriceError(null)}
         />
       )}
 

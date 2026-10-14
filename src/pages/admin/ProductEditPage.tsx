@@ -8,12 +8,13 @@ import { productsService, type Product } from '../../services/products.service'
 import { productSpecificationsService } from '../../services/productSpecifications.service'
 import { productVariantsService } from '../../services/productVariants.service'
 import { useProductSpecifications } from '../../hooks/useProductSpecifications'
-import ProductForm from '../../components/admin/products/ProductForm'
+import ProductForm, { type ProductFormSubmitResult } from '../../components/admin/products/ProductForm'
 import ProductImagesManager from '../../components/admin/products/ProductImagesManager'
 import ProductSpecificationsEditor from '../../components/admin/products/ProductSpecificationsEditor'
 import ProductVariantsManager from '../../components/admin/products/ProductVariantsManager'
 import type { SpecItem } from '../../components/admin/products/ProductSpecificationsEditor'
 import type { AdminProductFormData } from '../../lib/validations/adminProduct'
+import { PRICE_POSITIVE_MESSAGE, isPriceDbError } from '../../lib/priceRules'
 import AdminSubpageHeader from '../../components/admin/AdminSubpageHeader'
 
 export default function ProductEditPage() {
@@ -106,7 +107,7 @@ export default function ProductEditPage() {
     return errors.length === 0
   }
 
-  const handleSubmit = async (data: AdminProductFormData) => {
+  const handleSubmit = async (data: AdminProductFormData): Promise<ProductFormSubmitResult | void> => {
     if (!user?.id || !product) return
 
     if (!validateSpecs()) return
@@ -176,6 +177,8 @@ export default function ProductEditPage() {
 
       navigate('/admin/productos')
     } catch (err) {
+      // Precio rechazado por la base: va al campo precio (no como fallo genérico)
+      if (isPriceDbError(err)) return { priceError: PRICE_POSITIVE_MESSAGE }
       const msg = (err as Error).message
       // El mensaje de la base (por ejemplo las validaciones de la oferta) se muestra tal cual
       sileo.error({ title: 'No se pudo guardar el producto', description: msg || 'Error al guardar el producto' })

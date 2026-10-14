@@ -44,7 +44,9 @@ export default function PaymentSuccessPage() {
             ¡Listo! Estamos confirmando tu pago. Podés seguir el estado de tu pedido en Mis pedidos.
           </p>
 
-          <PaymentOrderSummary orderId={orderId} />
+          {/* Meta Pixel: Purchase una sola vez por pedido y solo con el pago de
+              Mercado Pago aprobado (lo decide PaymentOrderSummary) */}
+          <PaymentOrderSummary orderId={orderId} trackPurchase />
 
           <div className="flex flex-col sm:flex-row items-center gap-3 mt-6">
             <Link to="/">

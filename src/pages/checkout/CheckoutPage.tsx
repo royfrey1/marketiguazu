@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import Seo from '../../components/seo/Seo'
 import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
@@ -16,6 +16,7 @@ import CartLoading from '../../components/cart/CartLoading'
 import TermsAcceptance from '../../components/legal/TermsAcceptance'
 import { CHECKOUT_ERROR_MESSAGES, PAYMENT_ERROR_MESSAGES, type PaymentErrorCode } from '../../types/checkout'
 import { supabase } from '../../lib/supabase/client'
+import { trackMetaEvent, META_CURRENCY } from '../../lib/metaPixel'
 import type { AddressRow } from '../../services/address.service'
 
 interface CreatePaymentSuccess {
@@ -83,7 +84,7 @@ async function extractPaymentError(error: unknown): Promise<{ code: PaymentError
 }
 
 function CheckoutContent() {
-  const { itemCount, loading, syncPending, error, unavailableItems, availabilityChecked } = useCart()
+  const { itemCount, loading, syncPending, error, unavailableItems, availabilityChecked, items, subtotal } = useCart()
   const { setSelectedAddress, selectedShippingMethodId, canProceedToPayment, validationError, buildSnapshot } = useCheckout()
   const navigate = useNavigate()
   const [currentStep, setCurrentStep] = useState<1 | 2>(1)
@@ -98,6 +99,21 @@ function CheckoutContent() {
       navigate('/carrito', { replace: true })
     }
   }, [loading, syncPending, itemCount, navigate])
+
+  // Meta Pixel: InitiateCheckout al entrar al checkout con productos (una sola vez
+  // por visita). value = total a pagar (la tienda no cobra envío).
+  const trackedInitiateCheckoutRef = useRef(false)
+  useEffect(() => {
+    if (trackedInitiateCheckoutRef.current) return
+    if (loading || syncPending || itemCount === 0) return
+    trackedInitiateCheckoutRef.current = true
+    trackMetaEvent('InitiateCheckout', {
+      content_ids: items.map(i => String(i.product_id)),
+      num_items: itemCount,
+      value: subtotal,
+      currency: META_CURRENCY,
+    })
+  }, [loading, syncPending, itemCount, items, subtotal])
 
   useEffect(() => {
     if (availabilityChecked && unavailableItems.size > 0) {

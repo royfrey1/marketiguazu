@@ -191,11 +191,13 @@ export default function ProductBasicFields({
               step="0.01"
               min="0"
               {...register('precio')}
-              className="w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-white/10 rounded-lg bg-transparent text-gray-800 dark:text-white/80 placeholder:text-gray-400 dark:placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-[#185749]/20 dark:focus:ring-[#1CAAA8]/20 focus:border-[#185749] dark:focus:border-[#1CAAA8] transition-colors"
+              aria-invalid={errors.precio ? true : undefined}
+              aria-describedby={errors.precio ? 'precio-error' : undefined}
+              className="w-full max-sm:min-h-11 px-3 py-2.5 text-sm border border-gray-200 dark:border-white/10 rounded-lg bg-transparent text-gray-800 dark:text-white/80 placeholder:text-gray-400 dark:placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-[#185749]/20 dark:focus:ring-[#1CAAA8]/20 focus:border-[#185749] dark:focus:border-[#1CAAA8] transition-colors"
               placeholder="0"
             />
             {errors.precio && (
-              <p className="mt-1.5 text-sm text-red-600 dark:text-red-400">{(errors.precio as { message?: string }).message}</p>
+              <p id="precio-error" className="mt-1.5 text-sm text-red-600 dark:text-red-400">{(errors.precio as { message?: string }).message}</p>
             )}
           </div>
           <div>
@@ -286,9 +288,10 @@ export default function ProductBasicFields({
             {errors.opcion_base_nombre && (
               <p className="text-sm text-red-600 dark:text-red-400">{(errors.opcion_base_nombre as { message?: string }).message}</p>
             )}
-            {opcionBaseNombre.trim() !== '' && (precioValue === null || precioValue <= 0) && (
+            {/* Misma regla que el campo precio; si ese campo ya muestra su error, no se repite acá */}
+            {opcionBaseNombre.trim() !== '' && (precioValue === null || precioValue <= 0) && !errors.precio && (
               <p className="text-sm text-amber-700 dark:text-amber-400">
-                El precio del producto está vacío o en 0: la opción base se ofrecería con ese precio.
+                La opción base usa el precio del producto: cargá un precio mayor a 0 para poder guardar.
               </p>
             )}
             <p id="opcion_base_nombre-ayuda" className="text-xs text-gray-500 dark:text-white/40">

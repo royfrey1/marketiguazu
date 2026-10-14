@@ -34,6 +34,7 @@ cp .env.example .env
 
 En producción el sitio vive en **`https://www.iguazumarketplace.com.ar`** (dominio propio; el apex sin www redirige a www y `market-iguazu.vercel.app` redirige 301 al dominio nuevo).
 | `VITE_WHATSAPP_URL` | Link de WhatsApp de atención |
+| `VITE_META_PIXEL_ID` | ID del Meta Pixel de Facebook (inicializa el pixel en `index.html`) |
 
 Los secretos de las Edge Functions (`MERCADOPAGO_ACCESS_TOKEN`, `SITE_URL`,
 `CORREO_ARGENTINO_ENV`, `CORREO_ARGENTINO_USER`, `CORREO_ARGENTINO_PASSWORD`)

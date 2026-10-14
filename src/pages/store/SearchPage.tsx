@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { SlidersHorizontal, X, ChevronDown, ChevronRight, BadgePercent } from 'lucide-react'
@@ -10,6 +10,7 @@ import ProductCard from '../../components/home/ProductCard'
 import { ProductGrid, ProductGridSkeleton } from '../../components/store/ProductGrid'
 import { getCategoryIcon } from '../../lib/categoryIcons'
 import { OFFER_CARD_FRAME_CLASS } from '../../lib/offers'
+import { trackMetaEvent } from '../../lib/metaPixel'
 
 // Modo ofertas (paleta del bloque de ofertas de la home): solo se suman clases cuando está activo
 const OFFERS_FILTERS_CLASS =
@@ -60,6 +61,14 @@ export default function Busqueda({ offersPage = false }: BusquedaProps) {
   useEffect(() => { setInputMin(min) }, [min])
   useEffect(() => { setInputMax(max) }, [max])
   useEffect(() => { setSearchValue(q) }, [q])
+
+  // Meta Pixel: Search cuando cambia el término buscado (una vez por término)
+  const lastTrackedSearchRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!q || lastTrackedSearchRef.current === q) return
+    lastTrackedSearchRef.current = q
+    trackMetaEvent('Search', { search_string: q })
+  }, [q])
 
   // Lock body scroll when mobile filter panel is open
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Loader2, Plus, Trash2 } from 'lucide-react'
 import type { VariantFormData } from '../../../services/productVariants.service'
 import Modal from '../../ui/Modal'
@@ -6,6 +6,7 @@ import { sanitizeAttributeName } from '../../../lib/variantAttributes'
 import VariantImagesManager from './VariantImagesManager'
 import OfferPricePreview from '../offers/OfferPricePreview'
 import { offerPriceError } from '../../../lib/offers'
+import { parsePriceInput, priceFieldError } from '../../../lib/priceRules'
 
 interface VariantFormDialogProps {
   productId: number
@@ -15,6 +16,10 @@ interface VariantFormDialogProps {
   onClose: () => void
   loading: boolean
   error?: string | null
+  /** Error del servidor sobre el precio: se muestra en el campo (el diálogo queda abierto) */
+  priceError?: string | null
+  /** Al editar el precio se descarta el error del servidor */
+  onPriceChange?: () => void
 }
 
 const EMPTY_FORM: VariantFormData = {
@@ -28,7 +33,7 @@ const EMPTY_FORM: VariantFormData = {
   en_oferta: false,
 }
 
-export default function VariantFormDialog({ productId, mode, initialData, onConfirm, onClose, loading, error }: VariantFormDialogProps) {
+export default function VariantFormDialog({ productId, mode, initialData, onConfirm, onClose, loading, error, priceError, onPriceChange }: VariantFormDialogProps) {
   const [form, setForm] = useState<VariantFormData>(() => {
     if (initialData) {
       return {
@@ -44,6 +49,10 @@ export default function VariantFormDialog({ productId, mode, initialData, onConf
     }
     return EMPTY_FORM
   })
+  // El precio se edita como texto: vacío no se convierte en 0 (en el alta arranca vacío)
+  const [precioText, setPrecioText] = useState(() => (initialData ? String(initialData.precio ?? '') : ''))
+  const [priceTouched, setPriceTouched] = useState(false)
+  const priceInputRef = useRef<HTMLInputElement>(null)
   const [attributePairs, setAttributePairs] = useState<{ key: string; value: string }[]>(() => {
     if (initialData?.atributos && typeof initialData.atributos === 'object') {
       const pairs = Object.entries(initialData.atributos).map(([key, value]) => ({ key, value: String(value) }))
@@ -76,13 +85,29 @@ export default function VariantFormDialog({ productId, mode, initialData, onConf
     return obj
   }
 
-  // Con la oferta marcada, los precios tienen que ser válidos (mismas reglas que la base)
-  const offerError = form.en_oferta ? offerPriceError(form.precio, form.precio_anterior) : null
-  const canSubmit = !!form.sku.trim() && !!form.nombre.trim() && form.precio >= 0 && !offerError
+  const precioNum = parsePriceInput(precioText)
+  const localPriceError = priceFieldError(precioText)
+  const shownPriceError = (priceTouched ? localPriceError : null) ?? priceError ?? null
+  // Con la oferta marcada, los precios tienen que ser válidos (mismas reglas que la base).
+  // Con el precio inválido manda el error del campo precio (no se suma el de la oferta)
+  const offerError = form.en_oferta && !localPriceError ? offerPriceError(precioNum, form.precio_anterior) : null
+  // El precio no deshabilita el botón: al enviar se muestra su error y se enfoca el campo
+  const canSubmit = !!form.sku.trim() && !!form.nombre.trim() && !offerError
+
+  // Error del precio que devolvió el servidor: foco al campo
+  useEffect(() => {
+    if (priceError) priceInputRef.current?.focus()
+  }, [priceError])
 
   const handleSubmit = async () => {
+    if (localPriceError || precioNum === null) {
+      setPriceTouched(true)
+      priceInputRef.current?.focus()
+      return
+    }
     await onConfirm({
       ...form,
+      precio: precioNum,
       atributos: buildAtributos(),
     })
   }
@@ -144,15 +169,26 @@ export default function VariantFormDialog({ productId, mode, initialData, onConf
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-white/70 mb-1.5">Precio *</label>
+          <label htmlFor="variant-precio" className="block text-sm font-medium text-gray-700 dark:text-white/70 mb-1.5">Precio *</label>
           <input
+            ref={priceInputRef}
+            id="variant-precio"
             type="number"
             min="0"
             step="0.01"
-            value={form.precio}
-            onChange={(e) => setForm({ ...form, precio: parseFloat(e.target.value) || 0 })}
-            className={inputClasses}
+            value={precioText}
+            onChange={(e) => {
+              setPrecioText(e.target.value)
+              onPriceChange?.()
+            }}
+            onBlur={() => setPriceTouched(true)}
+            aria-invalid={shownPriceError ? true : undefined}
+            aria-describedby={shownPriceError ? 'variant-precio-error' : undefined}
+            className={`${inputClasses} max-sm:min-h-11`}
           />
+          {shownPriceError && (
+            <p id="variant-precio-error" className="mt-1.5 text-sm text-red-600 dark:text-red-400">{shownPriceError}</p>
+          )}
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-white/70 mb-1.5">
@@ -188,7 +224,7 @@ export default function VariantFormDialog({ productId, mode, initialData, onConf
             </p>
           </div>
         </div>
-        {form.en_oferta && <OfferPricePreview precio={form.precio} precioAnterior={form.precio_anterior} />}
+        {form.en_oferta && !localPriceError && <OfferPricePreview precio={precioNum} precioAnterior={form.precio_anterior} />}
       </div>
 
       <div>

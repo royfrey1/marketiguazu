@@ -11,10 +11,15 @@ import ProductShippingFields from './ProductShippingFields'
 
 export type { SpecItem } from './ProductSpecificationsEditor'
 
+export interface ProductFormSubmitResult {
+  priceError?: string
+}
+
 interface ProductFormProps {
   product?: Product | null
   categories: Category[]
-  onSubmit: (data: AdminProductFormData) => Promise<void>
+  /** Puede devolver un error del servidor para mostrar en el campo precio (el formulario queda abierto) */
+  onSubmit: (data: AdminProductFormData) => Promise<ProductFormSubmitResult | void>
   onCancel: () => void
   loading?: boolean
   submitLabel?: string
@@ -92,13 +97,17 @@ export default function ProductForm({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleFormSubmit = (handleSubmit as any)(async (data: AdminProductFormData) => {
     if (slugExists === true) return
-    await onSubmit(data)
+    const result = await onSubmit(data)
+    if (result?.priceError) {
+      form.setError('precio', { type: 'server', message: result.priceError }, { shouldFocus: true })
+    }
   })
 
   const defaultLabel = isEditing ? 'Guardar cambios' : 'Crear producto'
 
+  // Sin validación nativa (noValidate): zod muestra cada error junto a su campo; el globo del navegador lo tapaba
   return (
-    <form onSubmit={handleFormSubmit} className="space-y-6">
+    <form onSubmit={handleFormSubmit} noValidate className="space-y-6">
       <ProductBasicFields
         form={form as unknown as AnyFormReturn}
         categories={categories}

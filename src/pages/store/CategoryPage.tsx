@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, type ReactNode } from 'react'
+import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { useParams, Link, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { SlidersHorizontal, X } from 'lucide-react'
@@ -9,6 +9,7 @@ import ProductCard from '../../components/home/ProductCard'
 import { ProductGrid, ProductGridSkeleton } from '../../components/store/ProductGrid'
 import { getCategoryIcon } from '../../lib/categoryIcons'
 import Seo from '../../components/seo/Seo'
+import { trackMetaEvent } from '../../lib/metaPixel'
 
 export default function CategoryPage() {
   const { slug } = useParams<{ slug: string }>()
@@ -38,6 +39,14 @@ export default function CategoryPage() {
   useEffect(() => { setInputMin(min) }, [min])
   useEffect(() => { setInputMax(max) }, [max])
   useEffect(() => { setSearchValue(q) }, [q])
+
+  // Meta Pixel: Search cuando cambia el término buscado dentro de la categoría
+  const lastTrackedSearchRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!q || lastTrackedSearchRef.current === q) return
+    lastTrackedSearchRef.current = q
+    trackMetaEvent('Search', { search_string: q })
+  }, [q])
 
   useEffect(() => {
     if (!mobileFiltersOpen) return

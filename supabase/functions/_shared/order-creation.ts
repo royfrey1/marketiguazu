@@ -68,6 +68,7 @@ export type OrderErrorCode =
   | "INVALID_PRODUCT"
   | "INVALID_VARIANT"
   | "INVALID_QUANTITY"
+  | "INVALID_PRICE"
   | "PRICE_CHANGED"
   | "ADDRESS_NOT_FOUND"
   | "STOCK_UNAVAILABLE"
@@ -286,6 +287,18 @@ export async function createPendingOrder(
         sku: null,
         variantName: null,
       });
+    }
+  }
+
+  // Defensa: un precio 0, vacío, negativo o no numérico no debe
+  // cobrarse jamás. El CHECK de la base lo impide al escribir; esto
+  // cubre datos legados o manipulados antes de crear la orden.
+  for (const item of validatedItems) {
+    if (!Number.isFinite(item.unitPrice) || item.unitPrice <= 0) {
+      return failure(
+        "INVALID_PRICE",
+        "Este producto no está disponible por el momento",
+      );
     }
   }
 

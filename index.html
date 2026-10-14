@@ -20,6 +20,27 @@
     <meta name="twitter:title" content="Iguazú Marketplace | Tecnología con envío gratis" />
     <meta name="twitter:description" content="Tienda de tecnología con envío gratis a todo el país. Pagá con Mercado Pago, USDT o transferencia bancaria." />
     <meta name="twitter:image" content="https://www.iguazumarketplace.com.ar/og-default.png" />
+    <!-- Meta Pixel: código base (una sola vez; el ID viene de VITE_META_PIXEL_ID).
+         Si el ID reemplazado no es numérico (vacío o placeholder %...%) no se
+         carga fbevents y no se envía nada. El admin (/admin) queda fuera del Pixel. -->
+    <script>
+      (function () {
+        var pxid = '%VITE_META_PIXEL_ID%';
+        if (!/^\d+$/.test(pxid)) return;
+        !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+        n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+        document,'script','https://connect.facebook.net/en_US/fbevents.js','fb');
+        fbq('init', pxid);
+        if (!/^\/admin(\/|$)/.test(window.location.pathname)) fbq('track', 'PageView');
+      })();
+    </script>
+    <!-- Solo registra (noscript) si el ID es numérico: con vacío o placeholder
+         el id de la URL no es numérico y Meta no lo atribuye a ningún pixel -->
+    <noscript><img height="1" width="1" style="display:none"
+      src="https://www.facebook.com/tr?id=%VITE_META_PIXEL_ID%&ev=PageView&noscript=1"
+    /></noscript>
   </head>
   <body>
     <div id="root"></div>

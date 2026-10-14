@@ -2,12 +2,22 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { orderService, type OrderDetail } from '../../services/order.service'
 import useAuth from '../../hooks/useAuth'
+import { trackPurchaseOnce, isPurchaseApproved, META_CURRENCY } from '../../lib/metaPixel'
 
 interface PaymentOrderSummaryProps {
   orderId: number | null
+  /**
+   * Meta Pixel: dispara Purchase cuando el pedido se muestra con el pago de
+   * Mercado Pago APROBADO (si la página de éxito se ve con el pago todavía en
+   * proceso por el webhook, no se emite). Solo lo usa PaymentSuccessPage.
+   * USDT y transferencia NO emiten: se confirman a mano; a futuro corresponde
+   * enviarlo desde el servidor al confirmar la aprobación (Conversions API).
+   * Deduplicación por pedido (una sola vez, sessionStorage).
+   */
+  trackPurchase?: boolean
 }
 
-export default function PaymentOrderSummary({ orderId }: PaymentOrderSummaryProps) {
+export default function PaymentOrderSummary({ orderId, trackPurchase = false }: PaymentOrderSummaryProps) {
   const { user, loading } = useAuth()
   const [outcome, setOutcome] = useState<{ orderId: number; order: OrderDetail | null } | null>(null)
   const userId = user?.id
@@ -25,6 +35,20 @@ export default function PaymentOrderSummary({ orderId }: PaymentOrderSummaryProp
       cancelled = true
     }
   }, [orderId, loading, userId])
+
+  // Meta Pixel: Purchase (una única vez por pedido) solo cuando el pedido está
+  // mostrado con pago aprobado; pendiente/en proceso = no se emite
+  useEffect(() => {
+    if (!trackPurchase || !outcome?.order) return
+    const order = outcome.order
+    if (!isPurchaseApproved(order.payment_status, order.status)) return
+    trackPurchaseOnce(order.id, {
+      content_ids: order.order_items.map(i => String(i.product_id)),
+      num_items: order.order_items.reduce((sum, item) => sum + item.cantidad, 0),
+      value: order.total,
+      currency: META_CURRENCY,
+    })
+  }, [trackPurchase, outcome])
 
   if (!orderId) return null
 

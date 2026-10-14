@@ -9,7 +9,7 @@
 
 ## 🎯 Momento actual
 
-Estamos en la **recta final previa al lanzamiento**: QA de producción, requisitos legales/dominio y verificación final de datos. La tienda opera end-to-end en producción (checkout con Mercado Pago, webhook, páginas de resultado con pedido real), con pago alternativo en USDT (TRC20) probado de punta a punta, **modelo de stock corregido** (reservas por saldo neto, `confirm_sale` al aprobar), variantes de producto con galería propia, sidebar de subcategorías y teléfono de contacto obligatorio. Desde 2026-10-06 los **textos legales están publicados** (con aceptación en checkout y registro) y el **botón de arrepentimiento está completo** (página pública con constancia, estado en el pedido y gestión en el admin). **Dominio propio activo desde 2026-10-13:** la tienda se sirve en `https://www.iguazumarketplace.com.ar` (www es el principal; el apex sin www redirige con 308; `market-iguazu.vercel.app` redirige 301 al dominio nuevo). **Migración completada (2026-10-14):** `SITE_URL`, CORS de las 6 Edge Functions, Auth de Supabase y SMTP propio (Resend) configurados; el remitente de los emails de pedidos usa el dominio propio (`RESEND_FROM_EMAIL` actualizado) y `create-quote` quedó dada de baja en producción (el código sigue en el repo). **Frontend:** notificaciones (Sileo) abajo a la derecha y siempre oscuras, botón ver/ocultar contraseña (`PasswordInput`) en todos los campos de contraseña y avisos de `ResetPasswordPage` corregidos. **Opción base elegible (2026-10-14):** productos con variantes pueden tener una opción "base" opt-in (`products.opcion_base_nombre`) que usa el precio y el stock propio del producto; BD + servidor + frontend completos (ver sección propia). Todo el trabajo de la sesión está commiteado (working tree limpio; el push cierra la sesión). El trabajo que queda no es de construcción: es completar datos del titular, dominio/emails, rotar secretos y editar datos de catálogo por cuenta del dueño.
+Estamos en la **recta final previa al lanzamiento**: QA de producción, requisitos legales/dominio y verificación final de datos. La tienda opera end-to-end en producción (checkout con Mercado Pago, webhook, páginas de resultado con pedido real), con pago alternativo en USDT (TRC20) probado de punta a punta, **modelo de stock corregido** (reservas por saldo neto, `confirm_sale` al aprobar), variantes de producto con galería propia, sidebar de subcategorías y teléfono de contacto obligatorio. Desde 2026-10-06 los **textos legales están publicados** (con aceptación en checkout y registro) y el **botón de arrepentimiento está completo** (página pública con constancia, estado en el pedido y gestión en el admin). **Dominio propio activo desde 2026-10-13:** la tienda se sirve en `https://www.iguazumarketplace.com.ar` (www es el principal; el apex sin www redirige con 308; `market-iguazu.vercel.app` redirige 301 al dominio nuevo). **Migración completada (2026-10-14):** `SITE_URL`, CORS de las 6 Edge Functions, Auth de Supabase y SMTP propio (Resend) configurados; el remitente de los emails de pedidos usa el dominio propio (`RESEND_FROM_EMAIL` actualizado) y `create-quote` quedó dada de baja en producción (el código sigue en el repo). **Frontend:** notificaciones (Sileo) abajo a la derecha y siempre oscuras, botón ver/ocultar contraseña (`PasswordInput`) en todos los campos de contraseña y avisos de `ResetPasswordPage` corregidos. **Opción base elegible (2026-10-14):** productos con variantes pueden tener una opción "base" opt-in (`products.opcion_base_nombre`) que usa el precio y el stock propio del producto; BD + servidor + frontend completos (ver sección propia). **Protección de precios (2026-10-14):** CHECK `precio > 0` en ambas tablas, las 4 RPCs de admin rechazan precios no válidos, `INVALID_PRICE` en la creación de pedidos y los formularios del admin validan antes de enviar (ver sección propia). **Meta Pixel (2026-10-14):** pixel de Meta instalado con PageView/ViewContent/Search/AddToCart/InitiateCheckout/Purchase — Purchase solo con pago de Mercado Pago aprobado, sin eventos en `/admin` y con guard en el snippet (ver sección propia; falta cargar `VITE_META_PIXEL_ID` en Vercel). El trabajo de esta sesión (protección de precios + Meta Pixel) queda en un solo commit. El trabajo que queda no es de construcción: es completar datos del titular, dominio/emails, rotar secretos y editar datos de catálogo por cuenta del dueño.
 
 ### ✅ Hechos confirmados por QA manual
 
@@ -53,6 +53,7 @@ Estamos en la **recta final previa al lanzamiento**: QA de producción, requisit
 3. **Rotar `MP_WEBHOOK_SECRET`**.
 4. ~~**Cuenta de QA con rol customer y datos de prueba**: borrar o banear la cuenta (queda activa hasta que termine el QA en producción), limpiar productos 1007/1008, pedidos y pagos fixture, y reponer a mano el stock afectado por los pedidos de prueba.~~ — **resuelto** (2026-10-08): cuentas de prueba eliminadas (queda solo la cuenta admin), productos 1007/1008 y todos los pedidos/pagos fixture borrados; stock real confirmado por el dueño (1009 = 8, 1037 = 4, sin ajuste).
 5. **Primer pago USDT real**: confirmar en Binance que el depósito entró ANTES de apretar "Confirmar pago recibido" (la dirección de la wallet fue confirmada por el dueño como correcta, pero nunca se probó con un depósito real).
+6. **Variable `VITE_META_PIXEL_ID` en Vercel** (Settings → Environment Variables → solo entorno **Production** + redeploy sin cache): con la variable vacía o ausente el snippet de `index.html` no carga fbevents ni envía nada y el Meta Pixel no trackea en producción. Después de cargarla, verificar con Meta Pixel Helper y "Probar eventos" del Administrador de eventos.
 
 ---
 
@@ -133,13 +134,46 @@ Estamos en la **recta final previa al lanzamiento**: QA de producción, requisit
 **Pendientes anotados:**
 
 - Botones "Ajustar stock" / "Historial" de Inventario a 28 px en mobile.
-- Proteger variantes con precio 0 o vacío (admin y BD).
+- ~~Proteger variantes con precio 0 o vacío (admin y BD)~~ — **resuelto** (2026-10-14): CHECK `precio > 0` en `products` y `product_variants`, validación en las 4 RPCs admin (`El precio debe ser mayor a 0`) y `INVALID_PRICE` en la creación de pedidos (migración `20261014160000_price_must_be_positive.sql`, aplicada; 3 Edge Functions redeployeadas).
 - Advertencia al agregar la primera variante a un producto con stock propio (el stock base deja de contar).
 - Ofertas para la opción base (futuro).
 - Configurar la opción en productos reales (1053 primero) tras verificar que `products.precio` sea correcto.
 - Precios base desfasados de los productos 8 y 1023.
 - Confirmar visualmente en producción la ficha de un producto sin fotos propias (fallback de portada).
 - Confirmación/aviso al eliminar un producto del carrito (próximo).
+
+---
+
+## 💰 Protección de precios (2026-10)
+
+**BD + servidor (migración `20261014160000_price_must_be_positive.sql`, aplicada en producción 2026-10-14):**
+
+- CHECK `precio > 0` en `products` y `product_variants` (reemplaza los CHECKs previos `precio >= 0`).
+- Las 4 RPCs de admin (`create_admin_product`, `update_admin_product`, `create_product_variant`, `update_product_variant`) rechazan precio <= 0 con `'El precio debe ser mayor a 0'` (ERRCODE 22023).
+- Defensa en la creación de pedidos (`supabase/functions/_shared/order-creation.ts`): un item con precio <= 0 se rechaza con `INVALID_PRICE` ("Este producto no está disponible por el momento"), sin exponer detalles.
+- Redeploy de las 3 funciones de pago (`create-payment`, `create-payment-usdt`, `create-payment-transfer`) y test de la regla con mocks: `node supabase/functions/_shared/order-creation.test.ts` 10/10 PASS.
+
+**Frontend (admin):**
+
+- `src/lib/priceRules.ts` centraliza la regla (la misma del CHECK); los formularios validan antes de enviar: `ProductForm`, `ProductBasicFields`, `ProductCreatePage`, `ProductEditPage`, `VariantFormDialog`, `ProductVariantsManager`, `AddOfferDialog` y el generador de combinaciones (`VariantCombinationGenerator`).
+
+---
+
+## 📈 Meta Pixel (2026-10)
+
+**Instalado (2026-10-14):** pixel de Meta (el ID vive solo en la variable de entorno `VITE_META_PIXEL_ID`, nunca en el repo), sin dependencias nuevas y sin datos personales hacia Meta (solo ids/nombres de producto, búsquedas, cantidades y montos en ARS).
+
+- **Base:** snippet oficial en el `<head>` de `index.html` con **guard**: solo se carga `fbevents` y se inicializa si el ID reemplazado es numérico (vacío o placeholder → no se carga ni se envía nada, incluido el `<noscript>`). El PageView inicial **no se emite en `/admin`**. Documentada en `.env.example` y README; en Vercel va en Settings → Environment Variables, **solo Production**, con redeploy sin cache.
+- **Helper único:** `src/lib/metaPixel.ts` (`trackMetaEvent`, `trackPurchaseOnce`, `shouldTrackPageView`, `isPurchaseApproved`): no rompe si `window.fbq` no existe (adblocker) ni corre en servidor; `Purchase` deduplicado por pedido con `sessionStorage` + Set en memoria.
+- **Eventos:** `PageView` por cambio de ruta (`src/components/layout/MetaPixelPageView.tsx`, montado en `App.tsx`; excluye `/admin` y no duplica el de carga inicial); `ViewContent` y `AddToCart` en `ProductPage.tsx`; `Search` en `SearchPage.tsx` y `CategoryPage.tsx` (una vez por término); `InitiateCheckout` en `CheckoutPage.tsx` (una vez por visita, con items y total); `Purchase` **solo en `PaymentSuccessPage`** y solo cuando el pedido se muestra con `payment_status = approved` (si la página de éxito se ve con el pago pendiente/en proceso por el webhook, no se emite; un pedido cancelado tampoco). **Sin Purchase en `/pago/usdt` ni `/pago/transferencia`** (se confirman a mano) ni en pendiente/fallo.
+- **Verificación (2026-10-14):** mini-harness local sin red (snippet con `window.fbq` simulado: admin sin PageView, Purchase solo con pago aprobado y una sola vez, Usdt/Transfer sin Purchase, ID no numérico no carga nada, restos de eventos intactos) + build OK + `npx tsc -b` 50 y lint 66 = línea base. En producción: Meta Pixel Helper (extensión) y "Probar eventos" del Administrador de eventos de Meta.
+
+**Pendientes del Pixel:**
+
+- **Purchase de transferencia/USDT desde el servidor al confirmar la aprobación** (Meta Conversions API): hoy no se emite en esas pantallas.
+- **Revisar política de privacidad / consentimiento por el uso del Pixel** (cookies de seguimiento de Meta).
+- Cargar `VITE_META_PIXEL_ID` en Vercel (solo Production, redeploy sin cache) y verificar con Meta Pixel Helper y "Probar eventos".
+- Botones del carrito (cantidad/papelera/"Continuar") a **44 px en mobile**.
 
 ---
 
@@ -192,7 +226,7 @@ La lista completa vive en **🚨 Bloqueadores críticos** (única fuente de verd
 - **Los toasts (Sileo) no se apilan:** el segundo reemplaza al primero; si hace falta ver los dos, implementar pila. **Legado del aviso de "Deshacer" del carrito:** el botón mide 27 px en mobile (limitación del dibujo de Sileo).
 - Pendientes del "Deshacer" del carrito: el `removeItem` del carrito de **invitado** borra por `product_id` (todas las líneas del producto) — bug previo, hoy oculto porque `/carrito` no dibuja el carrito de invitado; el mensaje "ya no está disponible" es impreciso si falla la lectura de stock; reactivar el aviso desde Mi cuenta (borrando la clave de `localStorage`) es una mejora futura; QA manual del flujo en producción.
   - ~~bug removeItem de invitado por product_id~~ — **resuelto (2026-10-14)**: ahora opera sobre la línea exacta (producto + variante|base).
-- Pendientes del carrito de invitado: botones de cantidad/papelera del carrito a 32 px y "Continuar" a 40 px en mobile (compartido con el carrito logueado; tanda aparte para llevarlos a 44 px); probar en el sitio real la carrera sesión/navegación tras login (Supabase emite el evento de sesión antes de resolver `signInWithPassword`); si falla una RPC de disponibilidad la línea se ve sin stock en vez de mostrar error de red; producto con todas las variantes inactivas queda sin stock para el invitado (mismo criterio que las listas).
+- Pendientes del carrito de invitado: botones de cantidad/papelera del carrito a 32 px y "Continuar" a 40 px en mobile (compartido con el carrito logueado; tanda aparte para llevar todos a **44 px en mobile**); probar en el sitio real la carrera sesión/navegación tras login (Supabase emite el evento de sesión antes de resolver `signInWithPassword`); si falla una RPC de disponibilidad la línea se ve sin stock en vez de mostrar error de red; producto con todas las variantes inactivas queda sin stock para el invitado (mismo criterio que las listas).
 - **Toast con modal abierto:** queda detrás del fondo del diálogo (z-index); revisar los errores que se muestran en diálogos del admin.
 - **Verificar el ojo de contraseña y las notificaciones en pantallas con sesión** (perfil, admin, checkout) y en **Edge** (el CSS de los toasts no fue probado ahí).
 - **~~ANÁLISIS PENDIENTE — disponibilidad con variantes:~~** ~~productos con variantes cuyo producto base tiene stock propio **no se muestran en la tienda si las variantes no tienen stock** (afecta también a los destacados); auditar la lógica de disponibilidad con variantes antes de decidir el modelo de stock.~~ — **resuelto (2026-10-14)**: modelo de **opción base elegible** (ver sección propia); el stock propio del producto cuenta solo si el dueño habilita la opción con un nombre.

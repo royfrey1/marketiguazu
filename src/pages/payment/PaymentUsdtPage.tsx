@@ -203,6 +203,8 @@ export default function PaymentUsdtPage() {
               </p>
             )}
 
+            {/* Meta Pixel: sin Purchase acá (USDT se confirma a mano; a futuro
+                desde el servidor al aprobar, vía Conversions API) */}
             <PaymentOrderSummary orderId={orderId} />
 
             <div className="flex flex-col sm:flex-row items-center gap-3 mt-6">

@@ -10,6 +10,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute'
 import AdminRoute from './components/auth/AdminRoute'
 import LoadingScreen from './components/ui/LoadingScreen'
 import ScrollManager from './components/layout/ScrollManager'
+import MetaPixelPageView from './components/layout/MetaPixelPageView'
 
 const THEME_KEY = 'admin.theme'
 
@@ -96,6 +97,7 @@ function App() {
         />
         <BrowserRouter>
           <ScrollManager />
+          <MetaPixelPageView />
           <Suspense fallback={<Loading />}>
             <Routes>
             <Route element={<AdminRoute dark={dark} />}>

@@ -1,6 +1,7 @@
 import { z } from 'zod'
-import { requiredText, optionalText, positiveNumber, nonNegativeNumber } from './common'
+import { requiredText, optionalText, nonNegativeNumber } from './common'
 import { offerPriceError } from '../offers'
+import { PRICE_POSITIVE_MESSAGE, parsePriceInput } from '../priceRules'
 
 const slugRegex = /^[a-z0-9]+(?:-[a-z0-9]*)*$/
 
@@ -48,7 +49,11 @@ export const adminProductSchema = z
       .number({ message: 'Seleccioná una categoría' })
       .int('La categoría debe ser un número entero')
       .positive('Seleccioná una categoría'),
-    precio: positiveNumber('El precio'),
+    // Vacío, 0, negativo o no numérico: mismo mensaje que la base (el vacío ya no pasa como 0)
+    precio: z.preprocess(
+      (val) => parsePriceInput(val) ?? undefined,
+      z.number({ error: PRICE_POSITIVE_MESSAGE }).positive(PRICE_POSITIVE_MESSAGE)
+    ),
     precio_anterior: nonNegativeNumber('El precio anterior')
       .optional()
       .or(z.literal(''))

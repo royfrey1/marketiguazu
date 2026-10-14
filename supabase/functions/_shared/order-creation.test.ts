@@ -9,6 +9,9 @@
 //   item sin variante de producto con variantes activas exige
 //   products.opcion_base_nombre IS NOT NULL.
 //
+// Y la defensa de precios: un precio 0, NULL, negativo o NaN
+// rechaza el pedido con INVALID_PRICE antes de escribir nada.
+//
 // Son tests de LOGICA con un cliente supabase simulado:
 // no tocan red ni base de datos.
 // ============================================================
@@ -296,6 +299,59 @@ const VARIANTS: VariantRow[] = [
 ];
 
 // ------------------------------------------------------------
+// fixtures de precios invalidos (defensa INVALID_PRICE)
+// ------------------------------------------------------------
+
+const ZERO_PRICE_PRODUCT: ProductRow = {
+  id: 500,
+  titulo: "Producto Precio Cero",
+  activo: true,
+  precio: 0,
+  opcion_base_nombre: null,
+};
+
+const NULL_PRICE_PRODUCT: ProductRow = {
+  id: 600,
+  titulo: "Producto Precio Null",
+  activo: true,
+  precio: null as unknown as number,
+  opcion_base_nombre: null,
+};
+
+const NEGATIVE_PRICE_PRODUCT: ProductRow = {
+  id: 700,
+  titulo: "Producto Precio Negativo",
+  activo: true,
+  precio: -100,
+  opcion_base_nombre: null,
+};
+
+const NAN_PRICE_PRODUCT: ProductRow = {
+  id: 800,
+  titulo: "Producto Precio NaN",
+  activo: true,
+  precio: Number.NaN,
+  opcion_base_nombre: null,
+};
+
+const ZERO_PRICE_VARIANT: VariantRow = {
+  id: 21,
+  product_id: 900,
+  precio: 0,
+  nombre: "Cero",
+  sku: null,
+  activo: true,
+};
+
+const ZERO_PRICE_VARIANT_PRODUCT: ProductRow = {
+  id: 900,
+  titulo: "Producto Variante Cero",
+  activo: true,
+  precio: 1000,
+  opcion_base_nombre: null,
+};
+
+// ------------------------------------------------------------
 // casos
 // ------------------------------------------------------------
 
@@ -382,17 +438,105 @@ async function caso5_variantes_todas_inactivas_ok(): Promise<void> {
 }
 
 // ------------------------------------------------------------
+// casos: defensa de precios INVALID_PRICE
+// ------------------------------------------------------------
+
+async function caso6_precio_cero_rechaza(): Promise<void> {
+  const writes: string[] = [];
+  const client = makeClient(
+    { products: [ZERO_PRICE_PRODUCT], variants: [], reserveOk: true },
+    writes,
+  );
+  const r = await createPendingOrder(client as never, "token-ok", payload([
+    { productId: 500, variantId: null, quantity: 1 },
+  ]));
+  assert(!r.success, "esperaba rechazo por precio 0");
+  if (r.success) return;
+  assert(r.code === "INVALID_PRICE", `code esperado INVALID_PRICE, vino ${r.code}`);
+  assert(
+    r.message === "Este producto no está disponible por el momento",
+    `mensaje inesperado: ${r.message}`,
+  );
+  assert(writes.length === 0, `no debia escribir nada, escribio: ${writes.join(", ")}`);
+}
+
+async function caso7_precio_null_rechaza(): Promise<void> {
+  const writes: string[] = [];
+  const client = makeClient(
+    { products: [NULL_PRICE_PRODUCT], variants: [], reserveOk: true },
+    writes,
+  );
+  const r = await createPendingOrder(client as never, "token-ok", payload([
+    { productId: 600, variantId: null, quantity: 1 },
+  ]));
+  assert(!r.success, "esperaba rechazo por precio NULL");
+  if (r.success) return;
+  assert(r.code === "INVALID_PRICE", `code esperado INVALID_PRICE, vino ${r.code}`);
+  assert(writes.length === 0, `no debia escribir nada, escribio: ${writes.join(", ")}`);
+}
+
+async function caso8_precio_negativo_rechaza(): Promise<void> {
+  const writes: string[] = [];
+  const client = makeClient(
+    { products: [NEGATIVE_PRICE_PRODUCT], variants: [], reserveOk: true },
+    writes,
+  );
+  const r = await createPendingOrder(client as never, "token-ok", payload([
+    { productId: 700, variantId: null, quantity: 1 },
+  ]));
+  assert(!r.success, "esperaba rechazo por precio negativo");
+  if (r.success) return;
+  assert(r.code === "INVALID_PRICE", `code esperado INVALID_PRICE, vino ${r.code}`);
+  assert(writes.length === 0, `no debia escribir nada, escribio: ${writes.join(", ")}`);
+}
+
+async function caso9_precio_nan_rechaza(): Promise<void> {
+  const writes: string[] = [];
+  const client = makeClient(
+    { products: [NAN_PRICE_PRODUCT], variants: [], reserveOk: true },
+    writes,
+  );
+  const r = await createPendingOrder(client as never, "token-ok", payload([
+    { productId: 800, variantId: null, quantity: 1 },
+  ]));
+  assert(!r.success, "esperaba rechazo por precio NaN");
+  if (r.success) return;
+  assert(r.code === "INVALID_PRICE", `code esperado INVALID_PRICE, vino ${r.code}`);
+  assert(writes.length === 0, `no debia escribir nada, escribio: ${writes.join(", ")}`);
+}
+
+async function caso10_variante_precio_cero_rechaza(): Promise<void> {
+  const writes: string[] = [];
+  const client = makeClient(
+    { products: [ZERO_PRICE_VARIANT_PRODUCT], variants: [ZERO_PRICE_VARIANT], reserveOk: true },
+    writes,
+  );
+  const r = await createPendingOrder(client as never, "token-ok", payload([
+    { productId: 900, variantId: 21, quantity: 1 },
+  ]));
+  assert(!r.success, "esperaba rechazo por variante con precio 0");
+  if (r.success) return;
+  assert(r.code === "INVALID_PRICE", `code esperado INVALID_PRICE, vino ${r.code}`);
+  assert(writes.length === 0, `no debia escribir nada, escribio: ${writes.join(", ")}`);
+}
+
+// ------------------------------------------------------------
 // main
 // ------------------------------------------------------------
 
 async function main(): Promise<void> {
-  console.log("order-creation.test.ts — opcion base opt-in");
+  console.log("order-creation.test.ts — opcion base opt-in + defensa de precios");
   const results = await Promise.all([
     run("1. producto simple sin variantes compra OK", caso1_producto_simple_ok),
     run("2. variantes activas + opcion NULL rechaza item sin variante", caso2_variantes_sin_opcion_rechaza),
     run("3. variantes activas + opcion base seteada compra OK", caso3_variantes_con_opcion_base_ok),
     run("4. item con variante mantiene precio de variante", caso4_item_con_variante_igual_que_antes),
     run("5. variantes todas inactivas compra como producto simple", caso5_variantes_todas_inactivas_ok),
+    run("6. precio 0 rechaza con INVALID_PRICE sin escribir", caso6_precio_cero_rechaza),
+    run("7. precio NULL rechaza con INVALID_PRICE sin escribir", caso7_precio_null_rechaza),
+    run("8. precio negativo rechaza con INVALID_PRICE sin escribir", caso8_precio_negativo_rechaza),
+    run("9. precio NaN rechaza con INVALID_PRICE sin escribir", caso9_precio_nan_rechaza),
+    run("10. variante con precio 0 rechaza con INVALID_PRICE", caso10_variante_precio_cero_rechaza),
   ]);
   const ok = results.filter(Boolean).length;
   console.log(`resultado: ${ok}/${results.length}`);

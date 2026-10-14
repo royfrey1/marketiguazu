@@ -6,6 +6,7 @@ import { productsService, type ProductAdminRow } from '../../../services/product
 import { productVariantsService, type VariantWithInventory } from '../../../services/productVariants.service'
 import { offersService } from '../../../services/offers.service'
 import { offerPriceError, formatArs } from '../../../lib/offers'
+import { PRICE_POSITIVE_MESSAGE, isPriceDbError, priceFieldError } from '../../../lib/priceRules'
 import OfferPricePreview from './OfferPricePreview'
 
 interface AddOfferDialogProps {
@@ -32,6 +33,8 @@ export default function AddOfferDialog({ onClose, onSaved }: AddOfferDialogProps
   const [precio, setPrecio] = useState('')
   const [precioAnterior, setPrecioAnterior] = useState('')
   const [saving, setSaving] = useState(false)
+  // Precio rechazado por la base (se descarta al editar el precio)
+  const [serverPriceError, setServerPriceError] = useState<string | null>(null)
 
   // Búsqueda del admin (solo productos activos), con una pequeña espera mientras se escribe
   useEffect(() => {
@@ -49,6 +52,7 @@ export default function AddOfferDialog({ onClose, onSaved }: AddOfferDialogProps
   }, [search, product])
 
   const loadPrices = (source: { precio: number; precio_anterior: number | null }) => {
+    setServerPriceError(null)
     setPrecio(String(source.precio))
     setPrecioAnterior(source.precio_anterior !== null ? String(source.precio_anterior) : '')
   }
@@ -81,10 +85,12 @@ export default function AddOfferDialog({ onClose, onSaved }: AddOfferDialogProps
   const ready = !!product && variants !== null && (!needsVariant || !!variant)
   const precioNum = parsePrice(precio)
   const precioAnteriorNum = parsePrice(precioAnterior)
-  const error = ready ? offerPriceError(precioNum, precioAnteriorNum) : null
+  // El precio vigente tiene que ser > 0 (regla de la base); con el precio inválido no se suma el error de la oferta
+  const priceError = ready ? priceFieldError(precio) ?? serverPriceError : null
+  const error = ready && !priceError ? offerPriceError(precioNum, precioAnteriorNum) : null
 
   const handleSave = async () => {
-    if (!product || !ready || error || precioNum === null || precioAnteriorNum === null) return
+    if (!product || !ready || priceError || error || precioNum === null || precioAnteriorNum === null) return
     setSaving(true)
     const prices = { precio: precioNum, precio_anterior: precioAnteriorNum }
     const { error: saveError } = variant
@@ -92,6 +98,10 @@ export default function AddOfferDialog({ onClose, onSaved }: AddOfferDialogProps
       : await offersService.setProductOffer(product.id, true, prices)
     setSaving(false)
     if (saveError) {
+      if (isPriceDbError(saveError)) {
+        setServerPriceError(PRICE_POSITIVE_MESSAGE)
+        return
+      }
       // Mensaje de la base tal cual (por ejemplo el tope de 90% o la regla de variantes)
       sileo.error({ title: 'No se pudo agregar la oferta', description: saveError.message })
       return
@@ -119,7 +129,7 @@ export default function AddOfferDialog({ onClose, onSaved }: AddOfferDialogProps
           <button
             type="button"
             onClick={handleSave}
-            disabled={!ready || !!error || saving}
+            disabled={!ready || !!priceError || !!error || saving}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer bg-[#185749] text-white hover:bg-[#0D3732] dark:bg-[#1CAAA8] dark:hover:bg-[#1CAAA8]/90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -246,15 +256,23 @@ export default function AddOfferDialog({ onClose, onSaved }: AddOfferDialogProps
                     min="0"
                     step="0.01"
                     value={precio}
-                    onChange={e => setPrecio(e.target.value)}
-                    className={inputClasses}
+                    onChange={e => {
+                      setPrecio(e.target.value)
+                      setServerPriceError(null)
+                    }}
+                    aria-invalid={priceError ? true : undefined}
+                    aria-describedby={priceError ? 'offer-precio-error' : undefined}
+                    className={`${inputClasses} max-sm:min-h-11`}
                   />
+                  {priceError && (
+                    <p id="offer-precio-error" role="alert" className="mt-1.5 text-xs text-red-600 dark:text-red-400">{priceError}</p>
+                  )}
                 </div>
               </div>
               <p className="text-xs text-gray-500 dark:text-white/40">
                 El precio anterior es el precio normal vigente antes de la oferta y tiene que ser un precio real de venta.
               </p>
-              <OfferPricePreview precio={precioNum} precioAnterior={precioAnteriorNum} />
+              {!priceError && <OfferPricePreview precio={precioNum} precioAnterior={precioAnteriorNum} />}
             </div>
           )}
         </div>

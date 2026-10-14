@@ -6,11 +6,12 @@ import useAuth from '../../hooks/useAuth'
 import { categoriesService, type Category } from '../../services/categories.service'
 import { productsService } from '../../services/products.service'
 import { productSpecificationsService } from '../../services/productSpecifications.service'
-import ProductForm from '../../components/admin/products/ProductForm'
+import ProductForm, { type ProductFormSubmitResult } from '../../components/admin/products/ProductForm'
 import ProductSpecificationsEditor from '../../components/admin/products/ProductSpecificationsEditor'
 import AdminSubpageHeader from '../../components/admin/AdminSubpageHeader'
 import type { SpecItem } from '../../components/admin/products/ProductSpecificationsEditor'
 import type { AdminProductFormData } from '../../lib/validations/adminProduct'
+import { PRICE_POSITIVE_MESSAGE, isPriceDbError } from '../../lib/priceRules'
 
 export default function ProductCreatePage() {
   const navigate = useNavigate()
@@ -53,7 +54,7 @@ export default function ProductCreatePage() {
     return errors.length === 0
   }
 
-  const handleSubmit = async (data: AdminProductFormData) => {
+  const handleSubmit = async (data: AdminProductFormData): Promise<ProductFormSubmitResult | void> => {
     if (!user?.id) {
       setError('No hay usuario autenticado')
       return
@@ -113,6 +114,8 @@ export default function ProductCreatePage() {
 
       navigate(`/admin/productos/${product.id}/editar`)
     } catch (err) {
+      // Precio rechazado por la base: va al campo precio (no como fallo genérico)
+      if (isPriceDbError(err)) return { priceError: PRICE_POSITIVE_MESSAGE }
       const msg = (err as Error).message
       // El mensaje de la base (por ejemplo las validaciones de la oferta) se muestra tal cual
       sileo.error({ title: 'No se pudo crear el producto', description: msg || 'Error al crear el producto' })

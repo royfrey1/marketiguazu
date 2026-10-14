@@ -16,6 +16,7 @@ import { PAYMENT_METHODS } from '../../components/store/paymentMethods'
 import Seo from '../../components/seo/Seo'
 import { SITE_URL } from '../../config/site'
 import { isOfferShown, offerDiscountPct } from '../../lib/offers'
+import { trackMetaEvent, META_CURRENCY } from '../../lib/metaPixel'
 
 const MAX_VISIBLE_THUMBS = 5
 const SIN_IMAGENES: ProductImage[] = []
@@ -117,6 +118,12 @@ export default function DetalleProducto() {
   const [related, setRelated] = useState<ProductWithPrimaryImage[]>([])
   const [specs, setSpecs] = useState<ProductSpecificationRow[]>([])
 
+  // Meta Pixel: id del producto cuyos datos/variantes/stock ya quedaron cargados
+  // (evita trackear con datos del producto anterior al cambiar de ficha en la misma ruta)
+  const loadedProductIdRef = useRef<number | null>(null)
+  // Meta Pixel: slug del último producto al que se le disparó ViewContent (dispara una sola vez)
+  const trackedViewContentRef = useRef<string | null>(null)
+
   useEffect(() => {
     let cancelled = false
     async function cargarProducto() {
@@ -170,6 +177,7 @@ export default function DetalleProducto() {
           const { data: specsData } = await productSpecificationsService.getByProductId(prodData.id)
           if (!cancelled) {
             setSpecs(specsData || [])
+            loadedProductIdRef.current = prodData.id
           }
         }
       } catch (error) {
@@ -286,6 +294,24 @@ export default function DetalleProducto() {
     return producto?.available ?? 0
   }, [selection, baseAvailable, selectedVariant, hasVariants, variantAvail, producto])
 
+  // Meta Pixel: ViewContent al abrir la ficha del producto (una sola vez por producto).
+  // Se espera a que el producto y sus variantes/stock estén completamente cargados;
+  // value = precio final que ve el cliente (la tienda muestra precios con envío incluido).
+  useEffect(() => {
+    if (loading || variantesLoading || !producto) return
+    if (loadedProductIdRef.current !== producto.id) return
+    const key = producto.slug || String(producto.id)
+    if (trackedViewContentRef.current === key) return
+    trackedViewContentRef.current = key
+    trackMetaEvent('ViewContent', {
+      content_ids: [String(producto.id)],
+      content_name: producto.titulo,
+      content_type: 'product',
+      value: effectivePrice,
+      currency: META_CURRENCY,
+    })
+  }, [loading, variantesLoading, producto, effectivePrice])
+
   const handleAddToCart = useCallback(async () => {
     if (!producto?.activo || cartLoading) return
     if (hasVariants && selection === null) {
@@ -309,6 +335,15 @@ export default function DetalleProducto() {
     try {
       // La opción base va sin variantId (el servidor la acepta solo si el producto la tiene configurada)
       await addToCart(producto.id, effectivePrice, quantity, selection === 'base' ? null : selectedVariant?.id ?? null)
+      // Meta Pixel: AddToCart después de confirmar que la línea entró al carrito
+      trackMetaEvent('AddToCart', {
+        content_ids: [String(producto.id)],
+        content_name: producto.titulo,
+        content_type: 'product',
+        value: effectivePrice,
+        currency: META_CURRENCY,
+        quantity,
+      })
       sileo.success({ title: 'Producto agregado al carrito' })
     } catch (err) {
       sileo.error({
