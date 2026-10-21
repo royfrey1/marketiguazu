@@ -178,6 +178,26 @@ Estamos en la **recta final previa al lanzamiento**: QA de producción, requisit
 
 ---
 
+## 🍪 Consentimiento de cookies / Pixel opt-in (2026-10)
+
+**Con consentimiento (2026-10-14):** el Pixel de Meta pasa a opt-in; sin nueva dependencia ni datos personales.
+
+- **Clave:** `localStorage` `iguazu_cookie_consent`, **vence a los 12 meses** (si está vencida o ausente, nada se carga y se vuelve a mostrar el banner).
+- **Banner y panel de preferencias:** `CookieBanner.tsx` (Acepto/Rechazo) + panel de preferencias abierto desde el Footer (`useCookieConsent.ts` + evento `iguazu:cookie-preferences-open` en el layout); cambios avisados por `iguazu:cookie-consent-change`.
+- **Carga dinámica del Pixel:** el snippet ya no está en `index.html` (que queda sin "facebook" ni "fbq"): `src/lib/metaPixel.ts` inyecta `connect.facebook.net` **solo** con consentimiento `granted`; sin `fbq` cargado los eventos quedan en no-op (adblocker ya era caso).
+- **Revocación:** al pasar a `denied`/vencido se borran las cookies `_fbp` y `_fbc`; además los eventos (`trackMetaEvent`) se descartan si no hay consentimiento `granted`.
+- **Purchase:** igual que antes, **solo con Mercado Pago `approved`** (`isPurchaseApproved`), deduplicado; cancelado/pago no aprobado → sin evento. Sin cambios de backend (migraciones y Edge Functions intactas en esta tanda).
+- **`/privacidad` actualizada:** `src/content/legal/privacidad.md` (base técnica, **requiere revisión profesional**); fecha en `PRIVACY_LAST_UPDATED` de `PrivacyPage.tsx`; enlaces en `LegalPage.tsx`.
+
+**Pendientes del consentimiento:**
+
+- **Revisión profesional de la política de privacidad** (base técnica, no asesoramiento legal).
+- **Confirmar texto de `/privacidad` según hallazgos de auditoría:** el sitio **sí** importa `@vercel/analytics`/`@vercel/speed-insights` (`package.json` + `src/main.tsx`) pero el texto **no** menciona Vercel Analytics; "ARCA" **no** aparece fuera de `legal/` (solo en el texto legal); fuentes son locales y no hay Google Fonts.
+- Desactivar en Meta Events Manager → Configuración las **"Coincidencias de sitio web automáticas"**.
+- Verificar con Meta Pixel Helper y "Probar eventos" que sin aceptar no se envía nada y con aceptar aparece PageView + eventos.
+
+---
+
 ## 🧹 Deuda técnica y pendientes
 
 ### Antes del lanzamiento (bloqueantes)

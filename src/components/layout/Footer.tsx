@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { openCookiePreferences } from '../../lib/cookieConsent'
 import { MapPin, Mail, ShoppingBag, HelpCircle, ArrowUpRight, Flag } from 'lucide-react'
 import logo from '../../assets/images/iguazu1.png'
 import { LEGAL } from '../../config/legal'
@@ -76,6 +77,15 @@ export default function Footer() {
               <FooterLink to="/preguntas-frecuentes">Preguntas frecuentes</FooterLink>
               <FooterLink to="/privacidad">Política de Privacidad</FooterLink>
               <FooterLink to="/terminos">Términos y Condiciones</FooterLink>
+              <li>
+                <button
+                  type="button"
+                  onClick={openCookiePreferences}
+                  className={`text-sm transition-colors inline-flex items-center gap-1.5 ${TOUCH_TARGET} ${FOCUS_RING} text-white/45 hover:text-white/80 cursor-pointer`}
+                >
+                  Preferencias de cookies
+                </button>
+              </li>
             </ul>
           </div>
 

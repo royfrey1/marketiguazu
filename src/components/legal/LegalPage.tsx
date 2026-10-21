@@ -1,13 +1,23 @@
 import { useMemo, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { fillLegalPlaceholders } from '../../config/legal'
+import { openCookiePreferences } from '../../lib/cookieConsent'
 import { parseLegalMarkdown, type LegalBlock } from '../../lib/legalMarkdown'
 
 // Inline: [texto](url), **negrita** y rutas internas sueltas entre paréntesis, como "(/devoluciones)"
 const INLINE = /\[([^\]]+)\]\(([^)\s]+)\)|\*\*(.+?)\*\*|\((\/[a-z][a-z0-9-]*)\)/g
 const LINK_CLASS = 'font-semibold text-accent hover:underline'
+/** Enlace especial de los textos legales: abre el panel de preferencias de cookies */
+const COOKIE_PREFERENCES_HREF = '#preferencias-cookies'
 
 function SmartLink({ href, children }: { href: string; children: ReactNode }) {
+  if (href === COOKIE_PREFERENCES_HREF) {
+    return (
+      <button type="button" onClick={openCookiePreferences} className={`${LINK_CLASS} cursor-pointer rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent`}>
+        {children}
+      </button>
+    )
+  }
   if (href.startsWith('/')) {
     return <Link to={href} className={LINK_CLASS}>{children}</Link>
   }

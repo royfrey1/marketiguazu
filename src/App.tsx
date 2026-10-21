@@ -11,6 +11,7 @@ import AdminRoute from './components/auth/AdminRoute'
 import LoadingScreen from './components/ui/LoadingScreen'
 import ScrollManager from './components/layout/ScrollManager'
 import MetaPixelPageView from './components/layout/MetaPixelPageView'
+import CookieBanner from './components/layout/CookieBanner'
 
 const THEME_KEY = 'admin.theme'
 
@@ -158,6 +159,8 @@ function App() {
             </Route>
             </Routes>
           </Suspense>
+          {/* Consentimiento de cookies (opt-in del Meta Pixel); no se muestra en /admin */}
+          <CookieBanner />
         </BrowserRouter>
       </CartProvider>
     </AuthProvider>
