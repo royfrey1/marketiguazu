@@ -13,7 +13,7 @@ El responsable de la base de datos es {{NOMBRE_O_RAZON_SOCIAL}}, CUIT {{CUIT}}, 
 - **Datos del pedido:** productos, importes, método de envío y de pago, y estado del pago.
 - **Pagos con Mercado Pago:** los datos de pago los procesa Mercado Pago. No almacenamos números de tarjeta ni códigos de seguridad.
 - **Pagos por transferencia o en USDT:** solo lo necesario para conciliar el pedido (por ejemplo, monto, fecha y, si el Usuario lo informa, el identificador de la transacción o la dirección de wallet para un eventual reembolso).
-- **Datos de navegación:** carrito, preferencias y datos técnicos básicos (por ejemplo, dirección IP y navegador) que registran nuestros proveedores de hosting. Si el Usuario acepta las cookies de medición y publicidad, también las interacciones descriptas en la sección 2.8.
+- **Datos de navegación:** carrito, preferencias y datos técnicos básicos (por ejemplo, dirección IP y navegador) que registran nuestros proveedores de hosting, y estadísticas agregadas de visitas (sección 2.8). Si el Usuario acepta las cookies de medición y publicidad, también las interacciones descriptas en la sección 2.8.
 - **Comunicaciones:** los mensajes o reportes que el Usuario nos envíe.
 
 ## 2.3 Para qué los usamos y con qué base
@@ -31,7 +31,7 @@ La base para el tratamiento es la ejecución de la compra que solicita el Usuari
 Compartimos solo lo necesario con estos proveedores, que actúan por cuenta nuestra o prestan el servicio indicado:
 
 - **Supabase:** base de datos y autenticación.
-- **Vercel:** hosting de la Tienda.
+- **Vercel:** hosting de la Tienda y medición agregada de visitas (sección 2.8).
 - **Mercado Pago:** procesamiento de los pagos con ese medio.
 - **Resend:** envío de emails transaccionales (confirmaciones y avisos del pedido).
 - **Correo Argentino:** entrega del pedido (nombre, domicilio y teléfono).
@@ -62,10 +62,14 @@ La Tienda usa cookies y almacenamiento local del navegador. Las necesarias funci
 | Necesaria | Sesión de usuario (almacenamiento local del servicio de autenticación) | Mantener la sesión iniciada |
 | Necesaria | Carrito de invitado (almacenamiento local) | Recordar el carrito antes de iniciar sesión |
 | Necesaria | Preferencia de cookies (almacenamiento local, se vuelve a preguntar a los 12 meses) | Recordar la decisión sobre este aviso |
-| Necesaria | Preferencias de la Tienda (almacenamiento local y de sesión) | Recordar opciones del carrito y la posición en las páginas |
+| Necesaria | Preferencia de no volver a pedir confirmación al quitar productos del carrito (almacenamiento local) | Recordar esa elección del Usuario |
+| Necesaria | Posición de desplazamiento (almacenamiento de sesión) | Volver al mismo punto de la página al navegar hacia atrás |
 | Medición y publicidad | Meta Pixel: cookies _fbp y _fbc | Medir vistas de página y de producto, búsquedas, productos agregados al carrito, inicio del checkout y compras aprobadas por Mercado Pago |
+| Medición y publicidad | Marca de compra ya medida (almacenamiento de sesión) | Evitar que la misma compra se cuente dos veces al recargar la página |
 
-El Meta Pixel no envía nombre, email ni teléfono: solo datos del producto (identificador, nombre, precio y cantidad), búsquedas e importes. Meta recibe además datos técnicos del navegador, como la dirección IP. Para medir visitas de forma agregada usamos {{ANALITICAS}}, que no usa cookies.
+El Meta Pixel no envía nombre, email ni teléfono: solo datos del producto (identificador, nombre, precio y cantidad), búsquedas e importes. Meta recibe además datos técnicos del navegador, como la dirección IP.
+
+También usamos {{ANALITICAS}}. Nos permite conocer las páginas visitadas, la página de procedencia, el tipo de dispositivo, el sistema operativo y el navegador, y la ubicación aproximada, siempre en forma de estadísticas. Según el proveedor, funciona sin cookies de terceros y no permite identificar a las personas: cada visita se reconoce con un dato derivado de la solicitud que se descarta a las 24 horas. Por eso no depende del aviso de cookies.
 
 El Usuario también puede borrar estos datos desde la configuración de su navegador, aunque eso puede cerrar su sesión y vaciar el carrito.
 

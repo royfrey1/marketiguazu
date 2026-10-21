@@ -173,7 +173,7 @@ Estamos en la **recta final previa al lanzamiento**: QA de producción, requisit
 
 - **Purchase de transferencia/USDT desde el servidor al confirmar la aprobación** (Meta Conversions API): hoy no se emite en esas pantallas.
 - **Revisar política de privacidad / consentimiento por el uso del Pixel** (cookies de seguimiento de Meta).
-- Cargar `VITE_META_PIXEL_ID` en Vercel (solo Production, redeploy sin cache) y verificar con Meta Pixel Helper y "Probar eventos".
+- ~~Cargar `VITE_META_PIXEL_ID` en Vercel~~ **(resuelto 2026-10: ya está cargado, solo Production, y activo en producción)**; queda verificar con Meta Pixel Helper y "Probar eventos".
 - Botones del carrito (cantidad/papelera/"Continuar") a **44 px en mobile**.
 
 ---
@@ -188,11 +188,12 @@ Estamos en la **recta final previa al lanzamiento**: QA de producción, requisit
 - **Revocación:** al pasar a `denied`/vencido se borran las cookies `_fbp` y `_fbc`; además los eventos (`trackMetaEvent`) se descartan si no hay consentimiento `granted`.
 - **Purchase:** igual que antes, **solo con Mercado Pago `approved`** (`isPurchaseApproved`), deduplicado; cancelado/pago no aprobado → sin evento. Sin cambios de backend (migraciones y Edge Functions intactas en esta tanda).
 - **`/privacidad` actualizada:** `src/content/legal/privacidad.md` (base técnica, **requiere revisión profesional**); fecha en `PRIVACY_LAST_UPDATED` de `PrivacyPage.tsx`; enlaces en `LegalPage.tsx`.
+- **Vercel Analytics:** el sitio usa `@vercel/analytics` (**NO** usa Speed Insights; si se agrega, hay que sumarlo a `/privacidad`); la política lo describe como medición **agregada "según el proveedor"**; la afirmación de que la medición **no depende del aviso de cookies** es **una decisión nuestra** y queda **sujeta a revisión profesional** de la política; la **tabla de cookies** de `/privacidad` tiene **7 filas** y debe mantenerse **alineada con el código**.
 
 **Pendientes del consentimiento:**
 
 - **Revisión profesional de la política de privacidad** (base técnica, no asesoramiento legal).
-- **Confirmar texto de `/privacidad` según hallazgos de auditoría:** el sitio **sí** importa `@vercel/analytics`/`@vercel/speed-insights` (`package.json` + `src/main.tsx`) pero el texto **no** menciona Vercel Analytics; "ARCA" **no** aparece fuera de `legal/` (solo en el texto legal); fuentes son locales y no hay Google Fonts.
+- **ARCA en el texto de `/privacidad`:** confirmar que corresponde cuando se inscriba (hoy "ARCA" no aparece fuera de `legal/`).
 - Desactivar en Meta Events Manager → Configuración las **"Coincidencias de sitio web automáticas"**.
 - Verificar con Meta Pixel Helper y "Probar eventos" que sin aceptar no se envía nada y con aceptar aparece PageView + eventos.
 
