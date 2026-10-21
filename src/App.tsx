@@ -12,6 +12,7 @@ import LoadingScreen from './components/ui/LoadingScreen'
 import ScrollManager from './components/layout/ScrollManager'
 import MetaPixelPageView from './components/layout/MetaPixelPageView'
 import CookieBanner from './components/layout/CookieBanner'
+import RouteAreaSync from './components/layout/RouteAreaSync'
 
 const THEME_KEY = 'admin.theme'
 
@@ -97,6 +98,8 @@ function App() {
           }}
         />
         <BrowserRouter>
+          {/* <html data-area>: escala 90% de la tienda desde tablet, admin al 100% (index.css) */}
+          <RouteAreaSync />
           <ScrollManager />
           <MetaPixelPageView />
           <Suspense fallback={<Loading />}>

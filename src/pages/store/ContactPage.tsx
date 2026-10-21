@@ -76,7 +76,7 @@ export default function ContactPage() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Escribir por WhatsApp (se abre en una pestaña nueva)"
-                  className={`btn-primary-sm inline-flex items-center justify-center gap-2 w-full min-h-11 ${FOCUS}`}
+                  className={`btn-primary-sm inline-flex items-center justify-center gap-2 w-full min-h-tap ${FOCUS}`}
                 >
                   <WhatsAppIcon className="w-4 h-4" />
                   Escribir por WhatsApp
@@ -87,14 +87,14 @@ export default function ContactPage() {
             <ContactCard icon={<Mail className="w-5 h-5" aria-hidden="true" />} title="Email">
               <a
                 href={`mailto:${LEGAL.EMAIL_CONTACTO}`}
-                className={`inline-flex items-center min-h-11 text-sm font-semibold text-accent hover:underline break-all rounded ${FOCUS}`}
+                className={`inline-flex items-center min-h-tap text-sm font-semibold text-accent hover:underline break-all rounded ${FOCUS}`}
               >
                 {LEGAL.EMAIL_CONTACTO}
               </a>
               <button
                 type="button"
                 onClick={copyEmail}
-                className={`mt-2 flex items-center justify-center gap-2 w-full min-h-11 rounded-lg border border-gray-200 text-sm font-semibold text-primary-dark hover:border-accent hover:text-accent transition-colors cursor-pointer ${FOCUS}`}
+                className={`mt-2 flex items-center justify-center gap-2 w-full min-h-tap rounded-lg border border-gray-200 text-sm font-semibold text-primary-dark hover:border-accent hover:text-accent transition-colors cursor-pointer ${FOCUS}`}
               >
                 {copied ? <Check className="w-4 h-4 text-accent" aria-hidden="true" /> : <Copy className="w-4 h-4" aria-hidden="true" />}
                 {copied ? 'Email copiado' : 'Copiar email'}
@@ -116,7 +116,7 @@ export default function ContactPage() {
                   <li key={to}>
                     <Link
                       to={to}
-                      className={`flex items-center gap-2 min-h-11 px-2 -mx-2 rounded-lg text-sm font-semibold text-primary-dark hover:text-accent hover:bg-gray-50 transition-colors ${FOCUS}`}
+                      className={`flex items-center gap-2 min-h-tap px-2 -mx-2 rounded-lg text-sm font-semibold text-primary-dark hover:text-accent hover:bg-gray-50 transition-colors ${FOCUS}`}
                     >
                       <Icon className="w-4 h-4 text-accent shrink-0" aria-hidden="true" />
                       <span className="flex-1">{label}</span>

@@ -68,7 +68,7 @@ const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
           aria-label={shown ? 'Ocultar contraseña' : 'Mostrar contraseña'}
           aria-pressed={shown}
           aria-controls={props.id}
-          className="absolute right-0 top-1/2 -translate-y-1/2 flex h-11 w-11 items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 dark:text-white/40 dark:hover:text-white/70 transition-colors motion-reduce:transition-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:text-gray-400 dark:disabled:hover:text-white/40 focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-accent"
+          className="absolute right-0 top-1/2 -translate-y-1/2 flex h-tap w-tap items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 dark:text-white/40 dark:hover:text-white/70 transition-colors motion-reduce:transition-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:text-gray-400 dark:disabled:hover:text-white/40 focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-accent"
         >
           {shown ? <EyeOff className="w-5 h-5" aria-hidden="true" /> : <Eye className="w-5 h-5" aria-hidden="true" />}
         </button>

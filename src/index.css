@@ -2,6 +2,8 @@
 @import "tailwindcss";
 @import "./design/tokens.css";
 @variant dark (&:where(.dark, .dark *));
+/* Escritorio/tablet apaisada con alto suficiente (lg y >= 600px): galería fija de la ficha de producto */
+@custom-variant lg-tall (@media (width >= 64rem) and (height >= 37.5rem));
 
 @theme {
   --color-primary: #185749;
@@ -16,6 +18,10 @@
   --font-extlight: 'MarkPro-Extlight', sans-serif;
 
   --spacing-30: 7.5rem;
+  /* Objetivo táctil (min-h-tap, h-tap, w-tap, min-w-tap): 2.75rem; en pantallas táctiles nunca menos de 44px (abajo) */
+  --spacing-tap: 2.75rem;
+  /* Piso legible de text-xs: 12px con la raíz al 100%, 11px cuando la tienda baja al 90% */
+  --text-xs: max(0.75rem, 11px);
 
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
@@ -70,6 +76,24 @@
   font-display: swap;
 }
 
+/* ── Escala de la tienda ───────────────────────────────────────────────── */
+
+/* Tienda al 90% desde tablet (como el zoom 90% del navegador). Los breakpoints en rem de las media queries no
+   cambian (rem en una media query = tamaño inicial), así que las columnas quedan iguales. Sin escala: celulares
+   (también apaisados, alto < 500px) y el admin (<html data-area="admin">, src/lib/routeArea.ts) */
+@media (min-width: 48rem) and (min-height: 31.25rem) {
+  html:not([data-area="admin"]) {
+    font-size: 90%;
+  }
+}
+
+/* Pantallas táctiles: los objetivos táctiles mantienen 44px aunque la raíz baje al 90% (con mouse se achican) */
+@media (pointer: coarse) {
+  :root {
+    --spacing-tap: max(2.75rem, 44px);
+  }
+}
+
 .dark select {
   color-scheme: dark;
 }
@@ -87,9 +111,9 @@
   --toast-offset-right: calc(0.5rem + env(safe-area-inset-right, 0px));
 }
 
-/* Tienda: los toasts van a la izquierda de la columna de WhatsApp / volver arriba (right 1rem, 44px de ancho) */
+/* Tienda: los toasts van a la izquierda de la columna de WhatsApp / volver arriba (right 1rem, ancho w-tap) */
 :root:has([data-floating-actions]) {
-  --toast-offset-right: calc(3.75rem + env(safe-area-inset-right, 0px));
+  --toast-offset-right: calc(1rem + var(--spacing-tap) + env(safe-area-inset-right, 0px));
 }
 
 /* Por encima de menús y paneles (z-40/z-50); debajo del visor de imágenes a pantalla completa (z-100) */

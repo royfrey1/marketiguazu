@@ -69,7 +69,7 @@ export default function ProductImageViewer({
 
   const duration = reduceMotion ? 0 : 0.2
   const controlClass =
-    'absolute top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-11 h-11 rounded-full bg-white/10 border border-white/25 text-white hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white transition-all duration-200 cursor-pointer motion-reduce:transition-none'
+    'absolute top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-tap h-tap rounded-full bg-white/10 border border-white/25 text-white hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white transition-all duration-200 cursor-pointer motion-reduce:transition-none'
 
   return (
     <motion.div
@@ -89,7 +89,7 @@ export default function ProductImageViewer({
         type="button"
         onClick={onClose}
         aria-label="Cerrar visor"
-        className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10 flex items-center justify-center w-11 h-11 rounded-full bg-white/10 border border-white/25 text-white hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white transition-all duration-200 cursor-pointer motion-reduce:transition-none"
+        className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10 flex items-center justify-center w-tap h-tap rounded-full bg-white/10 border border-white/25 text-white hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white transition-all duration-200 cursor-pointer motion-reduce:transition-none"
       >
         <X className="w-5 h-5" aria-hidden="true" />
       </button>

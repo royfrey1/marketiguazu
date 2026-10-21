@@ -458,7 +458,7 @@ export default function DetalleProducto() {
       <div className="min-h-screen bg-white">
         <div className="store-container py-8 sm:py-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
-            <div className="bg-gray-100 h-96 lg:h-[500px] rounded-xl animate-pulse" />
+            <div className="bg-gray-100 h-96 lg:h-[28.75rem] rounded-xl animate-pulse" />
             <div className="space-y-4">
               <div className="bg-gray-100 h-4 w-24 rounded animate-pulse" />
               <div className="bg-gray-100 h-8 w-3/4 rounded animate-pulse" />
@@ -569,12 +569,14 @@ export default function DetalleProducto() {
 
         {/* Main product section */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8 lg:gap-12">
-          {/* Gallery — desktop: main + thumbnails right; mobile: main + thumbnails below */}
+          {/* Gallery — desktop: main + thumbnails right; mobile: main + thumbnails below.
+              En dos columnas con alto suficiente queda fija bajo el header (como los laterales del checkout)
+              mientras baja la info; se suelta al terminar la grilla (después del botón de compra) */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
-            className="flex flex-col-reverse lg:flex-row gap-3"
+            className="flex flex-col-reverse lg:flex-row gap-3 lg-tall:sticky lg-tall:top-28 lg-tall:self-start"
           >
             {/* Thumbnails — horizontal on mobile, vertical on desktop; max 5 visible */}
             {totalGaleria > 1 && (
@@ -595,7 +597,7 @@ export default function DetalleProducto() {
                           : `Ver foto ${idx + 1} de ${totalGaleria}`
                       }
                       aria-pressed={imagenActiva === idx}
-                      className={`relative shrink-0 w-16 h-16 lg:w-[72px] lg:h-[72px] rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${
+                      className={`relative shrink-0 w-16 h-16 lg:w-[4.5rem] lg:h-[4.5rem] rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${
                         imagenActiva === idx
                           ? 'border-accent'
                           : 'border-gray-200 opacity-60 hover:opacity-100'
@@ -632,7 +634,7 @@ export default function DetalleProducto() {
                   <img
                     src={galeriaImagenes.length > 0 ? galeriaImagenes[imagenActiva]?.url : effectiveImage || undefined}
                     alt={effectiveAlt}
-                    className="w-full h-80 sm:h-96 lg:h-[460px] object-contain transition-opacity duration-200 group-hover/main:opacity-95 motion-reduce:transition-none"
+                    className="w-full h-80 sm:h-96 lg:h-[28.75rem] object-contain transition-opacity duration-200 group-hover/main:opacity-95 motion-reduce:transition-none"
                   />
                 </button>
 
@@ -641,14 +643,14 @@ export default function DetalleProducto() {
                   <>
                     <button
                       onClick={prevImage}
-                      className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full bg-white/90 border border-gray-200 shadow-md flex items-center justify-center text-gray-600 hover:text-primary-dark hover:bg-white transition-all duration-200 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none"
+                      className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 z-10 w-tap h-tap rounded-full bg-white/90 border border-gray-200 shadow-md flex items-center justify-center text-gray-600 hover:text-primary-dark hover:bg-white transition-all duration-200 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none"
                       aria-label="Imagen anterior"
                     >
                       <ChevronLeft className="w-5 h-5" aria-hidden="true" />
                     </button>
                     <button
                       onClick={nextImage}
-                      className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full bg-white/90 border border-gray-200 shadow-md flex items-center justify-center text-gray-600 hover:text-primary-dark hover:bg-white transition-all duration-200 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none"
+                      className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 z-10 w-tap h-tap rounded-full bg-white/90 border border-gray-200 shadow-md flex items-center justify-center text-gray-600 hover:text-primary-dark hover:bg-white transition-all duration-200 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none"
                       aria-label="Imagen siguiente"
                     >
                       <ChevronRight className="w-5 h-5" aria-hidden="true" />
@@ -659,12 +661,13 @@ export default function DetalleProducto() {
             </div>
           </motion.div>
 
-          {/* Product info */}
+          {/* Product info. Con la galería fija: al enfocar con teclado (Shift+Tab hacia arriba), los controles
+              quedan debajo del header sticky, con el mismo margen que la galería */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="flex flex-col"
+            className="flex flex-col lg-tall:[&_:is(a,button,input,select,textarea)]:scroll-mt-28"
           >
             {/* Category · SKU + share (top-right, secondary) */}
             <div className="flex items-start justify-between gap-3 mb-2">

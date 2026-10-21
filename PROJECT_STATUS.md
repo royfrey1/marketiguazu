@@ -199,6 +199,24 @@ Estamos en la **recta final previa al lanzamiento**: QA de producción, requisit
 
 ---
 
+## 📐 Escala 90% del storefront + galería sticky (2026-10)
+
+**Aprobado y commiteado (2026-10-21):** escala visual del storefront en tablet/escritorio + galería fija en la ficha de producto. Sin backend, sin dependencias nuevas.
+
+- **Escala:** `font-size` de `html` al **90%** desde **48rem de ancho y 31.25rem de alto** (`src/index.css`), **excepto** `<html data-area="admin">` (el admin queda al **100%**). El atributo lo pone `main.tsx` antes del primer render y `RouteAreaSync.tsx` lo actualiza al navegar (lógica en `src/lib/routeArea.ts`, `getAreaForPath`). **Mobile no cambia** (menos de 768 px y celulares apaisados): verificado por hash de estilos calculados (24 casos). Los breakpoints de Tailwind no se mueven (usan rem en media queries) y las columnas quedan iguales (40 casos).
+- **Tokens táctiles:** `--spacing-tap` (clases `min-h-tap`, `h-tap`, `w-tap`, `min-w-tap`) = **2.75rem**; en pantallas táctiles (`pointer: coarse`) = **max(2.75rem, 44px)**. `--text-xs` con **piso de 11px**. **Regla para código nuevo:** objetivos táctiles de **44 px** con las clases `*-tap` (no `min-h-11`), y evitar `text-[Npx]` chicos.
+- **Galería sticky en `ProductPage`:** variante **lg-tall** (ancho >= 64rem y alto >= 37.5rem), `top-28`, se suelta al terminar el bloque de dos columnas (el botón "Agregar al carrito" es lo último de la columna derecha). `scroll-mt-28` en la columna de información para que Tab no quede tapado por el header.
+
+**Pendientes de la escala:**
+
+- Probar los botones en una **tablet táctil real** (la prueba táctil fue simulada).
+- La grilla de la ficha `lg:grid-cols-[1fr_380px]` **no escala** con el 90% (opcional: pasar a `23.75rem`).
+- `scroll-padding-top` global para el header sticky en todo el sitio (Tab).
+- Mega menu con anchos en px (opcional).
+- `/login` se ve al 90% también cuando entra el admin (menor).
+
+---
+
 ## 🧹 Deuda técnica y pendientes
 
 ### Antes del lanzamiento (bloqueantes)

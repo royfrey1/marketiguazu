@@ -253,10 +253,10 @@ export default function CartRemovalProvider({ children }: { children: ReactNode 
           hideCloseButton
           footer={
             <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
-              <Button data-cart-remove-cancel type="button" variant="outline" className="min-h-11" onClick={handleClose}>
+              <Button data-cart-remove-cancel type="button" variant="outline" className="min-h-tap" onClick={handleClose}>
                 Cancelar
               </Button>
-              <Button type="button" variant="primary" className="min-h-11" onClick={handleConfirm}>
+              <Button type="button" variant="primary" className="min-h-tap" onClick={handleConfirm}>
                 Quitar
               </Button>
             </div>
@@ -278,7 +278,7 @@ export default function CartRemovalProvider({ children }: { children: ReactNode 
                   <p className="text-xs text-gray-400 mt-0.5">Cantidad: {pending.cantidad}</p>
                 </div>
               </div>
-              <label className="flex items-center gap-3 min-h-11 cursor-pointer text-sm text-gray-700">
+              <label className="flex items-center gap-3 min-h-tap cursor-pointer text-sm text-gray-700">
                 <input
                   type="checkbox"
                   checked={dontAskAgain}

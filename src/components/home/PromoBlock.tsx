@@ -140,7 +140,7 @@ export default function PromoBlock({ products, loading }: PromoBlockProps) {
   if (!loading && products.length === 0) return null
 
   const arrowClass =
-    'flex items-center justify-center w-11 h-11 rounded-full border border-violet-500/45 bg-white text-violet-600 shadow-sm transition-all duration-200 hover:border-fuchsia-500 hover:text-fuchsia-600 hover:shadow-[0_6px_18px_-6px_rgba(217,70,239,0.45)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fuchsia-500 disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:border-violet-500/45 disabled:hover:text-violet-600 disabled:hover:shadow-none motion-reduce:transition-none cursor-pointer'
+    'flex items-center justify-center w-tap h-tap rounded-full border border-violet-500/45 bg-white text-violet-600 shadow-sm transition-all duration-200 hover:border-fuchsia-500 hover:text-fuchsia-600 hover:shadow-[0_6px_18px_-6px_rgba(217,70,239,0.45)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fuchsia-500 disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:border-violet-500/45 disabled:hover:text-violet-600 disabled:hover:shadow-none motion-reduce:transition-none cursor-pointer'
 
   return (
     <section

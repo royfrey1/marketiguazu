@@ -7,7 +7,7 @@ import { LEGAL } from '../../config/legal'
 // Foco por teclado visible, igual que en el navbar
 const FOCUS_RING = 'rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
 // Área táctil: 44px en pantallas táctiles/mobile; desde lg (con puntero) compacta, sin bajar de 24px
-const TOUCH_TARGET = 'min-h-11 lg:min-h-6'
+const TOUCH_TARGET = 'min-h-tap lg:min-h-6'
 
 // Categorías de "Comprar": /categoria/:slug lista los productos de la categoría y de sus subcategorías.
 // Las etiquetas van escritas acá (con su ortografía) y no se toman del nombre guardado en la base.

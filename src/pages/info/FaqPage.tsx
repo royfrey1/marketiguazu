@@ -117,7 +117,7 @@ export default function FaqPage() {
           <Accordion type="single" collapsible className="border-t border-gray-100">
             {FAQ.map(item => (
               <AccordionItem key={item.id} value={item.id}>
-                <AccordionTrigger className="min-h-11 gap-3 text-left text-sm sm:text-base font-semibold text-primary-dark hover:no-underline hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent rounded">
+                <AccordionTrigger className="min-h-tap gap-3 text-left text-sm sm:text-base font-semibold text-primary-dark hover:no-underline hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent rounded">
                   {item.pregunta}
                 </AccordionTrigger>
                 <AccordionContent className="text-sm sm:text-base text-gray-600 leading-relaxed pr-6">

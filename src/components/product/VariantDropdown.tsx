@@ -168,7 +168,7 @@ export default function VariantDropdown({ label, options, value, onSelect }: Var
         aria-labelledby={`${labelId} ${baseId}-value`}
         onClick={() => (open ? close(false) : openList())}
         onKeyDown={handleTriggerKeyDown}
-        className={`w-full max-lg:min-h-11 flex items-center justify-between gap-3 border rounded-lg px-3 py-2.5 text-sm bg-white cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+        className={`w-full max-lg:min-h-tap flex items-center justify-between gap-3 border rounded-lg px-3 py-2.5 text-sm bg-white cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
           open ? 'border-accent' : 'border-gray-200 hover:border-accent'
         }`}
       >

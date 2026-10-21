@@ -5,7 +5,7 @@ import { whatsappUrl } from '../../lib/whatsapp'
 const SCROLL_SHOW_THRESHOLD = 400
 
 const surfaceClasses =
-  'flex items-center justify-center w-11 h-11 rounded-full ' +
+  'flex items-center justify-center w-tap h-tap rounded-full ' +
   'bg-white border border-gray-200 shadow-md ' +
   'transition-[transform,box-shadow,opacity,translate] duration-200 ease-out ' +
   'hover:-translate-y-0.5 hover:shadow-lg ' +

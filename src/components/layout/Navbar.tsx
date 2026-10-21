@@ -10,7 +10,7 @@ import { ShoppingCart, User, Search, Menu, X, LogOut, ChevronDown, LayoutGrid } 
 const MOBILE_MENU_ID = 'mobile-menu'
 const MOBILE_CATEGORIES_ID = 'mobile-menu-categories'
 // Filas y botones del menú mobile: target táctil de al menos 44 px
-const MOBILE_ROW = 'flex items-center gap-3 w-full min-h-11 px-3 rounded-lg text-sm font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
+const MOBILE_ROW = 'flex items-center gap-3 w-full min-h-tap px-3 rounded-lg text-sm font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
 
 // Desde cuántos px de scroll el header pasa al estado "scrolled" (sombra más marcada)
 const SCROLL_THRESHOLD = 50

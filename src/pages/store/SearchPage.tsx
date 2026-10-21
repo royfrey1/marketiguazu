@@ -318,7 +318,7 @@ export default function Busqueda({ offersPage = false }: BusquedaProps) {
 
   const offersToggle = (
     <div className={onlyOffers ? 'filter-section border-fuchsia-300 bg-fuchsia-50' : 'filter-section'}>
-      <label className="flex min-h-11 cursor-pointer items-center justify-between gap-3">
+      <label className="flex min-h-tap cursor-pointer items-center justify-between gap-3">
         <span className={`flex items-center gap-2 text-sm font-bold ${onlyOffers ? 'text-fuchsia-700' : 'text-primary-dark'}`}>
           <BadgePercent className="w-4 h-4" aria-hidden="true" />
           Solo ofertas

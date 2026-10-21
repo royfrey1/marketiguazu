@@ -108,7 +108,7 @@ export default function SecuritySection({ email }: SecuritySectionProps) {
           onClick={handleVerify}
           disabled={verified || !currentPass}
           loading={verifying}
-          className="w-full sm:w-auto sm:self-start min-h-11"
+          className="w-full sm:w-auto sm:self-start min-h-tap"
         >
           {verified ? 'Verificada' : 'Verificar'}
         </Button>
@@ -127,7 +127,7 @@ export default function SecuritySection({ email }: SecuritySectionProps) {
           placeholder="ejemplo@nuevo.com"
           required
         />
-        <Button type="submit" disabled={!verified || !newEmail} loading={saving} className="w-full sm:w-auto sm:self-start min-h-11">
+        <Button type="submit" disabled={!verified || !newEmail} loading={saving} className="w-full sm:w-auto sm:self-start min-h-tap">
           Guardar nuevo email
         </Button>
       </form>
@@ -145,7 +145,7 @@ export default function SecuritySection({ email }: SecuritySectionProps) {
           placeholder="Mínimo 6 caracteres"
           required
         />
-        <Button type="submit" disabled={!verified || !newPassword} loading={saving} className="w-full sm:w-auto sm:self-start min-h-11">
+        <Button type="submit" disabled={!verified || !newPassword} loading={saving} className="w-full sm:w-auto sm:self-start min-h-tap">
           Guardar nueva contraseña
         </Button>
       </form>

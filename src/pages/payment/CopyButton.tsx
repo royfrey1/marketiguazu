@@ -46,7 +46,7 @@ export default function CopyButton({ value, label }: { value: string; label: str
     <button
       type="button"
       onClick={handleCopy}
-      className="inline-flex items-center justify-center gap-1.5 shrink-0 min-h-11 min-w-11 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-primary-dark hover:border-accent hover:text-accent transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      className="inline-flex items-center justify-center gap-1.5 shrink-0 min-h-tap min-w-tap rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-primary-dark hover:border-accent hover:text-accent transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       aria-label={label}
     >
       {copied ? <Check className="w-3.5 h-3.5 text-accent" aria-hidden="true" /> : <Copy className="w-3.5 h-3.5" aria-hidden="true" />}

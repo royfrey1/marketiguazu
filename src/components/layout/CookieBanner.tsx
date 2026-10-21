@@ -7,11 +7,11 @@ import { updateCookieConsent } from '../../lib/metaPixel'
 
 // Mismo estilo para Aceptar y Rechazar: igual jerarquía visual (rechazar no queda escondido)
 const CHOICE_BUTTON =
-  'flex-1 inline-flex items-center justify-center min-h-11 px-5 text-sm font-bold rounded-xl ' +
+  'flex-1 inline-flex items-center justify-center min-h-tap px-5 text-sm font-bold rounded-xl ' +
   'bg-primary-dark text-white hover:bg-primary transition-colors cursor-pointer ' +
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
 const SECONDARY_BUTTON =
-  'flex-1 inline-flex items-center justify-center min-h-11 px-5 text-sm font-bold rounded-xl ' +
+  'flex-1 inline-flex items-center justify-center min-h-tap px-5 text-sm font-bold rounded-xl ' +
   'border border-gray-300 text-primary-dark hover:bg-gray-50 transition-colors cursor-pointer ' +
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
 const LINK_CLASS = 'font-semibold text-accent hover:underline rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
@@ -112,7 +112,7 @@ export default function CookieBanner() {
                   <p className="text-sm font-semibold text-primary-dark">Necesarias</p>
                   <p className="text-xs text-gray-500 mt-0.5">Sesión, carrito y esta preferencia. Siempre activas.</p>
                 </div>
-                <span className="shrink-0 text-xs font-semibold text-gray-500 min-h-11 inline-flex items-center">Siempre activas</span>
+                <span className="shrink-0 text-xs font-semibold text-gray-500 min-h-tap inline-flex items-center">Siempre activas</span>
               </div>
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -125,7 +125,7 @@ export default function CookieBanner() {
                   aria-checked={analyticsOn}
                   aria-labelledby={`${titleId}-meta`}
                   onClick={() => setAnalyticsOn(on => !on)}
-                  className="shrink-0 inline-flex items-center justify-center min-h-11 min-w-11 cursor-pointer rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  className="shrink-0 inline-flex items-center justify-center min-h-tap min-w-tap cursor-pointer rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
                   <span className={`relative inline-block w-11 h-6 rounded-full transition-colors ${analyticsOn ? 'bg-primary' : 'bg-gray-300'}`}>
                     <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${analyticsOn ? 'translate-x-5' : ''}`} />
