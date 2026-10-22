@@ -16,6 +16,8 @@ type ViewMode = 'list' | 'create' | 'edit'
 export default function CategoriesAdminPage() {
   const [categories, setCategories] = useState<CategoryWithChildren[]>([])
   const [productCounts, setProductCounts] = useState<Record<number, number>>({})
+  // Cuántos de esos productos están en la papelera (también frenan el borrado de la categoría)
+  const [trashCounts, setTrashCounts] = useState<Record<number, number>>({})
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState<ViewMode>('list')
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
@@ -36,6 +38,7 @@ export default function CategoriesAdminPage() {
       if (catsRes.error) throw catsRes.error
       setCategories(catsRes.data ?? [])
       if (countsRes.data) setProductCounts(countsRes.data)
+      if (countsRes.trash) setTrashCounts(countsRes.trash)
     } catch (err) {
       setError((err as Error).message || 'Error al cargar categorías')
     } finally {
@@ -250,6 +253,7 @@ export default function CategoriesAdminPage() {
             <CategoryTree
               categories={categories}
               productCounts={productCounts}
+              trashCounts={trashCounts}
               onEdit={handleEdit}
               onDelete={handleDeleteRequest}
               onToggleActive={handleToggleActive}
@@ -294,6 +298,7 @@ export default function CategoriesAdminPage() {
         <DeleteCategoryDialog
           category={deleteTarget}
           productCount={productCounts[deleteTarget.id] ?? 0}
+          trashCount={trashCounts[deleteTarget.id] ?? 0}
           childCount={categories.filter((c) => c.parent_id === deleteTarget.id).length}
           onConfirm={handleDelete}
           onCancel={() => setDeleteTarget(null)}

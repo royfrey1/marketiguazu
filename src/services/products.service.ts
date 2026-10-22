@@ -51,6 +51,103 @@ export interface AdminProductFilters {
   /** Solo productos con oferta efectiva (del producto o de alguna variante) */
   en_oferta?: boolean
   sort?: AdminSortOption
+  /** Solo la papelera (deleted_at no nulo, la más reciente primero). Sin esto, la papelera queda afuera */
+  papelera?: boolean
+}
+
+/** Conteos del admin: total/activos/inactivos sin la papelera; la papelera aparte */
+export interface AdminProductCounts {
+  total: number
+  activos: number
+  inactivos: number
+  papelera: number
+}
+
+/** get_admin_product_delete_info (migración product_trash) más los favoritos (null si no se pudieron contar) */
+export interface ProductDeleteInfo {
+  product_id: number
+  titulo: string
+  slug: string
+  in_trash: boolean
+  has_sales: boolean
+  sales_count: number
+  in_carts: boolean
+  carts_count: number
+  has_stock: boolean
+  stock_total: number
+  variant_count: number
+  image_count: number
+  storage_files: string[]
+  favorites_count: number | null
+}
+
+/** delete_admin_product_permanent: storage_files son los nombres del bucket a borrar después */
+export interface ProductDeleteResult {
+  deleted: boolean
+  product_id: number
+  titulo: string
+  stock_removed: number
+  storage_files: string[]
+}
+
+export type ProductAdminErrorKey =
+  | 'FORBIDDEN'
+  | 'PRODUCT_NOT_FOUND'
+  | 'ALREADY_IN_TRASH'
+  | 'NOT_IN_TRASH'
+  | 'PRODUCT_IN_TRASH'
+  | 'HAS_SALES'
+  | 'IN_CARTS'
+  | 'STOCK_CONFIRM_REQUIRED'
+  | 'SLUG_TAKEN'
+  | 'UNKNOWN'
+
+// SQLSTATE propios de la migración product_trash
+const PRODUCT_ERROR_CODES: Record<string, Exclude<ProductAdminErrorKey, 'SLUG_TAKEN' | 'UNKNOWN'>> = {
+  P4003: 'FORBIDDEN',
+  P4004: 'PRODUCT_NOT_FOUND',
+  P4041: 'ALREADY_IN_TRASH',
+  P4042: 'NOT_IN_TRASH',
+  P4043: 'PRODUCT_IN_TRASH',
+  P4091: 'HAS_SALES',
+  P4092: 'IN_CARTS',
+  P4093: 'STOCK_CONFIRM_REQUIRED',
+}
+
+const PRODUCT_ERROR_MESSAGES: Record<Exclude<ProductAdminErrorKey, 'UNKNOWN'>, string> = {
+  FORBIDDEN: 'No tenés permisos de administrador para hacer esto.',
+  PRODUCT_NOT_FOUND: 'El producto ya no existe. Recargá la lista.',
+  ALREADY_IN_TRASH: 'El producto ya estaba en la papelera.',
+  NOT_IN_TRASH: 'El producto no está en la papelera. Recargá la lista.',
+  PRODUCT_IN_TRASH: 'Este producto está en la papelera: restauralo para poder editarlo.',
+  HAS_SALES: 'Este producto tuvo ventas: no se puede eliminar definitivamente. Queda en la papelera para conservar el historial.',
+  IN_CARTS: 'Este producto está en carritos de clientes. Intentalo de nuevo más tarde.',
+  STOCK_CONFIRM_REQUIRED: 'El producto tiene stock: escribí su nombre para confirmar que se pierde.',
+  SLUG_TAKEN: 'Ese slug ya está en uso (puede ser un producto en la papelera).',
+}
+
+export class ProductAdminError extends Error {
+  key: ProductAdminErrorKey
+  code: string | null
+
+  constructor(key: ProductAdminErrorKey, message: string, code: string | null) {
+    super(message)
+    this.name = 'ProductAdminError'
+    this.key = key
+    this.code = code
+  }
+}
+
+/** Error de Supabase (error.code = SQLSTATE) a una clave y un mensaje en español */
+export function toProductAdminError(error: unknown): ProductAdminError {
+  if (error instanceof ProductAdminError) return error
+  const { code = null, message = '', details = '' } = (error ?? {}) as { code?: string | null; message?: string; details?: string | null }
+  const key = code ? PRODUCT_ERROR_CODES[code] : undefined
+  if (key) return new ProductAdminError(key, PRODUCT_ERROR_MESSAGES[key], code)
+  if (code === '23505' && `${message} ${details ?? ''}`.includes('products_slug_key')) {
+    return new ProductAdminError('SLUG_TAKEN', PRODUCT_ERROR_MESSAGES.SLUG_TAKEN, code)
+  }
+  return new ProductAdminError('UNKNOWN', message || 'Ocurrió un error inesperado. Intentá de nuevo.', code)
 }
 
 export interface CatalogFilters {
@@ -170,6 +267,8 @@ export const productsService = {
       query = query.eq('category_id', filters.category_id)
     }
 
+    query = filters.papelera ? query.not('deleted_at', 'is', null) : query.is('deleted_at', null)
+
     if (filters.activo !== undefined) {
       query = query.eq('activo', filters.activo)
     }
@@ -186,7 +285,9 @@ export const productsService = {
     }
 
     const sort = filters.sort || 'recent'
-    if (sort === 'stock_asc') {
+    if (filters.papelera) {
+      query = query.order('deleted_at', { ascending: false }).order('id', { ascending: true })
+    } else if (sort === 'stock_asc') {
       query = query.order('created_at', { ascending: false })
     } else if (sort === 'stock_desc') {
       query = query.order('created_at', { ascending: false })
@@ -464,13 +565,60 @@ export const productsService = {
     return { data, error }
   },
 
-  async remove(id: number) {
-    const { error } = await supabase
-      .from('products')
-      .delete()
-      .eq('id', id)
+  async getAdminCounts(): Promise<{ data: AdminProductCounts | null; error: Error | null }> {
+    const count = () => supabase.from('products').select('id', { count: 'exact', head: true })
+    const [totalRes, activosRes, papeleraRes] = await Promise.all([
+      count().is('deleted_at', null),
+      count().is('deleted_at', null).eq('activo', true),
+      count().not('deleted_at', 'is', null),
+    ])
+    const error = totalRes.error ?? activosRes.error ?? papeleraRes.error
+    if (error) return { data: null, error: new Error(error.message) }
+    const total = totalRes.count ?? 0
+    const activos = activosRes.count ?? 0
+    return { data: { total, activos, inactivos: total - activos, papelera: papeleraRes.count ?? 0 }, error: null }
+  },
 
-    return { error }
+  /** Papelera: oculta el producto de la tienda (queda inactivo y sin destacar) */
+  async archive(id: number): Promise<{ data: Product | null; error: ProductAdminError | null }> {
+    const { data, error } = await supabase.rpc('archive_admin_product', { p_product_id: id })
+    if (error) return { data: null, error: toProductAdminError(error) }
+    clearAvailabilityCache()
+    return { data: data as unknown as Product, error: null }
+  },
+
+  /** Saca el producto de la papelera; queda inactivo (se reactiva a mano) */
+  async restore(id: number): Promise<{ data: Product | null; error: ProductAdminError | null }> {
+    const { data, error } = await supabase.rpc('restore_admin_product', { p_product_id: id })
+    if (error) return { data: null, error: toProductAdminError(error) }
+    return { data: data as unknown as Product, error: null }
+  },
+
+  async getDeleteInfo(id: number): Promise<{ data: ProductDeleteInfo | null; error: ProductAdminError | null }> {
+    const [infoRes, favoritesRes] = await Promise.all([
+      supabase.rpc('get_admin_product_delete_info', { p_product_id: id }),
+      supabase.from('favorites').select('id', { count: 'exact', head: true }).eq('product_id', id),
+    ])
+    if (infoRes.error) return { data: null, error: toProductAdminError(infoRes.error) }
+    const info = infoRes.data as unknown as Omit<ProductDeleteInfo, 'favorites_count'>
+    return {
+      data: { ...info, favorites_count: favoritesRes.error ? null : favoritesRes.count ?? 0 },
+      error: null,
+    }
+  },
+
+  /** Borrado definitivo (solo desde la papelera). Las imágenes de Storage se borran después, con storage_files */
+  async deletePermanent(
+    id: number,
+    confirmStockLoss: boolean
+  ): Promise<{ data: ProductDeleteResult | null; error: ProductAdminError | null }> {
+    const { data, error } = await supabase.rpc('delete_admin_product_permanent', {
+      p_product_id: id,
+      p_confirm_stock_loss: confirmStockLoss,
+    })
+    if (error) return { data: null, error: toProductAdminError(error) }
+    clearAvailabilityCache()
+    return { data: data as unknown as ProductDeleteResult, error: null }
   },
 
   async toggleActive(id: number, activo: boolean) {

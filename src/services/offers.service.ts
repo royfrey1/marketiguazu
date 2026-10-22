@@ -88,7 +88,18 @@ export const offersService = {
       .eq('en_oferta_efectivo', true)
     if (error) return { data: [], error: new Error(error.message) }
 
-    const offers = (rows ?? []).filter(row => row.id !== null)
+    let offers = (rows ?? []).filter(row => row.id !== null)
+    if (offers.length === 0) return { data: [], error: null }
+
+    // La vista no tiene deleted_at: los productos en la papelera se descartan acá
+    const { data: liveRows, error: liveError } = await supabase
+      .from('products')
+      .select('id')
+      .in('id', offers.map(row => row.id as number))
+      .is('deleted_at', null)
+    if (liveError) return { data: [], error: new Error(liveError.message) }
+    const liveIds = new Set((liveRows ?? []).map(row => row.id))
+    offers = offers.filter(row => liveIds.has(row.id as number))
     if (offers.length === 0) return { data: [], error: null }
     const ids = offers.map(row => row.id as number)
     const variantProductIds = offers.filter(row => (row.oferta_variantes_count ?? 0) > 0).map(row => row.id as number)

@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Loader2 } from 'lucide-react'
+import { Loader2, RotateCcw, Trash2 } from 'lucide-react'
 import { sileo } from 'sileo'
 import useAuth from '../../hooks/useAuth'
 import { categoriesService, type Category } from '../../services/categories.service'
-import { productsService, type Product } from '../../services/products.service'
+import { productsService, toProductAdminError, type Product } from '../../services/products.service'
 import { productSpecificationsService } from '../../services/productSpecifications.service'
 import { productVariantsService } from '../../services/productVariants.service'
 import { useProductSpecifications } from '../../hooks/useProductSpecifications'
@@ -28,6 +28,7 @@ export default function ProductEditPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [specsWarning, setSpecsWarning] = useState<string | null>(null)
+  const [restoring, setRestoring] = useState(false)
   // Con variantes activas la oferta se marca en cada variante, no en el producto
   const [hasActiveVariants, setHasActiveVariants] = useState(false)
 
@@ -107,8 +108,24 @@ export default function ProductEditPage() {
     return errors.length === 0
   }
 
+  // En la papelera no se edita (el servidor lo rechaza con P4043): primero hay que restaurarlo
+  const inTrash = !!product?.deleted_at
+
+  const handleRestore = async () => {
+    if (!product || restoring) return
+    setRestoring(true)
+    const { data, error: restoreError } = await productsService.restore(product.id)
+    setRestoring(false)
+    if (restoreError) {
+      sileo.error({ title: 'No se pudo restaurar el producto', description: restoreError.message })
+      return
+    }
+    sileo.success({ title: 'Producto restaurado', description: 'Quedó inactivo: activalo cuando quieras.' })
+    setProduct(prev => (prev ? { ...prev, deleted_at: null, activo: data?.activo ?? false } : prev))
+  }
+
   const handleSubmit = async (data: AdminProductFormData): Promise<ProductFormSubmitResult | void> => {
-    if (!user?.id || !product) return
+    if (!user?.id || !product || inTrash) return
 
     if (!validateSpecs()) return
 
@@ -179,6 +196,15 @@ export default function ProductEditPage() {
     } catch (err) {
       // Precio rechazado por la base: va al campo precio (no como fallo genérico)
       if (isPriceDbError(err)) return { priceError: PRICE_POSITIVE_MESSAGE }
+      const adminError = toProductAdminError(err)
+      // Slug ocupado (también por un producto en la papelera): va al campo slug
+      if (adminError.key === 'SLUG_TAKEN') return { slugError: adminError.message }
+      if (adminError.key === 'PRODUCT_IN_TRASH') {
+        sileo.error({ title: 'No se pudo guardar el producto', description: adminError.message })
+        setError(adminError.message)
+        setProduct(prev => (prev ? { ...prev, deleted_at: prev.deleted_at ?? new Date().toISOString() } : prev))
+        return
+      }
       const msg = (err as Error).message
       // El mensaje de la base (por ejemplo las validaciones de la oferta) se muestra tal cual
       sileo.error({ title: 'No se pudo guardar el producto', description: msg || 'Error al guardar el producto' })
@@ -276,6 +302,32 @@ export default function ProductEditPage() {
         </div>
       )}
 
+      {/* Papelera: solo lectura hasta restaurarlo */}
+      {inTrash && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 rounded-xl p-4" role="status">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex items-start gap-2 flex-1">
+              <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400 mt-0.5 shrink-0" aria-hidden="true" />
+              <div>
+                <p className="text-sm font-medium text-red-800 dark:text-red-300">Este producto está en la papelera</p>
+                <p className="text-sm text-red-700 dark:text-red-400/80 mt-0.5">
+                  No se ve en la tienda y no se puede editar. Restauralo para hacer cambios (queda inactivo).
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleRestore}
+              disabled={restoring}
+              className="inline-flex items-center justify-center gap-2 min-h-11 sm:min-h-0 px-4 py-2 text-sm font-medium text-white bg-[#185749] hover:bg-[#0D3732] dark:bg-[#1CAAA8] dark:hover:bg-[#1CAAA8]/90 rounded-lg transition-colors cursor-pointer disabled:opacity-50 shrink-0"
+            >
+              {restoring ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
+              Restaurar
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Specs warning */}
       {specsWarning && (
         <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/30 rounded-xl p-4">
@@ -291,7 +343,8 @@ export default function ProductEditPage() {
         </div>
       )}
 
-      {/* Form: info, images and specifications stacked full-width */}
+      {/* Form: info, images and specifications stacked full-width. En la papelera, inerte (solo lectura) */}
+      <div inert={inTrash} className={inTrash ? 'opacity-60 space-y-6' : 'space-y-6'}>
       {product && (
         <ProductForm
           product={product}
@@ -336,6 +389,7 @@ export default function ProductEditPage() {
           />
         </div>
       )}
+      </div>
     </div>
   )
 }

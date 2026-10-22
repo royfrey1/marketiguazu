@@ -13,6 +13,8 @@ export type { SpecItem } from './ProductSpecificationsEditor'
 
 export interface ProductFormSubmitResult {
   priceError?: string
+  /** Slug ocupado según la base (23505 products_slug_key) */
+  slugError?: string
 }
 
 interface ProductFormProps {
@@ -100,6 +102,9 @@ export default function ProductForm({
     const result = await onSubmit(data)
     if (result?.priceError) {
       form.setError('precio', { type: 'server', message: result.priceError }, { shouldFocus: true })
+    }
+    if (result?.slugError) {
+      form.setError('slug', { type: 'server', message: result.slugError }, { shouldFocus: true })
     }
   })
 

@@ -6,6 +6,8 @@ interface ProductFiltersProps {
   onFiltersChange: (filters: AdminProductFilters) => void
   categories: { id: number; nombre: string; icono: string | null }[]
   total: number
+  /** Papelera: solo búsqueda y categoría (todos están inactivos; el orden es por fecha de envío) */
+  trash?: boolean
 }
 
 const SORT_OPTIONS: { value: AdminSortOption; label: string }[] = [
@@ -21,6 +23,7 @@ export default function ProductFilters({
   onFiltersChange,
   categories,
   total,
+  trash = false,
 }: ProductFiltersProps) {
   const update = (patch: AdminProductFilters) => {
     onFiltersChange({ ...filters, ...patch })
@@ -58,6 +61,7 @@ export default function ProductFilters({
         </select>
 
         {/* Status */}
+        {!trash && (<>
         <select
           value={filters.activo === undefined ? '' : String(filters.activo)}
           onChange={(e) => update({ activo: e.target.value === '' ? undefined : e.target.value === 'true' })}
@@ -94,6 +98,7 @@ export default function ProductFilters({
             ))}
           </select>
         </div>
+        </>)}
 
         {/* Clear */}
         {hasActiveFilters && (
@@ -111,6 +116,7 @@ export default function ProductFilters({
       <div className="mt-3 pt-3 border-t border-gray-100 dark:border-white/5">
         <span className="text-xs text-gray-400 dark:text-white/30">
           {total} {total === 1 ? 'producto' : 'productos'}
+          {trash && ' en la papelera'}
           {hasActiveFilters && ' (filtrado)'}
         </span>
       </div>

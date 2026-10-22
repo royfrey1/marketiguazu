@@ -5,6 +5,8 @@ import { getCategoryIcon } from '../../../lib/categoryIcons'
 interface CategoryTreeProps {
   categories: CategoryWithChildren[]
   productCounts: Record<number, number>
+  /** Productos en la papelera por categoría (incluidos en productCounts) */
+  trashCounts?: Record<number, number>
   onEdit: (category: Category) => void
   onDelete: (category: Category) => void
   onToggleActive: (category: Category) => void
@@ -44,6 +46,7 @@ function flattenTree(nodes: CategoryWithChildren[], depth = 0): { category: Cate
 export default function CategoryTree({
   categories,
   productCounts,
+  trashCounts = {},
   onEdit,
   onDelete,
   onToggleActive,
@@ -111,6 +114,7 @@ export default function CategoryTree({
                     {productCount > 0 ? (
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#185749]/10 text-[#185749] dark:bg-[#1CAAA8]/10 dark:text-[#1CAAA8]">
                         {productCount}
+                        {(trashCounts[category.id] ?? 0) > 0 && ` (${trashCounts[category.id]} en papelera)`}
                       </span>
                     ) : (
                       <span className="text-gray-300 dark:text-white/20">—</span>
@@ -195,6 +199,7 @@ export default function CategoryTree({
                     {productCount > 0 && (
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#185749]/10 text-[#185749] dark:bg-[#1CAAA8]/10 dark:text-[#1CAAA8]">
                         {productCount} {productCount === 1 ? 'producto' : 'productos'}
+                        {(trashCounts[category.id] ?? 0) > 0 && ` (${trashCounts[category.id]} en papelera)`}
                       </span>
                     )}
                     {childCount > 0 && (

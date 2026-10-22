@@ -108,20 +108,23 @@ export const categoriesService = {
     return { data, error }
   },
 
+  /** Productos por categoría (data: todos, incluida la papelera, que también frena el borrado; trash: solo papelera) */
   async getProductCountByCategory() {
     const { data, error } = await supabase
       .from('products')
-      .select('category_id')
+      .select('category_id, deleted_at')
 
-    if (error) return { data: null, error }
+    if (error) return { data: null, trash: null, error }
 
     const counts: Record<number, number> = {}
+    const trash: Record<number, number> = {}
     for (const row of data ?? []) {
       if (row.category_id) {
         counts[row.category_id] = (counts[row.category_id] ?? 0) + 1
+        if (row.deleted_at) trash[row.category_id] = (trash[row.category_id] ?? 0) + 1
       }
     }
-    return { data: counts, error: null }
+    return { data: counts, trash, error: null }
   },
 
   async create(category: CategoryInsert) {

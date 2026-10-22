@@ -110,7 +110,7 @@ export default function ProductBasicFields({
             <p className="mt-1.5 text-sm text-red-600 dark:text-red-400">{(errors.slug as { message?: string }).message}</p>
           )}
           {slugExists === true && (
-            <p className="mt-1.5 text-sm text-red-600 dark:text-red-400">Ya existe un producto con ese slug</p>
+            <p className="mt-1.5 text-sm text-red-600 dark:text-red-400">Ese slug ya está en uso (puede ser un producto en la papelera)</p>
           )}
         </div>
 

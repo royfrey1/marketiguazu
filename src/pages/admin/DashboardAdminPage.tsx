@@ -118,9 +118,10 @@ export default function DashboardAdminPage() {
     setLoading(true)
     setError(null)
     try {
-      const [ordersResult, productsData, inventoryResult] = await Promise.all([
+      const [ordersResult, productCounts, inventoryResult] = await Promise.all([
         orderService.getAllAdmin(1, 100),
-        productsService.getAllAdmin({ page: 1, pageSize: 1 }),
+        // Total, activos e inactivos sin la papelera
+        productsService.getAdminCounts(),
         inventoryService.getAllAdmin({ status: 'low_stock' }),
       ])
 
@@ -147,9 +148,9 @@ export default function DashboardAdminPage() {
         shippedOrders: statusCounts['shipped'] ?? 0,
         deliveredOrders: deliveredOrders.length,
         cancelledOrders: statusCounts['cancelled'] ?? 0,
-        totalProducts: productsData.total,
-        activeProducts: productsData.data?.filter(p => p.activo)?.length ?? 0,
-        inactiveProducts: productsData.data?.filter(p => !p.activo)?.length ?? 0,
+        totalProducts: productCounts.data?.total ?? 0,
+        activeProducts: productCounts.data?.activos ?? 0,
+        inactiveProducts: productCounts.data?.inactivos ?? 0,
         lowStockCount: lowStockFiltered.length,
         lowStockItems: lowStockFiltered.slice(0, 3).map(i => ({ product_titulo: i.product_titulo })),
         recentDelivered: deliveredOrders.slice(0, 2),

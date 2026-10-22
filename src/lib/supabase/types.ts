@@ -723,6 +723,7 @@ export type Database = {
           ancho_paquete_cm: number | null
           category_id: number
           created_at: string
+          deleted_at: string | null
           descripcion: string | null
           destacado: boolean
           en_oferta: boolean
@@ -745,6 +746,7 @@ export type Database = {
           ancho_paquete_cm?: number | null
           category_id: number
           created_at?: string
+          deleted_at?: string | null
           descripcion?: string | null
           destacado?: boolean
           en_oferta?: boolean
@@ -767,6 +769,7 @@ export type Database = {
           ancho_paquete_cm?: number | null
           category_id?: number
           created_at?: string
+          deleted_at?: string | null
           descripcion?: string | null
           destacado?: boolean
           en_oferta?: boolean
@@ -1081,6 +1084,10 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      archive_admin_product: {
+        Args: { p_product_id: number }
+        Returns: Json
+      }
       cancel_order: {
         Args: { p_order_id: number; p_reason?: string }
         Returns: Json
@@ -1158,11 +1165,19 @@ export type Database = {
         }
         Returns: Json
       }
+      delete_admin_product_permanent: {
+        Args: { p_confirm_stock_loss?: boolean; p_product_id: number }
+        Returns: Json
+      }
       delete_product_variant: {
         Args: { p_variant_id: number }
         Returns: undefined
       }
       generate_order_number: { Args: never; Returns: string }
+      get_admin_product_delete_info: {
+        Args: { p_product_id: number }
+        Returns: Json
+      }
       get_product_availability: {
         Args: never
         Returns: {
@@ -1203,6 +1218,10 @@ export type Database = {
           p_variant_id: number
         }
         Returns: undefined
+      }
+      restore_admin_product: {
+        Args: { p_product_id: number }
+        Returns: Json
       }
       update_admin_product: {
         Args: {

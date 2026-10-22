@@ -1,15 +1,33 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, RefreshCw } from 'lucide-react'
+import { Loader2, Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { sileo } from 'sileo'
 import { useAdminProducts, useActiveCategories } from '../../hooks/useAdminProducts'
-import { productsService, type ProductAdminRow, type AdminProductFilters } from '../../services/products.service'
+import {
+  productsService,
+  type ProductAdminRow,
+  type AdminProductFilters,
+  type AdminProductCounts,
+} from '../../services/products.service'
 import ProductFilters from '../../components/admin/products/ProductFilters'
 import ProductTable from '../../components/admin/products/ProductTable'
 import ProductPagination from '../../components/admin/products/ProductPagination'
+import DeleteProductDialog from '../../components/admin/products/DeleteProductDialog'
+import Modal from '../../components/ui/Modal'
 import Skeleton from '../../components/ui/Skeleton'
 
+type ProductsView = 'productos' | 'papelera'
+
+// Foco inicial en Cancelar: showModal() respeta el atributo autofocus
+const autofocusRef = (el: HTMLElement | null) => el?.setAttribute('autofocus', '')
+
 export default function ProductsAdminPage() {
+  const [view, setView] = useState<ProductsView>('productos')
   const [filters, setFilters] = useState<AdminProductFilters>({})
+  const listFilters = useMemo<AdminProductFilters>(
+    () => (view === 'papelera' ? { ...filters, papelera: true } : filters),
+    [view, filters]
+  )
   const {
     data: products,
     total,
@@ -21,10 +39,86 @@ export default function ProductsAdminPage() {
     hasPrev,
     goToPage,
     refetch,
-  } = useAdminProducts({ filters })
+  } = useAdminProducts({ filters: listFilters })
   const { categories } = useActiveCategories()
   const [actionLoading, setActionLoading] = useState<number | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [counts, setCounts] = useState<AdminProductCounts | null>(null)
+  const [archiveTarget, setArchiveTarget] = useState<ProductAdminRow | null>(null)
+  const [archiving, setArchiving] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<ProductAdminRow | null>(null)
+  const restoringRef = useRef(new Set<number>())
+
+  const loadCounts = useCallback(
+    () => productsService.getAdminCounts().then(({ data }) => { if (data) setCounts(data) }),
+    []
+  )
+
+  useEffect(() => {
+    void loadCounts()
+  }, [loadCounts])
+
+  const refreshAll = useCallback(() => {
+    refetch()
+    void loadCounts()
+  }, [refetch, loadCounts])
+
+  // Si la página quedó vacía (se movió su último producto), volver a la anterior
+  useEffect(() => {
+    if (!loading && products.length === 0 && page > 1) goToPage(page - 1)
+  }, [loading, products.length, page, goToPage])
+
+  const changeView = (next: ProductsView) => {
+    if (next === view) return
+    setView(next)
+    setFilters({})
+    setActionError(null)
+  }
+
+  const handleRestore = useCallback(async (product: ProductAdminRow) => {
+    if (restoringRef.current.has(product.id)) return
+    restoringRef.current.add(product.id)
+    setActionLoading(product.id)
+    const { error } = await productsService.restore(product.id)
+    restoringRef.current.delete(product.id)
+    setActionLoading(null)
+    if (error) {
+      sileo.error({ title: 'No se pudo restaurar el producto', description: error.message })
+      if (error.key === 'NOT_IN_TRASH' || error.key === 'PRODUCT_NOT_FOUND') refreshAll()
+      return
+    }
+    sileo.success({ title: 'Producto restaurado', description: 'Quedó inactivo: activalo cuando quieras.' })
+    refreshAll()
+  }, [refreshAll])
+
+  const confirmArchive = async () => {
+    if (!archiveTarget || archiving) return
+    const product = archiveTarget
+    setArchiving(true)
+    const { error } = await productsService.archive(product.id)
+    setArchiving(false)
+    setArchiveTarget(null)
+    if (error) {
+      sileo.error({ title: 'No se pudo enviar a la papelera', description: error.message })
+      if (error.key === 'ALREADY_IN_TRASH' || error.key === 'PRODUCT_NOT_FOUND') refreshAll()
+      return
+    }
+    // Deshacer = restaurar (una sola vez; queda inactivo, como cualquier restauración)
+    let undone = false
+    sileo.action({
+      title: 'Producto enviado a la papelera',
+      description: product.titulo,
+      button: {
+        title: 'Deshacer',
+        onClick: () => {
+          if (undone) return
+          undone = true
+          void handleRestore(product)
+        },
+      },
+    })
+    refreshAll()
+  }
 
   const handleToggleActive = useCallback(async (product: ProductAdminRow) => {
     setActionLoading(product.id)
@@ -66,7 +160,7 @@ export default function ProductsAdminPage() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => refetch()}
+            onClick={() => refreshAll()}
             className="p-2 text-gray-400 dark:text-white/30 hover:text-gray-600 dark:hover:text-white/60 hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
             title="Recargar"
           >
@@ -98,12 +192,41 @@ export default function ProductsAdminPage() {
         </div>
       )}
 
+      {/* Productos | Papelera */}
+      <div role="tablist" aria-label="Vista" className="flex gap-1 border-b border-gray-200 dark:border-white/10">
+        {([
+          { key: 'productos', label: 'Productos', count: counts?.total },
+          { key: 'papelera', label: 'Papelera', count: counts?.papelera },
+        ] as const).map(tab => {
+          const selected = view === tab.key
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              onClick={() => changeView(tab.key)}
+              className={`-mb-px inline-flex items-center gap-1.5 min-h-11 px-4 text-sm font-medium border-b-2 transition-colors cursor-pointer ${
+                selected
+                  ? 'border-[#185749] dark:border-[#1CAAA8] text-[#185749] dark:text-[#1CAAA8]'
+                  : 'border-transparent text-gray-500 dark:text-white/40 hover:text-gray-700 dark:hover:text-white/70'
+              }`}
+            >
+              {tab.key === 'papelera' && <Trash2 className="w-4 h-4" aria-hidden="true" />}
+              {tab.label}
+              {tab.count !== undefined && <span className="tabular-nums">({tab.count})</span>}
+            </button>
+          )
+        })}
+      </div>
+
       {/* Filters */}
       <ProductFilters
         filters={filters}
         onFiltersChange={setFilters}
         categories={categories}
         total={total}
+        trash={view === 'papelera'}
       />
 
       {/* Content */}
@@ -152,6 +275,10 @@ export default function ProductsAdminPage() {
           onToggleActive={handleToggleActive}
           onToggleDestacado={handleToggleDestacado}
           actionLoading={actionLoading}
+          onArchive={setArchiveTarget}
+          trash={view === 'papelera'}
+          onRestore={handleRestore}
+          onDeletePermanent={setDeleteTarget}
         />
       )}
 
@@ -163,6 +290,51 @@ export default function ProductsAdminPage() {
           hasNext={hasNext}
           hasPrev={hasPrev}
           onPageChange={goToPage}
+        />
+      )}
+
+      {archiveTarget && (
+        <Modal
+          open
+          onClose={() => { if (!archiving) setArchiveTarget(null) }}
+          title="Enviar a la papelera"
+          size="sm"
+          footer={
+            <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 sm:gap-3">
+              <button
+                type="button"
+                ref={autofocusRef}
+                onClick={() => setArchiveTarget(null)}
+                disabled={archiving}
+                className="min-h-11 sm:min-h-0 px-4 py-2 text-sm font-medium text-gray-600 dark:text-white/60 hover:text-gray-800 dark:hover:text-white/80 rounded-lg cursor-pointer disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmArchive}
+                disabled={archiving}
+                className="min-h-11 sm:min-h-0 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {archiving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                Enviar a papelera
+              </button>
+            </div>
+          }
+        >
+          <p className="text-sm text-gray-600 dark:text-white/60">
+            <strong className="text-gray-800 dark:text-white/80 break-words">{archiveTarget.titulo}</strong> dejará de verse en
+            la tienda. Podés restaurarlo cuando quieras.
+          </p>
+        </Modal>
+      )}
+
+      {deleteTarget && (
+        <DeleteProductDialog
+          key={deleteTarget.id}
+          product={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onDeleted={() => { setDeleteTarget(null); refreshAll() }}
         />
       )}
     </div>

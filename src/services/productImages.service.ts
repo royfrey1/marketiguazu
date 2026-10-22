@@ -214,6 +214,24 @@ export const productImagesService = {
     return { data: image, error: null }
   },
 
+  /**
+   * Borra archivos del bucket por nombre (storage_files del borrado definitivo de un producto).
+   * Storage no avisa los que no pudo borrar: cuenta como fallidos los que no vuelven en la respuesta.
+   */
+  async removeStorageFiles(fileNames: string[]): Promise<{ failed: number }> {
+    if (fileNames.length === 0) return { failed: 0 }
+    const paths = fileNames.map(name => {
+      try { return decodeURIComponent(name) } catch { return name }
+    })
+    try {
+      const { data, error } = await supabase.storage.from(BUCKET).remove(paths)
+      if (error) return { failed: paths.length }
+      return { failed: Math.max(0, paths.length - (data?.length ?? 0)) }
+    } catch {
+      return { failed: paths.length }
+    }
+  },
+
   async remove(image: ProductImage) {
     const { error: dbError } = await supabase
       .from('product_images')

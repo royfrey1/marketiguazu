@@ -1,6 +1,6 @@
 # Iguazú Marketplace — Estado del Proyecto
 
-**Última actualización:** 2026-10-14
+**Última actualización:** 2026-10-22
 **Fuente:** QA manual del usuario + auditoría de opencode con verificación en vivo (repo, BD remota y Supabase CLI) el 2026-10-07
 
 > Este documento es la fuente de verdad de en qué fase estamos. Actualizarlo después de cada sesión de trabajo relevante (no hace falta después de cada micro-tarea).
@@ -217,6 +217,48 @@ Estamos en la **recta final previa al lanzamiento**: QA de producción, requisit
 
 ---
 
+## 🗑️ Papelera y borrado definitivo de productos (2026-10)
+
+**Backend (migración `20261022120000_product_trash.sql`, aplicada en producción 2026-10-22):**
+
+- `products.deleted_at` (soft delete) + índice parcial + CHECK `products_trash_inactive_chk`: **papelera implica `activo = false`** (la tienda nunca la ve; el CHECK lo garantiza incluso ante escrituras directas).
+- RPCs admin (SECURITY DEFINER, con EXECUTE para `authenticated`/`service_role` y **sin** EXECUTE para anon): `archive_admin_product`, `restore_admin_product`, `get_admin_product_delete_info` y `delete_admin_product_permanent(p_product_id, p_confirm_stock_loss)`. Códigos de error: `P4003 FORBIDDEN`, `P4004 PRODUCT_NOT_FOUND`, `P4041 ALREADY_IN_TRASH`, `P4042 NOT_IN_TRASH`, `P4043 PRODUCT_IN_TRASH`, `P4091 HAS_SALES`, `P4092 IN_CARTS`, `P4093 STOCK_CONFIRM_REQUIRED`; el slug ocupado salta como `23505 products_slug_key` (el slug sigue tomado aunque el producto esté en la papelera).
+- RLS: `products_admin_all` (ALL, incluía DELETE directo) reemplazada por policies admin de SELECT/INSERT/UPDATE; **el DELETE directo sobre `products` ya no existe: el borrado definitivo es solo por la RPC**.
+- `inventory_admin_view` excluye la papelera; `update_admin_product` rechaza editar productos en papelera (`PRODUCT_IN_TRASH`).
+- Policy de Storage `storage_objects_admin_delete_publicaciones`: el admin puede borrar archivos del bucket `publicaciones` (la policy anterior solo permitía carpetas con el uid del propio usuario, por lo que el borrado de imágenes desde el admin no borraba los archivos de la raíz del bucket).
+
+**Reglas del borrado definitivo:**
+
+- Solo desde la papelera (si no, `NOT_IN_TRASH`).
+- Bloqueado si hay ventas (`HAS_SALES`) o si el producto está en carritos (`IN_CARTS`).
+- Con stock > 0 exige confirmación explícita (`STOCK_CONFIRM_REQUIRED`; el frontend pide escribir el nombre exacto del producto).
+- Orden: primero la base de datos (la RPC limpia `inventory_movements` → `inventory` → `price_history` → `cart_items` → `product_images` → `product_variants` → `products` y devuelve `storage_files` con los nombres de imagen del bucket), después Storage con esos nombres; la RPC **nunca** borra archivos de Storage.
+- Retención de la papelera: manual (sin purga automática).
+
+**Frontend (admin):**
+
+- Pestañas **Productos | Papelera** en `/admin/productos`, con buscador y filtros propios por pestaña.
+- Modal de borrado (`DeleteProductDialog.tsx`) con resumen (ventas, carritos, stock, variantes, imágenes) y bloqueos; con stock > 0 pide escribir el nombre exacto para habilitar "Eliminar definitivamente".
+- Un producto en papelera queda de **solo lectura por URL** (editar lanza `PRODUCT_IN_TRASH`).
+- Categorías muestran "(M en papelera)"; dashboard, ofertas y buscadores del admin excluyen la papelera; `productsService.remove()` (código sin llamadas) eliminado.
+
+**Reversa:** `backup/2026-10-22-papelera/revert.sql` (local, ignorado por git; ensayado en transacción con ROLLBACK contra producción antes de aplicar).
+
+**Línea base nueva:** `npx tsc -b` = **49** (bajó de 50 porque se arregló el dashboard); lint **66 (57 errores, 9 warnings)** y build OK siguen igual.
+
+**Pendientes nuevos/menores:**
+
+- El "Deshacer" de **Enviar a papelera** restaura el producto como **inactivo**, aunque antes estuviera activo (reactivar es una decisión explícita).
+- Insignia "Oferta" visible en la papelera (archivar no apaga `en_oferta`; en la tienda no se ve).
+- La X de cierre del `Modal` compartido mide 30 px (no 44).
+- El aviso parcial de Storage (tras un borrado definitivo) cuenta también archivos que ya no existían en el bucket.
+- Tabla `_legacy_categorias` sin uso (conservada por decisión).
+- Renombrar las 5 categorías sin tilde (Perifericos, Fuentes de Alimentacion, Microfonos, Camaras, Consolas portatiles) lo hace el **dueño desde el admin** (el slug no cambia al editar).
+- Limpiar el `precio_anterior` huérfano del producto **1023** desde el admin.
+- Posibles archivos huérfanos históricos en el bucket `publicaciones` por el permiso anterior de Storage (revisar a futuro).
+
+---
+
 ## 🧹 Deuda técnica y pendientes
 
 ### Antes del lanzamiento (bloqueantes)
@@ -232,7 +274,7 @@ La lista completa vive en **🚨 Bloqueadores críticos** (única fuente de verd
 - Validar el teléfono de la dirección en el **backend** (hoy la validación es solo de frontend; las Edge Functions no lo exigen).
 - En Mi cuenta, el botón "+ Nueva" no limpia el formulario si antes se canceló una edición.
 - Precargar el teléfono de la dirección desde `profiles`.
-- `npx tsc -b` tiene 50 errores preexistentes (verificado 2026-10-14; el build de Vite compila bien); lint en 66 problemas (57 errores, 9 warnings) como línea base.
+- `npx tsc -b` tiene 49 errores preexistentes (verificado 2026-10-22; el build de Vite compila bien); lint en 66 problemas (57 errores, 9 warnings) como línea base.
 - `sort_order=0` cosmético en galerías; la galería se comparte entre variantes de distinta capacidad.
 - Chunk de build >500 kB, sin script `typecheck`, sin tests, `tailwind.config.js` duplicado.
 - ~~SEO pendiente (Fase 12): `lang="en"` en `index.html`, sin meta description/OG, sin `robots.txt`~~ — **fase 1 hecha** (2026-10-08): queda `sitemap.xml` y el resto de la fase 2.

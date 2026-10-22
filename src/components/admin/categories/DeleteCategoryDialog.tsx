@@ -5,6 +5,8 @@ import Modal from '../../ui/Modal'
 interface DeleteCategoryDialogProps {
   category: Category
   productCount: number
+  /** Cuántos de productCount están en la papelera */
+  trashCount?: number
   childCount: number
   onConfirm: () => Promise<void>
   onCancel: () => void
@@ -14,6 +16,7 @@ interface DeleteCategoryDialogProps {
 export default function DeleteCategoryDialog({
   category,
   productCount,
+  trashCount = 0,
   childCount,
   onConfirm,
   onCancel,
@@ -74,16 +77,21 @@ export default function DeleteCategoryDialog({
               </p>
               <ul className="text-sm text-amber-700 dark:text-amber-400/80 space-y-0.5">
                 {productCount > 0 && (
-                  <li>• {productCount} {productCount === 1 ? 'producto asociado' : 'productos asociados'}</li>
+                  <li>
+                    • {productCount} {productCount === 1 ? 'producto asociado' : 'productos asociados'}
+                    {trashCount > 0 && ` (${trashCount} en papelera)`}
+                  </li>
                 )}
                 {childCount > 0 && (
                   <li>• {childCount} {childCount === 1 ? 'subcategoría hija' : 'subcategorías hijas'}</li>
                 )}
               </ul>
               <p className="text-sm text-amber-700 dark:text-amber-400/80 mt-2">
-                {productCount > 0
-                  ? 'No se puede eliminar una categoría con productos. Desactivarla en su lugar.'
-                  : 'Las subcategorías hijas quedarán como categorías raíz.'}
+                {productCount > 0 && trashCount === productCount
+                  ? 'Solo tiene productos en la papelera, pero también cuentan: eliminalos definitivamente o restauralos y cambiales la categoría antes de borrarla.'
+                  : productCount > 0
+                    ? `No se puede eliminar una categoría con productos${trashCount > 0 ? ' (también cuentan los de la papelera)' : ''}. Desactivarla en su lugar.`
+                    : 'Las subcategorías hijas quedarán como categorías raíz.'}
               </p>
             </div>
           </div>

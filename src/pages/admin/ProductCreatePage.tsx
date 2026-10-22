@@ -4,7 +4,7 @@ import { Package, Image as ImageIcon, Loader2 } from 'lucide-react'
 import { sileo } from 'sileo'
 import useAuth from '../../hooks/useAuth'
 import { categoriesService, type Category } from '../../services/categories.service'
-import { productsService } from '../../services/products.service'
+import { productsService, toProductAdminError } from '../../services/products.service'
 import { productSpecificationsService } from '../../services/productSpecifications.service'
 import ProductForm, { type ProductFormSubmitResult } from '../../components/admin/products/ProductForm'
 import ProductSpecificationsEditor from '../../components/admin/products/ProductSpecificationsEditor'
@@ -116,6 +116,9 @@ export default function ProductCreatePage() {
     } catch (err) {
       // Precio rechazado por la base: va al campo precio (no como fallo genérico)
       if (isPriceDbError(err)) return { priceError: PRICE_POSITIVE_MESSAGE }
+      // Slug ocupado (también por un producto en la papelera): va al campo slug
+      const adminError = toProductAdminError(err)
+      if (adminError.key === 'SLUG_TAKEN') return { slugError: adminError.message }
       const msg = (err as Error).message
       // El mensaje de la base (por ejemplo las validaciones de la oferta) se muestra tal cual
       sileo.error({ title: 'No se pudo crear el producto', description: msg || 'Error al crear el producto' })
