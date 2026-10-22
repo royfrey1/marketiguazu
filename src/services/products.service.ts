@@ -321,6 +321,33 @@ export const productsService = {
     }
   },
 
+  /**
+   * Todos los productos de la papelera que coinciden con la búsqueda/categoría (solo id y título), para
+   * "Seleccionar los N de la papelera". De a 1000 filas (el límite por consulta de PostgREST).
+   */
+  async getTrashItems(
+    filters: Pick<AdminProductFilters, 'search' | 'category_id'> = {}
+  ): Promise<{ data: { id: number; titulo: string }[]; error: Error | null }> {
+    const CHUNK = 1000
+    const items: { id: number; titulo: string }[] = []
+    for (let from = 0; ; from += CHUNK) {
+      let query = supabase.from('products').select('id, titulo').not('deleted_at', 'is', null)
+      if (filters.search && filters.search.trim()) {
+        const term = filters.search.trim()
+        query = query.or(`titulo.ilike.%${term}%,marca.ilike.%${term}%,slug.ilike.%${term}%`)
+      }
+      if (filters.category_id) query = query.eq('category_id', filters.category_id)
+      const { data, error } = await query
+        .order('deleted_at', { ascending: false })
+        .order('id', { ascending: true })
+        .range(from, from + CHUNK - 1)
+      if (error) return { data: [], error: new Error(error.message) }
+      items.push(...(data ?? []))
+      if (!data || data.length < CHUNK) break
+    }
+    return { data: items, error: null }
+  },
+
   async getActiveProducts() {
     const availability = await getProductAvailability()
     const availableIds = [...availability.keys()]

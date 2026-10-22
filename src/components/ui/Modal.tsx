@@ -11,6 +11,8 @@ interface ModalProps {
   size?: 'sm' | 'md' | 'lg'
   footer?: ReactNode
   hideCloseButton?: boolean
+  /** false: no se cierra con Esc, click afuera ni la X (por ejemplo, mientras corre una acción) */
+  dismissible?: boolean
 }
 
 const SIZE_CLASSES = {
@@ -30,8 +32,13 @@ export default function Modal({
   size = 'md',
   footer,
   hideCloseButton = false,
+  dismissible = true,
 }: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const dismissibleRef = useRef(dismissible)
+  useEffect(() => {
+    dismissibleRef.current = dismissible
+  }, [dismissible])
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -48,20 +55,43 @@ export default function Modal({
     const dialog = dialogRef.current
     if (!dialog) return
 
-    const handleClose = () => onClose()
+    // Esc dispara cancel: si no se puede cerrar, se cancela. Chrome igual cierra ante Esc repetidos sin
+    // otra interacción, así que también se cancela el keydown (aunque el foco haya quedado fuera del
+    // diálogo) y, si igual se cerrara, se vuelve a abrir sin avisar onClose
+    const handleCancel = (e: Event) => {
+      if (!dismissibleRef.current) e.preventDefault()
+    }
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !dismissibleRef.current && dialog.open) e.preventDefault()
+    }
+    const handleClose = () => {
+      if (!dismissibleRef.current) {
+        dialog.showModal()
+        return
+      }
+      onClose()
+    }
+    const doc = dialog.ownerDocument
+    dialog.addEventListener('cancel', handleCancel)
     dialog.addEventListener('close', handleClose)
-    return () => dialog.removeEventListener('close', handleClose)
+    doc.addEventListener('keydown', handleKey, true)
+    return () => {
+      dialog.removeEventListener('cancel', handleCancel)
+      dialog.removeEventListener('close', handleClose)
+      doc.removeEventListener('keydown', handleKey, true)
+    }
   }, [onClose])
 
   const handleOverlayClick = (e: React.MouseEvent<HTMLDialogElement>) => {
-    if (closeOnOverlay && e.target === dialogRef.current) {
+    if (closeOnOverlay && dismissible && e.target === dialogRef.current) {
       dialogRef.current?.close()
     }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDialogElement>) => {
     if (e.key === 'Escape') {
-      dialogRef.current?.close()
+      if (dismissible) dialogRef.current?.close()
+      else e.preventDefault()
     }
   }
 
@@ -100,7 +130,8 @@ export default function Modal({
             {!hideCloseButton && (
               <button
                 onClick={() => dialogRef.current?.close()}
-                className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 transition-colors text-gray-400 dark:text-white/30 hover:text-gray-600 dark:hover:text-white/60 cursor-pointer shrink-0"
+                disabled={!dismissible}
+                className="disabled:opacity-30 disabled:cursor-not-allowed p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 transition-colors text-gray-400 dark:text-white/30 hover:text-gray-600 dark:hover:text-white/60 cursor-pointer shrink-0"
                 aria-label="Cerrar"
                 type="button"
               >

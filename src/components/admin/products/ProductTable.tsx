@@ -2,6 +2,19 @@ import { Link } from 'react-router-dom'
 import { Pencil, Star, StarOff, Eye, EyeOff, Package, Loader2, MoreVertical, Trash2, RotateCcw } from 'lucide-react'
 import { productsService, type ProductAdminRow } from '../../../services/products.service'
 import { useState, useRef, useEffect } from 'react'
+import SelectionCheckbox from '../SelectionCheckbox'
+import type { SelectionState } from '../../../hooks/useRowSelection'
+
+/** Selección de filas para acciones masivas (por ahora solo en la papelera) */
+export interface ProductTableSelection {
+  isSelected: (id: number) => boolean
+  /** shiftKey: rango desde el último tocado (escritorio) */
+  toggle: (id: number, shiftKey: boolean) => void
+  /** Checkbox de cabecera: todas las filas visibles */
+  headerState: SelectionState
+  toggleAll: () => void
+  disabled?: boolean
+}
 
 interface ProductTableProps {
   products: ProductAdminRow[]
@@ -13,6 +26,8 @@ interface ProductTableProps {
   trash?: boolean
   onRestore?: (product: ProductAdminRow) => void
   onDeletePermanent?: (product: ProductAdminRow) => void
+  /** Con selección: checkbox por fila (solo el checkbox selecciona, no el click en la fila) */
+  selection?: ProductTableSelection
 }
 
 const TRASH_DATE = new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })
@@ -193,6 +208,7 @@ export default function ProductTable({
   trash = false,
   onRestore,
   onDeletePermanent,
+  selection,
 }: ProductTableProps) {
   if (products.length === 0 && trash) {
     return (
@@ -222,6 +238,17 @@ export default function ProductTable({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100 dark:border-white/5">
+              {selection && (
+                <th className="w-14 pl-2 pr-0 py-1">
+                  <SelectionCheckbox
+                    checked={selection.headerState === 'all'}
+                    indeterminate={selection.headerState === 'some'}
+                    onToggle={() => selection.toggleAll()}
+                    label="Seleccionar todos los de esta página"
+                    disabled={selection.disabled}
+                  />
+                </th>
+              )}
               <th className="text-left px-4 py-3 font-medium text-gray-400 dark:text-white/30 w-18"></th>
               <th className="text-left px-4 py-3 font-medium text-gray-400 dark:text-white/30">Producto</th>
               <th className="text-left px-4 py-3 font-medium text-gray-400 dark:text-white/30">Categoría</th>
@@ -237,7 +264,20 @@ export default function ProductTable({
               const isLoading = actionLoading === product.id
 
               return (
-                <tr key={product.id} className="hover:bg-gray-50/50 dark:hover:bg-white/[0.02] transition-colors">
+                <tr
+                  key={product.id}
+                  className={`transition-colors ${selection?.isSelected(product.id) ? 'bg-[#185749]/5 dark:bg-[#1CAAA8]/10' : 'hover:bg-gray-50/50 dark:hover:bg-white/[0.02]'}`}
+                >
+                  {selection && (
+                    <td className="pl-2 pr-0 py-1">
+                      <SelectionCheckbox
+                        checked={selection.isSelected(product.id)}
+                        onToggle={shiftKey => selection.toggle(product.id, shiftKey)}
+                        label={`Seleccionar ${product.titulo}`}
+                        disabled={selection.disabled}
+                      />
+                    </td>
+                  )}
                   <td className="px-4 py-3">
                     <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-gray-100 dark:bg-white/5">
                       {imageUrl ? (
@@ -367,9 +407,21 @@ export default function ProductTable({
           const isLoading = actionLoading === product.id
 
           return (
-            <div key={product.id} className="bg-white dark:bg-[#162420] rounded-xl border border-gray-200 dark:border-white/5 p-4">
-              {/* Header: image + title + status */}
+            <div
+              key={product.id}
+              className={`bg-white dark:bg-[#162420] rounded-xl border p-4 ${selection?.isSelected(product.id) ? 'border-[#185749]/50 dark:border-[#1CAAA8]/50' : 'border-gray-200 dark:border-white/5'}`}
+            >
+              {/* Header: checkbox + image + title + status */}
               <div className="flex items-start gap-3">
+                {selection && (
+                  <SelectionCheckbox
+                    checked={selection.isSelected(product.id)}
+                    onToggle={shiftKey => selection.toggle(product.id, shiftKey)}
+                    label={`Seleccionar ${product.titulo}`}
+                    disabled={selection.disabled}
+                    className="-ml-2 -mt-1 -mr-1"
+                  />
+                )}
                 {imageUrl ? (
                   <img src={imageUrl} alt={product.titulo} className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
                 ) : (

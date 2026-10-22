@@ -2,7 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { AlertTriangle, Loader2, Trash2 } from 'lucide-react'
 import { sileo } from 'sileo'
 import Modal from '../../ui/Modal'
-import { productsService, type ProductAdminRow, type ProductDeleteInfo } from '../../../services/products.service'
+import FriendlyError from '../FriendlyError'
+import {
+  productsService,
+  ProductAdminError,
+  type ProductAdminRow,
+  type ProductDeleteInfo,
+} from '../../../services/products.service'
 import { productImagesService } from '../../../services/productImages.service'
 
 interface DeleteProductDialogProps {
@@ -23,8 +29,8 @@ const plural = (n: number, one: string, many: string) => `${n.toLocaleString('es
 export default function DeleteProductDialog({ product, onClose, onDeleted }: DeleteProductDialogProps) {
   const [info, setInfo] = useState<ProductDeleteInfo | null>(null)
   const [loadingInfo, setLoadingInfo] = useState(true)
-  const [infoError, setInfoError] = useState<string | null>(null)
-  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [infoError, setInfoError] = useState<ProductAdminError | null>(null)
+  const [deleteError, setDeleteError] = useState<ProductAdminError | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [typedName, setTypedName] = useState('')
   const deletingRef = useRef(false)
@@ -35,7 +41,7 @@ export default function DeleteProductDialog({ product, onClose, onDeleted }: Del
   const fetchInfo = useCallback(
     () => productsService.getDeleteInfo(product.id).then(({ data, error }) => {
       setInfo(data)
-      setInfoError(error ? error.message : null)
+      setInfoError(error)
       setLoadingInfo(false)
     }),
     [product.id]
@@ -79,13 +85,13 @@ export default function DeleteProductDialog({ product, onClose, onDeleted }: Del
     if (error || !data) {
       deletingRef.current = false
       setDeleting(false)
-      const message = error?.message ?? 'No se pudo eliminar el producto. Intentá de nuevo.'
+      const failure = error ?? new ProductAdminError('UNKNOWN', 'Sin respuesta del servidor', null)
       if (closedWhileDeletingRef.current) {
-        sileo.error({ title: 'No se pudo eliminar el producto', description: message })
+        sileo.error({ title: 'No se pudo eliminar el producto', description: <FriendlyError error={failure} /> })
         onClose()
         return
       }
-      setDeleteError(message)
+      setDeleteError(failure)
       // Cambió algo en el servidor (ventas, carritos, stock): se vuelve a leer el resumen
       if (error && ['HAS_SALES', 'IN_CARTS', 'STOCK_CONFIRM_REQUIRED', 'NOT_IN_TRASH'].includes(error.key)) {
         void loadInfo()
@@ -145,7 +151,7 @@ export default function DeleteProductDialog({ product, onClose, onDeleted }: Del
         </div>
       ) : infoError && !info ? (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 rounded-lg p-4" role="alert">
-          <p className="text-sm text-red-700 dark:text-red-400">No se pudo revisar el producto: {infoError}</p>
+          <p className="text-sm text-red-700 dark:text-red-400"><FriendlyError error={infoError} prefix="No se pudo revisar el producto. " /></p>
           <button
             type="button"
             onClick={() => void loadInfo()}
@@ -208,7 +214,7 @@ export default function DeleteProductDialog({ product, onClose, onDeleted }: Del
 
           {deleteError && (
             <p className="text-sm text-red-700 dark:text-red-400" role="alert">
-              {deleteError}
+              <FriendlyError error={deleteError} />
             </p>
           )}
         </div>

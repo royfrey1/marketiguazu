@@ -261,6 +261,41 @@ Estamos en la **recta final previa al lanzamiento**: QA de producción, requisit
 
 ---
 
+## ✅ Selección múltiple y acciones masivas (2026-10)
+
+Solo frontend: sin migraciones ni cambios de backend (las acciones masivas reutilizan las RPC individuales existentes).
+
+**Papelera:**
+- Casillas por fila (tabla de escritorio y tarjetas mobile) y casilla de cabecera con estado intermedio; Shift+click selecciona el rango; la selección persiste entre páginas y se limpia al cambiar de pestaña, búsqueda o categoría.
+- Barra de acciones **sticky dentro del área que scrollea** (nunca `fixed`, para no estirar el documento — regla de QA de la sección anterior).
+- "Seleccionar los N de la papelera" cuando se marca toda la página visible y hay más de una página.
+
+**Restaurar en masa:**
+- Confirmación previa, proceso de a uno con barra de progreso y resumen final; los restaurados quedan **inactivos** (misma regla que el "Deshacer" individual).
+
+**Eliminar definitivamente en masa:**
+- Revisión previa con `getDeleteInfo` (concurrencia 4) separando eliminables de bloqueados (ventas / en carritos); si hay stock, confirma escribiendo **ELIMINAR**; borra de a uno con botón **Detener**; limpia Storage por producto; resumen final; los fallidos quedan seleccionados.
+
+**Mensajes amables:**
+- `FriendlyError` con detalle técnico plegable para errores inesperados en borrado individual, masivo y restaurar.
+
+**Piezas reutilizables (creadas, aún NO conectadas a Productos ni Inventario):**
+- `useRowSelection(resetKey)`, `SelectionCheckbox`, `BulkActionBar`, `BulkProgress`, `FriendlyError`.
+
+**Modal compartido:**
+- Nueva prop `dismissible` (default **true** → sin cambio de comportamiento para los modales existentes); en `false` bloquea Esc, click afuera y la X, con parche contra el cierre de Chrome ante Esc repetidos.
+
+**Pendientes nuevos:**
+- Bulk en la tabla de Productos (enviar a papelera, activar/desactivar, destacar); el cambio masivo de precio requiere RPC propia respetando `precio > 0`, ofertas y variantes.
+- Bulk en Inventario: cambios de stock con RPC que registre `inventory_movements`.
+- Revisar el parche del `Modal` si se agregan más modales no descartables; el borrado individual sigue permitiendo Esc mientras corre.
+- Restaurar masivo sin botón Detener (decisión: no hace falta).
+- `getTrashItems` (solo lectura, hasta 1.000) para el "Seleccionar los N".
+- Títulos de avisos de Sileo capitalizados (preexistente).
+- **Convención QA reafirmada:** en toda pantalla del admin, `document.documentElement.scrollHeight == window.innerHeight`.
+
+---
+
 ## 🧪 Convenciones de QA del admin (2026-10)
 
 Regla para probar cualquier pantalla del admin (además de lo habitual de revisar desbordes horizontales):
