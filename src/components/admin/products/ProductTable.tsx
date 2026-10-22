@@ -339,11 +339,12 @@ export default function ProductTable({
                       >
                         <Pencil className="w-4 h-4" />
                       </Link>
+                      {/* relative: el sr-only (absolute) queda dentro del <main> que scrollea; sin esto estiraba el documento */}
                       <button
                         type="button"
                         onClick={() => onArchive(product)}
                         disabled={isLoading}
-                        className="p-1.5 text-gray-400 dark:text-white/25 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                        className="relative p-1.5 text-gray-400 dark:text-white/25 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
                         title="Enviar a papelera"
                       >
                         <Trash2 className="w-4 h-4" aria-hidden="true" />

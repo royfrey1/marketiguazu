@@ -241,6 +241,7 @@ Estamos en la **recta final previa al lanzamiento**: QA de producción, requisit
 - Modal de borrado (`DeleteProductDialog.tsx`) con resumen (ventas, carritos, stock, variantes, imágenes) y bloqueos; con stock > 0 pide escribir el nombre exacto para habilitar "Eliminar definitivamente".
 - Un producto en papelera queda de **solo lectura por URL** (editar lanza `PRODUCT_IN_TRASH`).
 - Categorías muestran "(M en papelera)"; dashboard, ofertas y buscadores del admin excluyen la papelera; `productsService.remove()` (código sin llamadas) eliminado.
+- **Hotfix (2026-10-22):** la tabla de productos de escritorio estiraba el documento por un `sr-only` sin ancestro posicionado (`position: absolute` respecto del `body`); corregido agregando `relative` al botón de papelera; afectaba solo `/admin/productos`, pestaña Productos, desde 1024 px (regresión del commit `3523137`).
 
 **Reversa:** `backup/2026-10-22-papelera/revert.sql` (local, ignorado por git; ensayado en transacción con ROLLBACK contra producción antes de aplicar).
 
@@ -256,6 +257,15 @@ Estamos en la **recta final previa al lanzamiento**: QA de producción, requisit
 - Renombrar las 5 categorías sin tilde (Perifericos, Fuentes de Alimentacion, Microfonos, Camaras, Consolas portatiles) lo hace el **dueño desde el admin** (el slug no cambia al editar).
 - Limpiar el `precio_anterior` huérfano del producto **1023** desde el admin.
 - Posibles archivos huérfanos históricos en el bucket `publicaciones` por el permiso anterior de Storage (revisar a futuro).
+
+---
+
+## 🧪 Convenciones de QA del admin (2026-10)
+
+Regla para probar cualquier pantalla del admin (además de lo habitual de revisar desbordes horizontales):
+
+- Verificar que `document.documentElement.scrollHeight == window.innerHeight` (el scroll de las pantallas del admin ocurre **solo** dentro de `<main data-scroll-container>`; si el documento crece, algo se está posicionando respecto del `body`).
+- Todo elemento con `sr-only` o con `position: absolute` dentro del admin debe tener un ancestro `relative` **dentro del área que scrollea** (si no, se posiciona respecto del `body` y estira el documento — caso del hotfix de `ProductTable.tsx`).
 
 ---
 
