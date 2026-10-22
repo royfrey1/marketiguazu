@@ -242,6 +242,7 @@ Estamos en la **recta final previa al lanzamiento**: QA de producción, requisit
 - Un producto en papelera queda de **solo lectura por URL** (editar lanza `PRODUCT_IN_TRASH`).
 - Categorías muestran "(M en papelera)"; dashboard, ofertas y buscadores del admin excluyen la papelera; `productsService.remove()` (código sin llamadas) eliminado.
 - **Hotfix (2026-10-22):** la tabla de productos de escritorio estiraba el documento por un `sr-only` sin ancestro posicionado (`position: absolute` respecto del `body`); corregido agregando `relative` al botón de papelera; afectaba solo `/admin/productos`, pestaña Productos, desde 1024 px (regresión del commit `3523137`).
+- **Fix de borrado definitivo con variantes (2026-10-22):** la limpieza de dependientes se hacía solo por `product_id` y `price_history` tenía filas alcanzables solo por `variant_id` (su CHECK exige XOR `product_id`/`variant_id`), así que borrar un producto con variantes fallaba con `price_history_variant_id_fkey` (caso real: producto 8, 5 filas); corregido en la migración `20261022180000`; las pruebas ahora incluyen fixtures con dependientes ligados solo por variante; regla: toda limpieza de dependientes de variantes debe usar el conjunto de ids de variantes, no solo `product_id`.
 
 **Reversa:** `backup/2026-10-22-papelera/revert.sql` (local, ignorado por git; ensayado en transacción con ROLLBACK contra producción antes de aplicar).
 
