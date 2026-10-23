@@ -67,7 +67,7 @@ export default function BulkActionBar({
           )}
         </div>
         {visible && (
-          <div className="flex gap-2 md:ml-auto [&>*]:flex-1 md:[&>*]:flex-none">
+          <div className="flex flex-wrap gap-2 md:ml-auto md:justify-end [&>*]:flex-1 md:[&>*]:flex-none">
             {children}
           </div>
         )}

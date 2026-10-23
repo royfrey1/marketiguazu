@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { Loader2, Plus, RefreshCw, RotateCcw, Trash2 } from 'lucide-react'
+import { Eye, EyeOff, Loader2, Plus, RefreshCw, RotateCcw, Trash2 } from 'lucide-react'
 import { sileo } from 'sileo'
 import { useAdminProducts, useActiveCategories } from '../../hooks/useAdminProducts'
 import { useRowSelection } from '../../hooks/useRowSelection'
@@ -14,14 +14,17 @@ import ProductFilters from '../../components/admin/products/ProductFilters'
 import ProductTable from '../../components/admin/products/ProductTable'
 import ProductPagination from '../../components/admin/products/ProductPagination'
 import DeleteProductDialog from '../../components/admin/products/DeleteProductDialog'
-import BulkRestoreProductsDialog, { type BulkProductItem } from '../../components/admin/products/BulkRestoreProductsDialog'
+import BulkRestoreProductsDialog from '../../components/admin/products/BulkRestoreProductsDialog'
 import BulkDeleteProductsDialog from '../../components/admin/products/BulkDeleteProductsDialog'
+import BulkActiveProductsDialog, { type BulkActiveItem } from '../../components/admin/products/BulkActiveProductsDialog'
+import BulkArchiveProductsDialog from '../../components/admin/products/BulkArchiveProductsDialog'
 import BulkActionBar from '../../components/admin/BulkActionBar'
 import FriendlyError from '../../components/admin/FriendlyError'
 import Modal from '../../components/ui/Modal'
 import Skeleton from '../../components/ui/Skeleton'
 
 type ProductsView = 'productos' | 'papelera'
+type BulkKind = 'restore' | 'delete' | 'activate' | 'deactivate' | 'archive'
 
 // Foco inicial en Cancelar: showModal() respeta el atributo autofocus
 const autofocusRef = (el: HTMLElement | null) => el?.setAttribute('autofocus', '')
@@ -54,23 +57,25 @@ export default function ProductsAdminPage() {
   const [deleteTarget, setDeleteTarget] = useState<ProductAdminRow | null>(null)
   const restoringRef = useRef(new Set<number>())
 
-  // Selección (solo papelera): se vacía al cambiar de pestaña, búsqueda o filtros; sigue al paginar
+  // Selección (Productos y Papelera): se vacía al cambiar de pestaña, búsqueda o filtros; sigue al paginar
   const selectionKey = JSON.stringify({ view, filters })
   const selection = useRowSelection<number>(selectionKey)
   const selectionKeyRef = useRef(selectionKey)
-  // Títulos conocidos por id: los seleccionados de otras páginas se muestran por nombre en los modales
-  const titlesRef = useRef(new Map<number, string>())
+  // Título y estado conocidos por id: los seleccionados de otras páginas se muestran por nombre en los
+  // modales, y activar/desactivar sabe cuáles ya están en el estado pedido
+  const knownRef = useRef(new Map<number, { titulo: string; activo: boolean }>())
   const [selectingAll, setSelectingAll] = useState(false)
-  const [bulkAction, setBulkAction] = useState<{ kind: 'restore' | 'delete'; items: BulkProductItem[] } | null>(null)
+  const [bulkAction, setBulkAction] = useState<{ kind: BulkKind; items: BulkActiveItem[] } | null>(null)
 
   useEffect(() => {
     selectionKeyRef.current = selectionKey
   }, [selectionKey])
 
   useEffect(() => {
-    for (const p of products) titlesRef.current.set(p.id, p.titulo)
+    for (const p of products) knownRef.current.set(p.id, { titulo: p.titulo, activo: p.activo })
   }, [products])
 
+  const hasListFilters = !!(filters.search || filters.category_id || filters.activo !== undefined || filters.en_oferta)
   const visibleIds = useMemo(() => products.map(p => p.id), [products])
   const pageSelectionState = selection.stateOf(visibleIds)
 
@@ -117,26 +122,43 @@ export default function ProductsAdminPage() {
     refreshAll()
   }, [refreshAll, selection])
 
-  /** "Seleccionar los N de la papelera": trae todos los ids (con la búsqueda y la categoría actuales) */
-  const selectAllInTrash = async () => {
+  /**
+   * "Seleccionar los N …": trae todos los ids que cumplen los filtros actuales (papelera: búsqueda y
+   * categoría; productos: además estado y oferta)
+   */
+  const selectAllFiltered = async () => {
     if (selectingAll) return
     const key = selectionKey
     setSelectingAll(true)
-    const { data, error } = await productsService.getTrashItems({ search: filters.search, category_id: filters.category_id })
+    const { data, error } = view === 'papelera'
+      ? await productsService.getTrashItems({ search: filters.search, category_id: filters.category_id })
+          .then(res => ({ ...res, data: res.data.map(item => ({ ...item, activo: false })) }))
+      : await productsService.getProductItems({
+          search: filters.search,
+          category_id: filters.category_id,
+          activo: filters.activo,
+          en_oferta: filters.en_oferta,
+        })
     setSelectingAll(false)
     // Si mientras tanto cambió la pestaña o el filtro, no se aplica
     if (selectionKeyRef.current !== key) return
     if (error) {
-      sileo.error({ title: 'No se pudo seleccionar toda la papelera', description: <FriendlyError error={error} /> })
+      sileo.error({
+        title: view === 'papelera' ? 'No se pudo seleccionar toda la papelera' : 'No se pudieron seleccionar todos los productos',
+        description: <FriendlyError error={error} />,
+      })
       return
     }
-    for (const item of data) titlesRef.current.set(item.id, item.titulo)
+    for (const item of data) knownRef.current.set(item.id, { titulo: item.titulo, activo: item.activo })
     selection.selectAll(data.map(item => item.id))
   }
 
-  const openBulk = (kind: 'restore' | 'delete') => {
+  const openBulk = (kind: BulkKind) => {
     if (bulkAction || selection.count === 0) return
-    const items = [...selection.selected].map(id => ({ id, titulo: titlesRef.current.get(id) ?? `Producto ID ${id}` }))
+    const items = [...selection.selected].map(id => {
+      const known = knownRef.current.get(id)
+      return { id, titulo: known?.titulo ?? `Producto ID ${id}`, activo: known?.activo }
+    })
     setBulkAction({ kind, items })
   }
 
@@ -336,13 +358,13 @@ export default function ProductsAdminPage() {
           trash={view === 'papelera'}
           onRestore={handleRestore}
           onDeletePermanent={setDeleteTarget}
-          selection={view === 'papelera' ? {
+          selection={{
             isSelected: selection.isSelected,
             toggle: (id, shiftKey) => selection.toggle(id, { shiftKey, orderedIds: visibleIds }),
             headerState: pageSelectionState,
             toggleAll: () => selection.toggleMany(visibleIds),
             disabled: !!bulkAction,
-          } : undefined}
+          }}
         />
       )}
 
@@ -412,41 +434,88 @@ export default function ProductsAdminPage() {
       {bulkAction?.kind === 'delete' && (
         <BulkDeleteProductsDialog items={bulkAction.items} onClose={() => setBulkAction(null)} onFinished={finishBulk} />
       )}
+      {(bulkAction?.kind === 'activate' || bulkAction?.kind === 'deactivate') && (
+        <BulkActiveProductsDialog
+          activo={bulkAction.kind === 'activate'}
+          items={bulkAction.items}
+          onClose={() => setBulkAction(null)}
+          onFinished={finishBulk}
+        />
+      )}
+      {bulkAction?.kind === 'archive' && (
+        <BulkArchiveProductsDialog items={bulkAction.items} onClose={() => setBulkAction(null)} onFinished={finishBulk} />
+      )}
     </div>
 
-      {/* Acciones masivas de la papelera: sticky abajo, dentro del <main> que scrollea */}
-      {view === 'papelera' && (
-        <BulkActionBar
-          count={selection.count}
-          onClear={selection.clear}
-          busy={!!bulkAction}
-          selectAll={totalPages > 1 && pageSelectionState === 'all' && selection.count < total ? {
-            label: `Seleccionar los ${total.toLocaleString('es-AR')} de la papelera`,
-            onSelect: () => void selectAllInTrash(),
-            loading: selectingAll,
-          } : undefined}
-        >
-          <button
-            type="button"
-            onClick={() => openBulk('restore')}
-            disabled={!!bulkAction}
-            className="inline-flex items-center justify-center gap-1.5 min-h-11 md:min-h-9 px-3 text-sm font-medium text-[#185749] dark:text-[#1CAAA8] border border-[#185749]/30 dark:border-[#1CAAA8]/30 hover:bg-[#185749]/5 dark:hover:bg-[#1CAAA8]/10 rounded-lg transition-colors cursor-pointer disabled:opacity-50 whitespace-nowrap"
-          >
-            <RotateCcw className="w-4 h-4" aria-hidden="true" />
-            Restaurar
-          </button>
-          <button
-            type="button"
-            onClick={() => openBulk('delete')}
-            disabled={!!bulkAction}
-            className="inline-flex items-center justify-center gap-1.5 min-h-11 md:min-h-9 px-3 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors cursor-pointer disabled:opacity-50 whitespace-nowrap"
-          >
-            <Trash2 className="w-4 h-4" aria-hidden="true" />
-            <span className="md:hidden">Eliminar</span>
-            <span className="hidden md:inline">Eliminar definitivamente</span>
-          </button>
-        </BulkActionBar>
-      )}
+      {/* Acciones masivas: sticky abajo, dentro del <main> que scrollea */}
+      <BulkActionBar
+        count={selection.count}
+        onClear={selection.clear}
+        busy={!!bulkAction}
+        selectAll={totalPages > 1 && pageSelectionState === 'all' && selection.count < total ? {
+          label: view === 'papelera'
+            ? `Seleccionar los ${total.toLocaleString('es-AR')} de la papelera`
+            : hasListFilters
+              ? `Seleccionar los ${total.toLocaleString('es-AR')} productos filtrados`
+              : `Seleccionar los ${total.toLocaleString('es-AR')} productos`,
+          onSelect: () => void selectAllFiltered(),
+          loading: selectingAll,
+        } : undefined}
+      >
+        {view === 'productos' ? (
+          <>
+            <button
+              type="button"
+              onClick={() => openBulk('activate')}
+              disabled={!!bulkAction}
+              className="inline-flex items-center justify-center gap-1.5 min-h-11 md:min-h-9 px-3 text-sm font-medium text-[#185749] dark:text-[#1CAAA8] border border-[#185749]/30 dark:border-[#1CAAA8]/30 hover:bg-[#185749]/5 dark:hover:bg-[#1CAAA8]/10 rounded-lg transition-colors cursor-pointer disabled:opacity-50 whitespace-nowrap"
+            >
+              <Eye className="w-4 h-4" aria-hidden="true" />
+              Activar
+            </button>
+            <button
+              type="button"
+              onClick={() => openBulk('deactivate')}
+              disabled={!!bulkAction}
+              className="inline-flex items-center justify-center gap-1.5 min-h-11 md:min-h-9 px-3 text-sm font-medium text-gray-700 dark:text-white/70 border border-gray-200 dark:border-white/15 hover:bg-gray-50 dark:hover:bg-white/5 rounded-lg transition-colors cursor-pointer disabled:opacity-50 whitespace-nowrap"
+            >
+              <EyeOff className="w-4 h-4" aria-hidden="true" />
+              Desactivar
+            </button>
+            <button
+              type="button"
+              onClick={() => openBulk('archive')}
+              disabled={!!bulkAction}
+              className="inline-flex items-center justify-center gap-1.5 min-h-11 md:min-h-9 px-3 text-sm font-medium text-red-700 dark:text-red-400 border border-red-200 dark:border-red-500/30 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors cursor-pointer disabled:opacity-50 whitespace-nowrap"
+            >
+              <Trash2 className="w-4 h-4" aria-hidden="true" />
+              Enviar a la papelera
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => openBulk('restore')}
+              disabled={!!bulkAction}
+              className="inline-flex items-center justify-center gap-1.5 min-h-11 md:min-h-9 px-3 text-sm font-medium text-[#185749] dark:text-[#1CAAA8] border border-[#185749]/30 dark:border-[#1CAAA8]/30 hover:bg-[#185749]/5 dark:hover:bg-[#1CAAA8]/10 rounded-lg transition-colors cursor-pointer disabled:opacity-50 whitespace-nowrap"
+            >
+              <RotateCcw className="w-4 h-4" aria-hidden="true" />
+              Restaurar
+            </button>
+            <button
+              type="button"
+              onClick={() => openBulk('delete')}
+              disabled={!!bulkAction}
+              className="inline-flex items-center justify-center gap-1.5 min-h-11 md:min-h-9 px-3 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors cursor-pointer disabled:opacity-50 whitespace-nowrap"
+            >
+              <Trash2 className="w-4 h-4" aria-hidden="true" />
+              <span className="md:hidden">Eliminar</span>
+              <span className="hidden md:inline">Eliminar definitivamente</span>
+            </button>
+          </>
+        )}
+      </BulkActionBar>
     </div>
   )
 }

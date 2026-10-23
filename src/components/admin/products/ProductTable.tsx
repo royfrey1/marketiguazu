@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from 'react'
 import SelectionCheckbox from '../SelectionCheckbox'
 import type { SelectionState } from '../../../hooks/useRowSelection'
 
-/** Selección de filas para acciones masivas (por ahora solo en la papelera) */
+/** Selección de filas para acciones masivas (Productos y Papelera) */
 export interface ProductTableSelection {
   isSelected: (id: number) => boolean
   /** shiftKey: rango desde el último tocado (escritorio) */

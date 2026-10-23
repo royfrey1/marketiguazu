@@ -147,6 +147,10 @@ export function toProductAdminError(error: unknown): ProductAdminError {
   if (code === '23505' && `${message} ${details ?? ''}`.includes('products_slug_key')) {
     return new ProductAdminError('SLUG_TAKEN', PRODUCT_ERROR_MESSAGES.SLUG_TAKEN, code)
   }
+  // CHECK products_trash_inactive_chk: activar un producto que está en la papelera
+  if (code === '23514' && `${message} ${details ?? ''}`.includes('products_trash_inactive_chk')) {
+    return new ProductAdminError('PRODUCT_IN_TRASH', PRODUCT_ERROR_MESSAGES.PRODUCT_IN_TRASH, code)
+  }
   return new ProductAdminError('UNKNOWN', message || 'Ocurrió un error inesperado. Intentá de nuevo.', code)
 }
 
@@ -341,6 +345,42 @@ export const productsService = {
         .order('deleted_at', { ascending: false })
         .order('id', { ascending: true })
         .range(from, from + CHUNK - 1)
+      if (error) return { data: [], error: new Error(error.message) }
+      items.push(...(data ?? []))
+      if (!data || data.length < CHUNK) break
+    }
+    return { data: items, error: null }
+  },
+
+  /**
+   * Todos los productos fuera de la papelera que coinciden con los filtros (búsqueda, categoría, estado y
+   * oferta; solo id, título y estado), para "Seleccionar los N productos". De a 1000 filas, como getTrashItems.
+   */
+  async getProductItems(
+    filters: Pick<AdminProductFilters, 'search' | 'category_id' | 'activo' | 'en_oferta'> = {}
+  ): Promise<{ data: { id: number; titulo: string; activo: boolean }[]; error: Error | null }> {
+    let offerIds: number[] | null = null
+    if (filters.en_oferta) {
+      const { data: offerRows, error: offerError } = await supabase
+        .from('products_ofertas')
+        .select('id')
+        .eq('en_oferta_efectivo', true)
+      if (offerError) return { data: [], error: new Error(offerError.message) }
+      offerIds = (offerRows ?? []).map(row => row.id).filter((id): id is number => id !== null)
+      if (offerIds.length === 0) return { data: [], error: null }
+    }
+    const CHUNK = 1000
+    const items: { id: number; titulo: string; activo: boolean }[] = []
+    for (let from = 0; ; from += CHUNK) {
+      let query = supabase.from('products').select('id, titulo, activo').is('deleted_at', null)
+      if (filters.search && filters.search.trim()) {
+        const term = filters.search.trim()
+        query = query.or(`titulo.ilike.%${term}%,marca.ilike.%${term}%,slug.ilike.%${term}%`)
+      }
+      if (filters.category_id) query = query.eq('category_id', filters.category_id)
+      if (filters.activo !== undefined) query = query.eq('activo', filters.activo)
+      if (offerIds) query = query.in('id', offerIds)
+      const { data, error } = await query.order('id', { ascending: true }).range(from, from + CHUNK - 1)
       if (error) return { data: [], error: new Error(error.message) }
       items.push(...(data ?? []))
       if (!data || data.length < CHUNK) break
@@ -658,6 +698,22 @@ export const productsService = {
 
     if (!error) clearAvailabilityCache()
     return { data, error }
+  },
+
+  /**
+   * toggleActive para varios productos en un solo UPDATE (activo y nada más, igual que el individual).
+   * Devuelve los ids que el servidor actualizó: los que faltan no existen o no se pudieron cambiar.
+   */
+  async setActiveMany(ids: number[], activo: boolean): Promise<{ data: number[]; error: ProductAdminError | null }> {
+    const { data, error } = await supabase
+      .from('products')
+      .update({ activo })
+      .in('id', ids)
+      .select('id')
+
+    if (error) return { data: [], error: toProductAdminError(error) }
+    if (data && data.length > 0) clearAvailabilityCache()
+    return { data: (data ?? []).map(row => row.id), error: null }
   },
 
   async toggleDestacado(id: number, destacado: boolean) {

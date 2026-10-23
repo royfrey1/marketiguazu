@@ -279,20 +279,37 @@ Solo frontend: sin migraciones ni cambios de backend (las acciones masivas reuti
 **Mensajes amables:**
 - `FriendlyError` con detalle técnico plegable para errores inesperados en borrado individual, masivo y restaurar.
 
-**Piezas reutilizables (creadas, aún NO conectadas a Productos ni Inventario):**
+**Piezas reutilizables (conectadas en Papelera y Productos; Inventario aún no):**
 - `useRowSelection(resetKey)`, `SelectionCheckbox`, `BulkActionBar`, `BulkProgress`, `FriendlyError`.
+
+**Productos masivo (Etapa 2A):**
+- Pestaña Productos: casillas por fila/cabecera/tarjetas mobile con Shift+click; la selección persiste entre páginas y se limpia al cambiar de pestaña, búsqueda, categoría, estado, oferta u orden; "Seleccionar los N productos (filtrados)" con `getProductItems` (solo lectura, de a 1.000, excluye papelera).
+- **Activar/Desactivar masivo:** `setActiveMany` = UPDATE de la columna `activo` en tandas de hasta 100 con `.in('id')` y `.select('id')` + `clearAvailabilityCache()`; replica el toggle individual (UPDATE directo, sin validaciones extra); los ids que no vuelven se reportan como "ya no existe"; si una tanda falla se reintenta de a uno; el CHECK de papelera se mapea a un mensaje amable; sin botón Detener.
+- **Enviar a la papelera masivo:** `archive_admin_product` de a uno con progreso, botón Detener, modal **no descartable** mientras corre, resumen de enviados/no enviados; sin "Deshacer" (recuperación: Papelera → Restaurar masivo → Activar masivo).
+- Los procesados con éxito — y los que fallan por "ya en papelera", "ya no existe" o CHECK de papelera — salen de la selección; los demás fallidos quedan seleccionados.
 
 **Modal compartido:**
 - Nueva prop `dismissible` (default **true** → sin cambio de comportamiento para los modales existentes); en `false` bloquea Esc, click afuera y la X, con parche contra el cierre de Chrome ante Esc repetidos.
 
 **Pendientes nuevos:**
-- Bulk en la tabla de Productos (enviar a papelera, activar/desactivar, destacar); el cambio masivo de precio requiere RPC propia respetando `precio > 0`, ofertas y variantes.
+- Bulk en la tabla de Productos: **Etapa 2A hecha** (activar/desactivar y enviar a papelera); faltan **destacar** y el **cambio masivo de precio** (Etapa 2B, requiere RPC propia respetando `precio > 0`, ofertas y variantes).
 - Bulk en Inventario: cambios de stock con RPC que registre `inventory_movements`.
+- Barra de acciones en mobile ocupa ~238 px (acortar etiquetas, p. ej. "Papelera").
+- Tandas de más de 100 ids no probadas (probar con 250 simulados en la Etapa 2B).
+- "En oferta" mide 38 px en mobile (preexistente); la columna Categoría se parte en dos renglones a 1269 px por la columna de casillas.
+- Activar/Desactivar sin botón Detener (decisión de la 2A).
 - Revisar el parche del `Modal` si se agregan más modales no descartables; el borrado individual sigue permitiendo Esc mientras corre.
 - Restaurar masivo sin botón Detener (decisión: no hace falta).
 - `getTrashItems` (solo lectura, hasta 1.000) para el "Seleccionar los N".
 - Títulos de avisos de Sileo capitalizados (preexistente).
 - **Convención QA reafirmada:** en toda pantalla del admin, `document.documentElement.scrollHeight == window.innerHeight`.
+
+**Plan Etapa 2B (cambio masivo de precios) — decisiones del dueño:**
+- Tres modos: porcentaje, monto fijo y precio exacto; redondeo opcional (Ninguno por defecto, $10, $100, $1.000).
+- Aplica a **todas** las variantes de cada producto seleccionado (y al precio base); precio exacto en productos con variantes las deja al mismo precio, con aviso en la vista previa.
+- Productos cuyo nuevo precio deje la oferta inválida se marcan en la vista previa y **NO** se modifican (el dueño los resuelve a mano).
+- Vista previa "antes → después" obligatoria; aplicación **atómica** (todo o nada) con registro en `price_history`; botón **Deshacer** obligatorio en el aviso final.
+- Backend con RPC nueva respetando `precio > 0` y papelera.
 
 ---
 
