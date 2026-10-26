@@ -8,7 +8,7 @@ interface ModalProps {
   children: ReactNode
   className?: string
   closeOnOverlay?: boolean
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg' | 'xl'
   footer?: ReactNode
   hideCloseButton?: boolean
   /** false: no se cierra con Esc, click afuera ni la X (por ejemplo, mientras corre una acción) */
@@ -19,6 +19,7 @@ const SIZE_CLASSES = {
   sm: 'max-w-md',
   md: 'max-w-lg',
   lg: 'max-w-xl',
+  xl: 'max-w-4xl',
 } as const
 
 export default function Modal({

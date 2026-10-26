@@ -10,7 +10,7 @@ interface BulkActionBarProps {
   /** Acciones (botones) para la selección */
   children: ReactNode
   /** "Seleccionar los N de …": solo cuando la lista ocupa varias páginas y no está todo seleccionado */
-  selectAll?: { label: string; onSelect: () => void; loading?: boolean }
+  selectAll?: { label: string; /** En mobile, para que la barra no crezca */ shortLabel?: string; onSelect: () => void; loading?: boolean }
   /** Mientras corre una acción: sin limpiar ni seleccionar más */
   busy?: boolean
 }
@@ -47,22 +47,31 @@ export default function BulkActionBar({
             <button
               type="button"
               onClick={selectAll.onSelect}
+              aria-label={selectAll.label}
               disabled={busy || selectAll.loading}
-              className="inline-flex items-center gap-1.5 min-h-11 md:min-h-9 px-2 text-sm font-medium text-[#185749] dark:text-[#1CAAA8] hover:underline rounded-lg cursor-pointer disabled:opacity-50 disabled:cursor-wait"
+              className="inline-flex items-center gap-1.5 min-h-11 lg:min-h-9 px-2 text-sm font-medium text-[#185749] dark:text-[#1CAAA8] hover:underline rounded-lg cursor-pointer disabled:opacity-50 disabled:cursor-wait"
             >
               {selectAll.loading && <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />}
-              {selectAll.label}
+              {selectAll.shortLabel ? (
+                <>
+                  <span className="md:hidden">{selectAll.shortLabel}</span>
+                  <span className="hidden md:inline">{selectAll.label}</span>
+                </>
+              ) : selectAll.label}
             </button>
           )}
           {visible && (
             <button
               type="button"
               onClick={onClear}
+              aria-label="Limpiar selección"
               disabled={busy}
-              className="inline-flex items-center gap-1 min-h-11 md:min-h-9 px-2 text-sm text-gray-500 dark:text-white/50 hover:text-gray-800 dark:hover:text-white/80 rounded-lg cursor-pointer disabled:opacity-50"
+              title="Limpiar selección"
+              className="inline-flex items-center justify-center gap-1 min-h-11 min-w-11 lg:min-h-9 md:min-w-0 md:px-2 text-sm text-gray-500 dark:text-white/50 hover:text-gray-800 dark:hover:text-white/80 rounded-lg cursor-pointer disabled:opacity-50"
             >
-              <X className="w-3.5 h-3.5" aria-hidden="true" />
-              Limpiar selección
+              {/* En mobile solo la X (la barra entra en 2 renglones); el nombre accesible es el aria-label */}
+              <X className="w-4 h-4 md:w-3.5 md:h-3.5" aria-hidden="true" />
+              <span className="hidden md:inline">Limpiar selección</span>
             </button>
           )}
         </div>

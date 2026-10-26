@@ -280,7 +280,8 @@ Solo frontend: sin migraciones ni cambios de backend (las acciones masivas reuti
 - `FriendlyError` con detalle técnico plegable para errores inesperados en borrado individual, masivo y restaurar.
 
 **Piezas reutilizables (conectadas en Papelera y Productos; Inventario aún no):**
-- `useRowSelection(resetKey)`, `SelectionCheckbox`, `BulkActionBar`, `BulkProgress`, `FriendlyError`.
+- `useRowSelection(resetKey)`, `SelectionCheckbox`, `BulkActionBar`, `BulkProgress`, `FriendlyError` (con la nueva prop opcional `detail` para el detalle técnico plegable).
+- De la Etapa 2B: `BulkPriceChangeDialog`, `PriceChangePreview`, `UndoPriceChangeDialog`, `RecentPriceChangesDialog`; el cálculo de modos/redondeo y las reglas de exclusión viven en `src/lib/priceChange.ts` y el contrato de las RPC en `src/services/priceChange.service.ts`.
 
 **Productos masivo (Etapa 2A):**
 - Pestaña Productos: casillas por fila/cabecera/tarjetas mobile con Shift+click; la selección persiste entre páginas y se limpia al cambiar de pestaña, búsqueda, categoría, estado, oferta u orden; "Seleccionar los N productos (filtrados)" con `getProductItems` (solo lectura, de a 1.000, excluye papelera).
@@ -292,7 +293,7 @@ Solo frontend: sin migraciones ni cambios de backend (las acciones masivas reuti
 - Nueva prop `dismissible` (default **true** → sin cambio de comportamiento para los modales existentes); en `false` bloquea Esc, click afuera y la X, con parche contra el cierre de Chrome ante Esc repetidos.
 
 **Pendientes nuevos:**
-- Bulk en la tabla de Productos: **Etapa 2A hecha** (activar/desactivar y enviar a papelera); faltan **destacar** y el **cambio masivo de precio** (Etapa 2B, requiere RPC propia respetando `precio > 0`, ofertas y variantes).
+- Bulk en la tabla de Productos: **Etapa 2A hecha** (activar/desactivar y enviar a papelera) y **Etapa 2B hecha** (cambio masivo de precios, ver sección propia); falta **destacar**.
 - Bulk en Inventario: cambios de stock con RPC que registre `inventory_movements`.
 - Barra de acciones en mobile ocupa ~238 px (acortar etiquetas, p. ej. "Papelera").
 - Tandas de más de 100 ids no probadas (probar con 250 simulados en la Etapa 2B).
@@ -310,6 +311,45 @@ Solo frontend: sin migraciones ni cambios de backend (las acciones masivas reuti
 - Productos cuyo nuevo precio deje la oferta inválida se marcan en la vista previa y **NO** se modifican (el dueño los resuelve a mano).
 - Vista previa "antes → después" obligatoria; aplicación **atómica** (todo o nada) con registro en `price_history`; botón **Deshacer** obligatorio en el aviso final.
 - Backend con RPC nueva respetando `precio > 0` y papelera.
+
+---
+
+## 💰 Cambio masivo de precios (Etapa 2B) (2026-10)
+
+### Backend (migración `20261023120000_bulk_price_change.sql`, aplicada 2026-10-23)
+
+- **Tabla `price_change_batches`**: lotes con `created_by`, `meta` (auditoría: modo/valor/redondeo), contadores de productos/variantes, `undo_of` (lote padre de un deshacer) y `undone_at`/`undone_by`. RLS activo con SELECT solo para admin; sin policies de escritura (la escritura es solo vía RPC).
+- **`price_history.batch_id`**: columna FK a la tabla de lotes + índice parcial `WHERE batch_id IS NOT NULL`. El CHECK de `origen` ya admitía `'bulk_update'`; el XOR product/variant quedó intacto.
+- **3 RPC** (`SECURITY DEFINER`, `search_path = public, pg_temp`; EXECUTE solo `authenticated` y `service_role`):
+  - `apply_price_change_bulk(p_items jsonb, p_meta jsonb)`: **solo cambia la columna `precio`** (nunca `precio_anterior` ni `en_oferta`); **todo o nada**; concurrencia optimista con `expected_precio` por fila; bloqueo `SELECT ... FOR UPDATE ORDER BY id` en products y variantes (anti-deadlock); máximo **500 filas** por llamada (productos + variantes, sin partir el lote); registra `price_history` con `origen='bulk_update'`, `user_id` y `batch_id` (XOR intacto); las filas cuyo precio no cambia se cuentan `unchanged` sin historial ni lote.
+  - `undo_price_change_bulk(p_batch_id)`: restaura el precio del historial del lote; salta las filas cuyo precio se alteró después (`precio_cambiado`) o que ya no existen (`no_existe`); crea un lote hijo con `undo_of` y marca el original con `undone_at` (solo si restauró algo); no se puede deshacer un deshacer.
+  - `list_recent_price_batches(p_limit)`: últimos 10 lotes (máx. 50) para la UI.
+- **Tests**: 69/69 aserciones dentro de una transacción con ROLLBACK (fixtures descartables, cero escrituras reales); lote sintético de 500 filas en **~163 ms** (timeout del rol `authenticated` = 8 s); `update_admin_product`, `update_product_variant` y `delete_product_variant` sin cambios (md5 idénticos).
+- **Códigos de error** (PostgREST los expone como `code`, `message` y `details`): `P4003` no admin; `P4094` lote inválido (vacío, >500 filas, meta >2 KB); `22023` precio inválido; `P4095` no existe / variante ajena / id duplicado; `P4043` en papelera; `P4096` precio cambiado (concurrencia optimista y doble envío); `P4097` la oferta quedaría inválida; `P4098` lote inexistente; `P4099` ya deshecho o es un deshacer. Con varios problemas el `code` es el de mayor prioridad (**P4095 > P4043 > P4096 > P4097**) y `details` trae `{"problems":[{"product_id","variant_id","motivo"}]}`.
+
+### Frontend
+
+- Botón **"Cambiar precios"** en la barra de selección de Productos (no en la Papelera).
+- Modos **porcentaje** (subir/bajar), **monto fijo** (sumar/restar) y **precio exacto**; redondeo opcional: Ninguno (peso entero), $10, $100, $1.000 (mitad hacia arriba).
+- Aplica a **todas** las variantes de cada producto (activas e inactivas) y al precio base.
+- **Vista previa obligatoria** "antes → después" con contadores, filtros e insignias; **exclusión por producto entero** (no se modifica nada del producto) si una oferta quedaría inválida, el precio resultante es ≤ 0, el producto está en la papelera o ya no existe.
+- En modo precio exacto con variantes de precios distintos, **casilla obligatoria** de confirmación; aviso destacado cuando un cambio supera 50%.
+- Se envían **solo los productos con cambios, con todas sus filas**; tope de 500 filas **bloqueado en la UI** (nunca se parte el lote); aplicación en **una sola llamada** con modal **no descartable**.
+- Aviso final con botón **Deshacer** y diálogo **"Cambios recientes"** (últimos 10 lotes; el Deshacer de un lote queda disponible tras recargar). Deshacer **parcial**: los precios alterados después no se tocan.
+- Errores amables con **detalle técnico plegable** (`FriendlyError` acepta `detail` opcional); ante `P4096` la vista previa se regenera sola.
+- Archivos nuevos: `src/lib/priceChange.ts`, `src/services/priceChange.service.ts`, `BulkPriceChangeDialog`, `PriceChangePreview`, `UndoPriceChangeDialog`, `RecentPriceChangesDialog`; `Modal` suma `size="xl"`.
+
+**Pendientes nuevos:**
+- Regenerar los tipos de Supabase (las 3 RPC se llaman sin tipar en el servicio).
+- Confirmar en la prueba real el formato del error de PostgREST (`code`/`message`/`details` como string).
+- Paginación de variantes de más de 1.000 filas por tanda no probada.
+- Barra de selección a 320 px ocupa 3 renglones.
+- Sin fechas de vigencia de ofertas (el modelo no las tiene; ver sección Ofertas).
+- Prueba manual en producción con productos descartables (llamados "PRUEBA") a cargo del dueño.
+
+**Camino de recuperación:** Deshacer desde el aviso final o desde "Cambios recientes"; respaldo local de la migración, volcados de tablas y `revert.sql` en `backup/2026-10-23-precios-masivos/` (ignorada por git).
+
+**Etapa 3 (plan):** acciones masivas en Inventario (ajuste de stock con RPC que registre `inventory_movements`; **ojo** con el trigger `trg_validate_movement_direction`, que valida la dirección de los movimientos).
 
 ---
 

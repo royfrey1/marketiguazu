@@ -7,6 +7,8 @@ export interface KeyedError {
   key?: string
   message: string
   code?: string | null
+  /** Texto técnico para el detalle plegable (también en errores conocidos). Sin esto, el inesperado usa message */
+  detail?: string
 }
 
 const isUnexpectedError = (error: KeyedError) => !error.key || error.key === 'UNKNOWN'
@@ -19,13 +21,14 @@ export default function FriendlyError({ error, prefix }: { error: KeyedError; pr
   const [open, setOpen] = useState(false)
   const detailId = useId()
 
-  if (!isUnexpectedError(error)) {
+  const unexpected = isUnexpectedError(error)
+  if (!unexpected && !error.detail) {
     return <>{prefix}{error.message}</>
   }
 
   return (
     <>
-      {prefix}{GENERIC_ERROR_MESSAGE}{' '}
+      {prefix}{unexpected ? GENERIC_ERROR_MESSAGE : error.message}{' '}
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
@@ -36,7 +39,7 @@ export default function FriendlyError({ error, prefix }: { error: KeyedError; pr
         {open ? 'Ocultar detalle técnico' : 'Ver detalle técnico'}
       </button>
       <span id={detailId} hidden={!open} className="block mt-1 font-mono text-xs break-words opacity-80">
-        {error.message}{error.code ? ` (código ${error.code})` : ''}
+        {error.detail ?? `${error.message}${error.code ? ` (código ${error.code})` : ''}`}
       </span>
     </>
   )

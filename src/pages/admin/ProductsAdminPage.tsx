@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { Eye, EyeOff, Loader2, Plus, RefreshCw, RotateCcw, Trash2 } from 'lucide-react'
+import { CheckCircle2, Eye, EyeOff, History, Loader2, Plus, RefreshCw, RotateCcw, Tag, Trash2, X } from 'lucide-react'
 import { sileo } from 'sileo'
 import { useAdminProducts, useActiveCategories } from '../../hooks/useAdminProducts'
 import { useRowSelection } from '../../hooks/useRowSelection'
@@ -18,16 +18,24 @@ import BulkRestoreProductsDialog from '../../components/admin/products/BulkResto
 import BulkDeleteProductsDialog from '../../components/admin/products/BulkDeleteProductsDialog'
 import BulkActiveProductsDialog, { type BulkActiveItem } from '../../components/admin/products/BulkActiveProductsDialog'
 import BulkArchiveProductsDialog from '../../components/admin/products/BulkArchiveProductsDialog'
+import BulkPriceChangeDialog, { type PriceChangeApplied } from '../../components/admin/products/BulkPriceChangeDialog'
+import RecentPriceChangesDialog from '../../components/admin/products/RecentPriceChangesDialog'
+import UndoPriceChangeDialog, { type UndoOutcome } from '../../components/admin/products/UndoPriceChangeDialog'
 import BulkActionBar from '../../components/admin/BulkActionBar'
 import FriendlyError from '../../components/admin/FriendlyError'
 import Modal from '../../components/ui/Modal'
 import Skeleton from '../../components/ui/Skeleton'
 
 type ProductsView = 'productos' | 'papelera'
-type BulkKind = 'restore' | 'delete' | 'activate' | 'deactivate' | 'archive'
+type BulkKind = 'restore' | 'delete' | 'activate' | 'deactivate' | 'archive' | 'price'
 
 // Foco inicial en Cancelar: showModal() respeta el atributo autofocus
 const autofocusRef = (el: HTMLElement | null) => el?.setAttribute('autofocus', '')
+
+const plural = (n: number, one: string, many: string) => `${n.toLocaleString('es-AR')} ${n === 1 ? one : many}`
+
+// Botones de la barra de selección de Productos: en mobile, ícono arriba y etiqueta corta (los 4 en un renglón)
+const barButton = 'inline-flex flex-col md:flex-row items-center justify-center gap-0.5 md:gap-1.5 min-h-tap lg:min-h-9 px-1 md:px-3 py-1 md:py-0 text-xs md:text-sm font-medium border rounded-lg transition-colors cursor-pointer disabled:opacity-50 whitespace-nowrap'
 
 export default function ProductsAdminPage() {
   const [view, setView] = useState<ProductsView>('productos')
@@ -66,6 +74,11 @@ export default function ProductsAdminPage() {
   const knownRef = useRef(new Map<number, { titulo: string; activo: boolean }>())
   const [selectingAll, setSelectingAll] = useState(false)
   const [bulkAction, setBulkAction] = useState<{ kind: BulkKind; items: BulkActiveItem[] } | null>(null)
+  // Último cambio masivo de precios aplicado: aviso con Deshacer (en el flujo de la página, no fijo)
+  const [priceNotice, setPriceNotice] = useState<PriceChangeApplied | null>(null)
+  // Lote que se está deshaciendo desde el aviso (aparte del aviso: el resultado se ve aunque el aviso se oculte)
+  const [noticeUndoBatch, setNoticeUndoBatch] = useState<string | null>(null)
+  const [recentOpen, setRecentOpen] = useState(false)
 
   useEffect(() => {
     selectionKeyRef.current = selectionKey
@@ -169,6 +182,24 @@ export default function ProductsAdminPage() {
   }, [selection, refreshAll])
 
 
+  const handlePriceApplied = (result: PriceChangeApplied) => {
+    setBulkAction(null)
+    setPriceNotice(result)
+    selection.clear()
+    refreshAll()
+  }
+
+  /** Resultado de un Deshacer (desde el aviso o desde Cambios recientes) */
+  const handleUndoOutcome = (batchId: string, outcome: UndoOutcome) => {
+    if (outcome === 'restored' || outcome === 'already') {
+      setPriceNotice(current => (current?.batchId === batchId ? null : current))
+    }
+    if (outcome === 'restored') {
+      selection.clear()
+      refreshAll()
+    }
+  }
+
   const confirmArchive = async () => {
     if (!archiveTarget || archiving) return
     const product = archiveTarget
@@ -238,6 +269,16 @@ export default function ProductsAdminPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {view === 'productos' && (
+            <button
+              type="button"
+              onClick={() => setRecentOpen(true)}
+              className="flex items-center gap-1.5 min-h-tap sm:min-h-0 px-3 py-2 text-sm font-medium text-gray-600 dark:text-white/60 border border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
+            >
+              <History className="w-4 h-4" aria-hidden="true" />
+              Cambios recientes
+            </button>
+          )}
           <button
             onClick={() => refreshAll()}
             className="p-2 text-gray-400 dark:text-white/30 hover:text-gray-600 dark:hover:text-white/60 hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
@@ -254,6 +295,38 @@ export default function ProductsAdminPage() {
             <span className="sm:hidden">Nuevo</span>
           </Link>
         </div>
+      </div>
+
+      {/* Aviso del último cambio masivo de precios (con Deshacer); la región queda montada para anunciarlo */}
+      <div aria-live="polite">
+        {priceNotice && (
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-xl border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-900/20 px-4 py-3">
+            <p className="flex items-start gap-2 text-sm text-emerald-900 dark:text-emerald-200 min-w-0">
+              <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
+              <span>
+                Se cambiaron los precios de {plural(priceNotice.products, 'producto', 'productos')} ({plural(priceNotice.variants, 'variante', 'variantes')}).
+              </span>
+            </p>
+            <div className="flex gap-2 sm:ml-auto shrink-0">
+              <button
+                type="button"
+                onClick={() => setNoticeUndoBatch(priceNotice.batchId)}
+                className="inline-flex items-center justify-center gap-1.5 min-h-tap sm:min-h-9 px-3 text-sm font-medium text-[#185749] dark:text-[#1CAAA8] bg-white dark:bg-transparent border border-[#185749]/30 dark:border-[#1CAAA8]/30 hover:bg-[#185749]/5 dark:hover:bg-[#1CAAA8]/10 rounded-lg cursor-pointer"
+              >
+                <RotateCcw className="w-4 h-4" aria-hidden="true" />
+                Deshacer
+              </button>
+              <button
+                type="button"
+                onClick={() => setPriceNotice(null)}
+                className="inline-flex items-center justify-center gap-1 min-h-tap sm:min-h-9 px-3 text-sm text-gray-600 dark:text-white/60 hover:text-gray-800 dark:hover:text-white/80 rounded-lg cursor-pointer"
+              >
+                <X className="w-4 h-4" aria-hidden="true" />
+                Cerrar
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Error */}
@@ -445,6 +518,24 @@ export default function ProductsAdminPage() {
       {bulkAction?.kind === 'archive' && (
         <BulkArchiveProductsDialog items={bulkAction.items} onClose={() => setBulkAction(null)} onFinished={finishBulk} />
       )}
+      {bulkAction?.kind === 'price' && (
+        <BulkPriceChangeDialog
+          items={bulkAction.items}
+          onClose={() => setBulkAction(null)}
+          onApplied={handlePriceApplied}
+          onOpenRecent={() => setRecentOpen(true)}
+        />
+      )}
+      {recentOpen && (
+        <RecentPriceChangesDialog onClose={() => setRecentOpen(false)} onUndone={handleUndoOutcome} />
+      )}
+      {noticeUndoBatch && (
+        <UndoPriceChangeDialog
+          batchId={noticeUndoBatch}
+          onClose={() => setNoticeUndoBatch(null)}
+          onFinished={outcome => handleUndoOutcome(noticeUndoBatch, outcome)}
+        />
+      )}
     </div>
 
       {/* Acciones masivas: sticky abajo, dentro del <main> que scrollea */}
@@ -458,6 +549,7 @@ export default function ProductsAdminPage() {
             : hasListFilters
               ? `Seleccionar los ${total.toLocaleString('es-AR')} productos filtrados`
               : `Seleccionar los ${total.toLocaleString('es-AR')} productos`,
+          shortLabel: `Todos (${total.toLocaleString('es-AR')})`,
           onSelect: () => void selectAllFiltered(),
           loading: selectingAll,
         } : undefined}
@@ -466,9 +558,19 @@ export default function ProductsAdminPage() {
           <>
             <button
               type="button"
+              onClick={() => openBulk('price')}
+              disabled={!!bulkAction}
+              className={`${barButton} text-white bg-[#185749] hover:bg-[#0D3732] border-[#185749] dark:bg-[#1CAAA8] dark:hover:bg-[#1CAAA8]/90 dark:border-[#1CAAA8]`}
+            >
+              <Tag className="w-4 h-4" aria-hidden="true" />
+              <span className="md:hidden">Precios</span>
+              <span className="hidden md:inline">Cambiar precios</span>
+            </button>
+            <button
+              type="button"
               onClick={() => openBulk('activate')}
               disabled={!!bulkAction}
-              className="inline-flex items-center justify-center gap-1.5 min-h-11 md:min-h-9 px-3 text-sm font-medium text-[#185749] dark:text-[#1CAAA8] border border-[#185749]/30 dark:border-[#1CAAA8]/30 hover:bg-[#185749]/5 dark:hover:bg-[#1CAAA8]/10 rounded-lg transition-colors cursor-pointer disabled:opacity-50 whitespace-nowrap"
+              className={`${barButton} text-[#185749] dark:text-[#1CAAA8] border-[#185749]/30 dark:border-[#1CAAA8]/30 hover:bg-[#185749]/5 dark:hover:bg-[#1CAAA8]/10`}
             >
               <Eye className="w-4 h-4" aria-hidden="true" />
               Activar
@@ -477,7 +579,7 @@ export default function ProductsAdminPage() {
               type="button"
               onClick={() => openBulk('deactivate')}
               disabled={!!bulkAction}
-              className="inline-flex items-center justify-center gap-1.5 min-h-11 md:min-h-9 px-3 text-sm font-medium text-gray-700 dark:text-white/70 border border-gray-200 dark:border-white/15 hover:bg-gray-50 dark:hover:bg-white/5 rounded-lg transition-colors cursor-pointer disabled:opacity-50 whitespace-nowrap"
+              className={`${barButton} text-gray-700 dark:text-white/70 border-gray-200 dark:border-white/15 hover:bg-gray-50 dark:hover:bg-white/5`}
             >
               <EyeOff className="w-4 h-4" aria-hidden="true" />
               Desactivar
@@ -486,10 +588,11 @@ export default function ProductsAdminPage() {
               type="button"
               onClick={() => openBulk('archive')}
               disabled={!!bulkAction}
-              className="inline-flex items-center justify-center gap-1.5 min-h-11 md:min-h-9 px-3 text-sm font-medium text-red-700 dark:text-red-400 border border-red-200 dark:border-red-500/30 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors cursor-pointer disabled:opacity-50 whitespace-nowrap"
+              className={`${barButton} text-red-700 dark:text-red-400 border-red-200 dark:border-red-500/30 hover:bg-red-50 dark:hover:bg-red-900/20`}
             >
               <Trash2 className="w-4 h-4" aria-hidden="true" />
-              Enviar a la papelera
+              <span className="lg:hidden">Papelera</span>
+              <span className="hidden lg:inline">Enviar a la papelera</span>
             </button>
           </>
         ) : (
