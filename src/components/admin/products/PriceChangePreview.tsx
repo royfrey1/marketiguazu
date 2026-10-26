@@ -35,7 +35,7 @@ const TONES: Record<Tone, string> = {
   teal: 'bg-[#185749]/10 text-[#0D3732] dark:bg-[#1CAAA8]/15 dark:text-[#7fe0de]',
 }
 
-function Pill({ tone, icon, children }: { tone: Tone; icon?: ReactNode; children: ReactNode }) {
+export function Pill({ tone, icon, children }: { tone: Tone; icon?: ReactNode; children: ReactNode }) {
   return (
     <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-semibold leading-tight ${TONES[tone]}`}>
       {icon}

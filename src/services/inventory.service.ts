@@ -40,6 +40,48 @@ export type AdminInventoryFilters = {
   sort?: 'product_asc' | 'product_desc' | 'stock_asc' | 'stock_desc' | 'updated_asc' | 'updated_desc'
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ViewQuery = any
+
+/** Búsqueda y estado de stock sobre inventory_admin_view (la lista y "Seleccionar las N filas" usan los mismos) */
+export function applyInventoryFilters(query: ViewQuery, filters: AdminInventoryFilters): ViewQuery {
+  if (filters.search) {
+    query = query.ilike('product_titulo', `%${filters.search}%`)
+  }
+
+  if (filters.status === 'out_of_stock') {
+    query = query.lte('available', 0)
+  } else if (filters.status === 'low_stock') {
+    query = query.gt('available', 0)
+    query = query.lte('available', 5)
+  } else if (filters.status === 'in_stock') {
+    query = query.gt('available', 5)
+  }
+  return query
+}
+
+/**
+ * Filas base (sin variante): variantes activas y opción base del producto, en una sola consulta para
+ * todas las filas. Si falla, las filas quedan como antes (sin rótulo de opción base)
+ */
+export async function addBaseRowInfo<T extends Pick<InventoryAdminRow, 'product_id' | 'variant_id' | 'product_has_active_variants' | 'product_opcion_base_nombre'>>(rows: T[]) {
+  const baseProductIds = [...new Set(rows.filter(r => r.variant_id == null).map(r => r.product_id))]
+  if (baseProductIds.length === 0) return
+  const { data: products } = await supabase
+    .from('products')
+    .select('id, opcion_base_nombre, product_variants(id)')
+    .in('id', baseProductIds)
+    .eq('product_variants.activo', true)
+
+  const byId = new Map((products ?? []).map(p => [p.id, p]))
+  for (const row of rows) {
+    const product = row.variant_id == null ? byId.get(row.product_id) : undefined
+    if (!product) continue
+    row.product_has_active_variants = (product.product_variants ?? []).length > 0
+    row.product_opcion_base_nombre = product.opcion_base_nombre
+  }
+}
+
 export const inventoryService = {
   async getByProductId(productId: number) {
     const { data, error } = await supabase
@@ -69,23 +111,10 @@ export const inventoryService = {
   },
 
   async getAllAdmin(filters: AdminInventoryFilters = {}) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let query = (supabase as any)
-      .from('inventory_admin_view')
-      .select('*', { count: 'exact' })
-
-    if (filters.search) {
-      query = query.ilike('product_titulo', `%${filters.search}%`)
-    }
-
-    if (filters.status === 'out_of_stock') {
-      query = query.lte('available', 0)
-    } else if (filters.status === 'low_stock') {
-      query = query.gt('available', 0)
-      query = query.lte('available', 5)
-    } else if (filters.status === 'in_stock') {
-      query = query.gt('available', 5)
-    }
+    let query = applyInventoryFilters(
+      (supabase as ViewQuery).from('inventory_admin_view').select('*', { count: 'exact' }),
+      filters
+    )
 
     const sortColumnMap: Record<string, string> = {
       product_asc: 'product_titulo',
@@ -104,24 +133,7 @@ export const inventoryService = {
     const { data, error, count } = await query
     const rows = data as InventoryAdminRow[] | null
 
-    // Filas base (sin variante): variantes activas y opción base del producto, en una sola consulta para
-    // toda la lista. Si falla, las filas quedan como antes (sin rótulo de opción base)
-    const baseProductIds = [...new Set((rows ?? []).filter(r => r.variant_id == null).map(r => r.product_id))]
-    if (!error && baseProductIds.length > 0) {
-      const { data: products } = await supabase
-        .from('products')
-        .select('id, opcion_base_nombre, product_variants(id)')
-        .in('id', baseProductIds)
-        .eq('product_variants.activo', true)
-
-      const byId = new Map((products ?? []).map(p => [p.id, p]))
-      for (const row of rows ?? []) {
-        const product = row.variant_id == null ? byId.get(row.product_id) : undefined
-        if (!product) continue
-        row.product_has_active_variants = (product.product_variants ?? []).length > 0
-        row.product_opcion_base_nombre = product.opcion_base_nombre
-      }
-    }
+    if (!error && rows) await addBaseRowInfo(rows)
 
     return { data: rows, error, count }
   },

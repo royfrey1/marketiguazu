@@ -73,7 +73,7 @@ const radioCard = (checked: boolean) =>
 const btnPrimary = 'min-h-tap sm:min-h-0 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-[#185749] hover:bg-[#0D3732] dark:bg-[#1CAAA8] dark:hover:bg-[#1CAAA8]/90 text-white transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed'
 const btnSecondary = 'min-h-tap sm:min-h-0 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 dark:text-white/60 hover:text-gray-800 dark:hover:text-white/80 rounded-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed'
 
-function Alert({ tone, children, role }: { tone: 'red' | 'amber' | 'info'; children: ReactNode; role?: 'alert' | 'status' }) {
+export function Alert({ tone, children, role }: { tone: 'red' | 'amber' | 'info'; children: ReactNode; role?: 'alert' | 'status' }) {
   const styles = {
     red: 'border-red-200 bg-red-50 text-red-800 dark:border-red-500/30 dark:bg-red-900/20 dark:text-red-300',
     amber: 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-500/30 dark:bg-amber-900/20 dark:text-amber-200',

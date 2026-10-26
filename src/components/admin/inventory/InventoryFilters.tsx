@@ -1,12 +1,15 @@
+import type { ReactNode } from 'react'
 import type { AdminInventoryFilters } from '../../../services/inventory.service'
 
 interface InventoryFiltersProps {
   filters: AdminInventoryFilters
   onFiltersChange: (filters: AdminInventoryFilters) => void
   total: number
+  /** Botones secundarios al final de la fila (por ejemplo, "Cambios recientes") */
+  actions?: ReactNode
 }
 
-export default function InventoryFilters({ filters, onFiltersChange, total }: InventoryFiltersProps) {
+export default function InventoryFilters({ filters, onFiltersChange, total, actions }: InventoryFiltersProps) {
   const hasFilters = filters.search || (filters.status && filters.status !== 'all') || (filters.sort && filters.sort !== 'product_asc')
 
   return (
@@ -53,9 +56,12 @@ export default function InventoryFilters({ filters, onFiltersChange, total }: In
           </button>
         )}
 
-        <span className="text-xs text-gray-400 dark:text-white/30 ml-auto">
-          {total} {total === 1 ? 'item' : 'items'}
-        </span>
+        <div className="ml-auto flex items-center gap-3">
+          {actions}
+          <span className="text-xs text-gray-400 dark:text-white/30">
+            {total} {total === 1 ? 'item' : 'items'}
+          </span>
+        </div>
       </div>
     </div>
   )

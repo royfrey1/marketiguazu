@@ -279,9 +279,10 @@ Solo frontend: sin migraciones ni cambios de backend (las acciones masivas reuti
 **Mensajes amables:**
 - `FriendlyError` con detalle técnico plegable para errores inesperados en borrado individual, masivo y restaurar.
 
-**Piezas reutilizables (conectadas en Papelera y Productos; Inventario aún no):**
+**Piezas reutilizables (conectadas en Papelera, Productos e Inventario):**
 - `useRowSelection(resetKey)`, `SelectionCheckbox`, `BulkActionBar`, `BulkProgress`, `FriendlyError` (con la nueva prop opcional `detail` para el detalle técnico plegable).
 - De la Etapa 2B: `BulkPriceChangeDialog`, `PriceChangePreview`, `UndoPriceChangeDialog`, `RecentPriceChangesDialog`; el cálculo de modos/redondeo y las reglas de exclusión viven en `src/lib/priceChange.ts` y el contrato de las RPC en `src/services/priceChange.service.ts`.
+- De la Etapa 3: `BulkStockChangeDialog`, `StockChangePreview`, `UndoStockChangeDialog`, `RecentStockChangesDialog`; los tipos y el contrato de las RPC en `src/lib/stockChange.ts` y `src/services/stockChange.service.ts`; `applyInventoryFilters`/`addBaseRowInfo` exportados desde `inventory.service.ts`; `Pill` (de `PriceChangePreview`) y `Alert` (de `BulkPriceChangeDialog`) ahora exportados.
 
 **Productos masivo (Etapa 2A):**
 - Pestaña Productos: casillas por fila/cabecera/tarjetas mobile con Shift+click; la selección persiste entre páginas y se limpia al cambiar de pestaña, búsqueda, categoría, estado, oferta u orden; "Seleccionar los N productos (filtrados)" con `getProductItems` (solo lectura, de a 1.000, excluye papelera).
@@ -294,7 +295,7 @@ Solo frontend: sin migraciones ni cambios de backend (las acciones masivas reuti
 
 **Pendientes nuevos:**
 - Bulk en la tabla de Productos: **Etapa 2A hecha** (activar/desactivar y enviar a papelera) y **Etapa 2B hecha** (cambio masivo de precios, ver sección propia); falta **destacar**.
-- Bulk en Inventario: cambios de stock con RPC que registre `inventory_movements`.
+- ~~Bulk en Inventario: cambios de stock con RPC que registre `inventory_movements`~~ — **Etapa 3 hecha** (cambio masivo de stock, ver sección propia).
 - Barra de acciones en mobile ocupa ~238 px (acortar etiquetas, p. ej. "Papelera").
 - Tandas de más de 100 ids no probadas (probar con 250 simulados en la Etapa 2B).
 - "En oferta" mide 38 px en mobile (preexistente); la columna Categoría se parte en dos renglones a 1269 px por la columna de casillas.
@@ -354,7 +355,38 @@ Solo frontend: sin migraciones ni cambios de backend (las acciones masivas reuti
 
 **Camino de recuperación:** Deshacer desde el aviso final o desde "Cambios recientes"; respaldo local de la migración, volcados de tablas y `revert.sql` en `backup/2026-10-23-precios-masivos/` (ignorada por git).
 
-**Etapa 3 (plan):** acciones masivas en Inventario (ajuste de stock con RPC que registre `inventory_movements`; **ojo** con el trigger `trg_validate_movement_direction`, que valida la dirección de los movimientos).
+## 📦 Cambio masivo de stock (Etapa 3) (2026-10)
+
+### Backend (migración `20261026160000_bulk_stock_change.sql`, aplicada 2026-10-26)
+
+- **Tabla `stock_change_batches`**: lotes con `created_by`, `meta` (auditoría: modo/valor/motivo), `rows_count`, `undo_of` (lote padre de un deshacer) y `undone_at`/`undone_by`. RLS activo con SELECT solo para admin; sin policies de escritura (la escritura es solo vía RPC).
+- **`inventory_movements.batch_id`**: columna FK a la tabla de lotes + índice parcial `WHERE batch_id IS NOT NULL`.
+- **3 RPC** (`SECURITY DEFINER`, `search_path = public, pg_temp`; EXECUTE solo `authenticated` y `service_role`; anon sin EXECUTE):
+  - `apply_stock_change_bulk(p_items, p_meta)`: items `{inventory_id, expected_quantity, quantity}` con la cantidad **absoluta** resultante; meta `{modo: set|add|sub, valor, motivo 3..200 obligatorio}`; **todo o nada**, máximo **500 filas** por llamada (sin partir el lote); concurrencia optimista con `expected_quantity` y bloqueo ordenado por id (`FOR UPDATE ORDER BY id`, convive con `reserve_stock`/`confirm_sale`); `reserved` y `low_stock_threshold` **nunca se tocan**; `quantity < reserved` se rechaza (`quantity == reservado` permitido); las filas sin cambio se cuentan `unchanged` sin movimiento ni lote, y si todo el lote es unchanged la respuesta viene con `batch_id: null` (no se crea lote).
+  - `undo_stock_change_bulk(p_batch_id)`: revierte **por DELTA INVERSO sobre el stock actual** (nunca stock absoluto, porque pudo haber ventas/reservas después); es **parcial**: las filas que quedarían `< 0` o `< reservado` van en `skipped` con su motivo; si no se restaura nada el lote original no se marca deshecho; crea un lote hijo con `undo_of` y `meta {modo: undo}`.
+  - `list_recent_stock_batches(p_limit)`: últimos 10 lotes (máx. 50) para la UI, con `productos` (hasta 5 títulos de productos distintos tocados) y `productos_total` (para el "y N más").
+- **Tipo de movimiento** (regla del trigger `trg_validate_movement_direction`, respetada): `restock` solo en modo `add` con increase; `adjustment` en los demás casos y en el deshacer (dirección inversa al delta original).
+- **Tests**: 102 aserciones dentro de una transacción con ROLLBACK (fixtures descartables, cero escrituras reales); lote sintético de 500 filas en **~168 ms** (timeout del rol `authenticated` = 8 s); las 9 funciones existentes verificadas sin cambios.
+- **Códigos de error** (PostgREST los expone como `code`, `message` y `details`): `P4003` no admin; `42501` anon sin EXECUTE; `P4094` lote inválido (vacío, >500 filas, meta >2 KB, modo inválido); `22023` stock o motivo inválido; `P4095` no existe / id duplicado; `P4043` en papelera; `P4096` stock cambiado (concurrencia optimista); `P4097` quedaría por debajo de lo reservado; `P4098` lote inexistente; `P4099` ya deshecho o es un deshacer. Con varios problemas el `code` es el de mayor prioridad (**P4095 > P4043 > P4096 > P4097**) y `details` trae `{"problems":[{"inventory_id","product_id","variant_id","motivo"}]}`.
+
+### Frontend (Inventario)
+
+- Selección múltiple: casillas por fila, Shift+clic para rangos, persistencia entre páginas, limpieza al cambiar búsqueda/estado/orden; **"Seleccionar las N filas (filtradas)"** leyendo todos los ids aunque el servidor corte (consultas de a 1.000 con conteo exacto).
+- Botón **"Cambiar stock"** en la barra de selección; modos **Fijar / Sumar / Restar** con **motivo obligatorio**.
+- **Exclusión por fila** (cada fila de inventario se evalúa sola): quedar por debajo de lo reservado, no alcanzar el stock, superar el máximo (1.000.000) o no estar disponible (producto en papelera o eliminado).
+- Marca **"Quedará agotado"** con aviso y conteo de filas (no bloquea el envío; afecta la disponibilidad en la tienda y el marcado schema.org InStock/OutOfStock).
+- Se envían **solo las filas con cambio**; tope de 500 filas **bloqueado en la UI** (el lote nunca se parte); aplicación con modal **no descartable**; aviso final con botón **Deshacer**; diálogo **"Cambios recientes"** (últimos 10 lotes, con motivo y nombres de productos; el Deshacer de un lote queda disponible tras recargar).
+- Errores amables con **detalle técnico plegable** (`StockChangeError`); ante `P4096` (por ejemplo una venta en el medio) la vista previa **se regenera sola**; `clearAvailabilityCache()` una vez por operación exitosa; el ajuste individual de stock **no se tocó**.
+- Archivos nuevos: `src/lib/stockChange.ts`, `src/services/stockChange.service.ts`, `BulkStockChangeDialog`, `StockChangePreview`, `UndoStockChangeDialog`, `RecentStockChangesDialog` (en `src/components/admin/inventory/`).
+
+**Pendientes nuevos:**
+- `getAllAdmin` (la lista de Inventario) trae todas las filas sin paginar en el servidor: con más de 1.000 filas PostgREST corta la lista (hoy 241); hacer la paginación del lado servidor antes de llegar a ~800 filas.
+- El filtro "stock bajo" del frontend está hardcodeado a 5 y ignora `low_stock_threshold`.
+- Stock "huérfano" en la fila base de productos con variantes sin opción base (posible limpieza masiva aparte).
+- Prueba manual del dueño en producción con productos descartables ("PRUEBA") para fijar/sumar/restar, Deshacer y Cambios recientes.
+- Confirmar en esa prueba el formato real de los errores de PostgREST (junto con el caso `P4096` de precios).
+
+**Camino de recuperación:** Deshacer desde el aviso final o desde "Cambios recientes"; respaldo local en `backup/2026-10-26-stock-masivo/` (ignorada por git, con volcados de tablas y `revert.sql`).
 
 ---
 

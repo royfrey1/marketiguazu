@@ -2,11 +2,15 @@ import { Link } from 'react-router-dom'
 import { Settings, History } from 'lucide-react'
 import type { InventoryAdminRow } from '../../../services/inventory.service'
 import InventoryStockBadge from './InventoryStockBadge'
+import SelectionCheckbox from '../SelectionCheckbox'
+import type { ProductTableSelection } from '../products/ProductTable'
 
 interface InventoryTableProps {
   items: InventoryAdminRow[]
   onAdjust: (item: InventoryAdminRow) => void
   onShowMovements: (item: InventoryAdminRow) => void
+  /** Con selección: checkbox por fila (cada fila de inventario, base o variante, es una unidad) */
+  selection?: ProductTableSelection
 }
 
 // Fila base (sin variante) de un producto con variantes activas: es la opción base, no el producto entero
@@ -19,7 +23,17 @@ function rowSubtitle(item: InventoryAdminRow): string {
   return item.category_nombre || 'Sin categoría'
 }
 
-export default function InventoryTable({ items, onAdjust, onShowMovements }: InventoryTableProps) {
+// Nombre accesible de la casilla: producto y, si corresponde, la variante o la fila base
+function selectLabel(item: InventoryAdminRow): string {
+  const detail = item.variant_nombre ?? (item.variant_id == null && item.product_has_active_variants ? 'fila base' : null)
+  return `Seleccionar ${item.product_titulo}${detail ? ` (${detail})` : ''}`
+}
+
+export default function InventoryTable({ items, onAdjust, onShowMovements, selection }: InventoryTableProps) {
+  const cols = selection
+    ? 'sm:grid-cols-[44px_1fr_70px_70px_70px_70px_90px_80px]'
+    : 'sm:grid-cols-[1fr_70px_70px_70px_70px_90px_80px]'
+
   if (items.length === 0) {
     return (
       <div className="bg-white dark:bg-[#162420] rounded-xl border border-gray-200 dark:border-white/5 p-12 text-center">
@@ -31,7 +45,16 @@ export default function InventoryTable({ items, onAdjust, onShowMovements }: Inv
   return (
     <div className="bg-white dark:bg-[#162420] rounded-xl border border-gray-200 dark:border-white/5 overflow-hidden">
       {/* Desktop: table header */}
-      <div className="hidden sm:grid sm:grid-cols-[1fr_70px_70px_70px_70px_90px_80px] gap-2 px-4 py-2.5 text-[11px] font-medium text-gray-400 dark:text-white/25 uppercase tracking-wider border-b border-gray-100 dark:border-white/5">
+      <div className={`hidden sm:grid ${cols} sm:items-center gap-2 ${selection ? 'pl-1 pr-4 py-0.5' : 'px-4 py-2.5'} text-[11px] font-medium text-gray-400 dark:text-white/25 uppercase tracking-wider border-b border-gray-100 dark:border-white/5`}>
+        {selection && (
+          <SelectionCheckbox
+            checked={selection.headerState === 'all'}
+            indeterminate={selection.headerState === 'some'}
+            onToggle={() => selection.toggleAll()}
+            label="Seleccionar todas las filas de esta página"
+            disabled={selection.disabled}
+          />
+        )}
         <span>Producto</span>
         <span className="text-center">Stock</span>
         <span className="text-center">Reservado</span>
@@ -45,14 +68,25 @@ export default function InventoryTable({ items, onAdjust, onShowMovements }: Inv
       <div className="divide-y divide-gray-100 dark:divide-white/5">
         {items.map((item) => {
           const available = item.quantity - item.reserved
+          const selected = selection?.isSelected(item.id) ?? false
+          const checkbox = selection && (
+            <SelectionCheckbox
+              checked={selected}
+              onToggle={shiftKey => selection.toggle(item.id, shiftKey)}
+              label={selectLabel(item)}
+              disabled={selection.disabled}
+              className="-my-2"
+            />
+          )
 
           return (
             <div
               key={item.id}
-              className="px-4 py-3 hover:bg-gray-50/50 dark:hover:bg-white/[0.02] transition-colors"
+              className={`${selection ? 'pl-1 pr-4' : 'px-4'} py-3 transition-colors ${selected ? 'bg-[#185749]/5 dark:bg-[#1CAAA8]/10' : 'hover:bg-gray-50/50 dark:hover:bg-white/[0.02]'}`}
             >
               {/* Desktop: grid row */}
-              <div className="hidden sm:grid sm:grid-cols-[1fr_70px_70px_70px_70px_90px_80px] gap-2 sm:items-center">
+              <div className={`hidden sm:grid ${cols} gap-2 sm:items-center`}>
+                {checkbox}
                 {/* Producto */}
                 <div className="flex items-center gap-3 min-w-0">
                   {(item.variant_imagen_url || item.product_imagen_url) ? (
@@ -124,8 +158,9 @@ export default function InventoryTable({ items, onAdjust, onShowMovements }: Inv
               </div>
 
               {/* Mobile: card */}
-              <div className="sm:hidden space-y-2">
+              <div className={`sm:hidden space-y-2 ${selection ? 'pl-3' : ''}`}>
                 <div className="flex items-start gap-3">
+                  {selection && <div className="-ml-3 -mt-1 -mr-2">{checkbox}</div>}
                   {(item.variant_imagen_url || item.product_imagen_url) ? (
                     <img
                       src={item.variant_imagen_url || item.product_imagen_url || ''}
