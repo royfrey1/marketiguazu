@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { CheckCircle2, Info, Loader2, RotateCcw } from 'lucide-react'
 import Modal from '../../ui/Modal'
 import FriendlyError from '../FriendlyError'
+import PriceBatchProducts from './PriceBatchProducts'
 import {
   priceChangeService,
   type PriceChangeError,
@@ -18,6 +19,9 @@ interface UndoPriceChangeDialogProps {
   batchId: string
   /** Resumen del cambio, por ejemplo "Subir 10% · redondeo a $100" */
   summary?: string
+  /** Títulos de los productos del lote (desde "Cambios recientes"); sin ellos queda el texto genérico */
+  products?: string[]
+  productsTotal?: number
   onClose: () => void
   onFinished: (outcome: UndoOutcome) => void
 }
@@ -29,7 +33,7 @@ const n = (count: number, one: string, many: string) => `${count.toLocaleString(
 
 type Phase = 'confirm' | 'running' | 'done'
 
-export default function UndoPriceChangeDialog({ batchId, summary, onClose, onFinished }: UndoPriceChangeDialogProps) {
+export default function UndoPriceChangeDialog({ batchId, summary, products = [], productsTotal = 0, onClose, onFinished }: UndoPriceChangeDialogProps) {
   const [phase, setPhase] = useState<Phase>('confirm')
   const [result, setResult] = useState<PriceChangeUndoResult | null>(null)
   const [error, setError] = useState<PriceChangeError | null>(null)
@@ -109,7 +113,12 @@ export default function UndoPriceChangeDialog({ batchId, summary, onClose, onFin
     >
       {phase === 'confirm' && (
         <div className="space-y-2 text-sm text-gray-600 dark:text-white/60">
-          <p>Se van a devolver los precios anteriores.</p>
+          {products.length > 0 ? (
+            <div>
+              <p>Se van a devolver los precios anteriores de:</p>
+              <PriceBatchProducts names={products} total={productsTotal} prefix="" className="text-gray-700 dark:text-white/70" />
+            </div>
+          ) : <p>Se van a devolver los precios anteriores.</p>}
           {summary && <p className="text-gray-500 dark:text-white/40">Cambio: {summary}</p>}
           <p className="text-gray-500 dark:text-white/40">Los precios que se cambiaron después no se tocan.</p>
         </div>

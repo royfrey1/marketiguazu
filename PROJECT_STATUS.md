@@ -339,13 +339,18 @@ Solo frontend: sin migraciones ni cambios de backend (las acciones masivas reuti
 - Errores amables con **detalle técnico plegable** (`FriendlyError` acepta `detail` opcional); ante `P4096` la vista previa se regenera sola.
 - Archivos nuevos: `src/lib/priceChange.ts`, `src/services/priceChange.service.ts`, `BulkPriceChangeDialog`, `PriceChangePreview`, `UndoPriceChangeDialog`, `RecentPriceChangesDialog`; `Modal` suma `size="xl"`.
 
+**2B.1 — Nombres en "Cambios recientes" (migración `20261026140000_price_batches_product_names.sql`, aplicada 2026-10-26):**
+- `list_recent_price_batches` mantiene todos sus campos y agrega `"productos"` (hasta 5 títulos de productos **distintos** tocados por el lote — base y variantes — resueltos desde `price_history`, ordenados por `product_id`) y `"productos_total"` (productos distintos tocados, para el "y N más"); si un producto fue borrado definitivamente su historial cae por cascade y no cuenta. Grants intactos (anon sin EXECUTE); las otras RPC sin cambios (md5 idénticos). **24 tests** en transacción con ROLLBACK; 50 lotes × 500 filas listados en **~14 ms**.
+- Frontend: nombres bajo cada lote de "Cambios recientes" (componente `PriceBatchProducts`: máximo 2 renglones, nombres recortados a 40 caracteres, "y N más" siempre visible, títulos como **texto** sin HTML), también en la confirmación de Deshacer abierta **desde ese diálogo** (desde el aviso posterior se mantiene el texto genérico); tolerancia a lotes sin los campos nuevos (quedan `[]` y `0`); sin nombres no se muestra nada.
+- **QA manual del dueño en producción de la 2B realizado y aprobado** (vista previa con variantes e inactiva, Deshacer desde el aviso y desde "Cambios recientes", casilla del modo exacto con variantes dispares); queda sin confirmar el caso de error real `P4096` (precio cambiado en otra pestaña) y, con él, el formato real del error de PostgREST.
+- **Nota de uso:** una oferta queda excluida solo si el nuevo precio **iguala o supera** el precio anterior (o si el precio anterior supera 10 veces el nuevo); un aumento chico no la invalida.
+
 **Pendientes nuevos:**
 - Regenerar los tipos de Supabase (las 3 RPC se llaman sin tipar en el servicio).
-- Confirmar en la prueba real el formato del error de PostgREST (`code`/`message`/`details` como string).
+- Confirmar en la prueba real el formato del error de PostgREST (`code`/`message`/`details` como string); el caso `P4096` real (precio cambiado en otra pestaña) sigue sin provocarse.
 - Paginación de variantes de más de 1.000 filas por tanda no probada.
 - Barra de selección a 320 px ocupa 3 renglones.
 - Sin fechas de vigencia de ofertas (el modelo no las tiene; ver sección Ofertas).
-- Prueba manual en producción con productos descartables (llamados "PRUEBA") a cargo del dueño.
 
 **Camino de recuperación:** Deshacer desde el aviso final o desde "Cambios recientes"; respaldo local de la migración, volcados de tablas y `revert.sql` en `backup/2026-10-23-precios-masivos/` (ignorada por git).
 

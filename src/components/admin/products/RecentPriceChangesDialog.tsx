@@ -3,6 +3,7 @@ import { History, Loader2, RefreshCw, RotateCcw } from 'lucide-react'
 import Modal from '../../ui/Modal'
 import FriendlyError from '../FriendlyError'
 import UndoPriceChangeDialog, { type UndoOutcome } from './UndoPriceChangeDialog'
+import PriceBatchProducts from './PriceBatchProducts'
 import { describePriceChange } from '../../../lib/priceChange'
 import {
   priceChangeService,
@@ -97,6 +98,11 @@ export default function RecentPriceChangesDialog({ onClose, onUndone }: RecentPr
                 <li key={batch.id} className="py-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                   <div className="min-w-0 flex-1 text-sm">
                     <p className="font-medium text-gray-800 dark:text-white/90">{summary}</p>
+                    <PriceBatchProducts
+                      names={batch.productos ?? []}
+                      total={batch.productos_total ?? 0}
+                      className="text-gray-700 dark:text-white/70 mt-0.5"
+                    />
                     <p className="text-xs text-gray-500 dark:text-white/50 mt-0.5">
                       <time dateTime={batch.created_at}>{DATE.format(new Date(batch.created_at))}</time>
                       {' · '}
@@ -132,6 +138,8 @@ export default function RecentPriceChangesDialog({ onClose, onUndone }: RecentPr
         <UndoPriceChangeDialog
           batchId={undoTarget.id}
           summary={describePriceChange(undoTarget.meta)}
+          products={undoTarget.productos}
+          productsTotal={undoTarget.productos_total}
           onClose={() => setUndoTarget(null)}
           onFinished={outcome => {
             onUndone(undoTarget.id, outcome)

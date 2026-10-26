@@ -40,6 +40,17 @@ export interface PriceChangeBatch {
   variants_count: number | null
   undo_of: string | null
   undone_at: string | null
+  /** Hasta 5 títulos de los productos tocados (base y variantes), sin repetir. Se normaliza a [] si falta */
+  productos?: string[]
+  /** Todos los productos distintos tocados, incluidos los que no entran en `productos`. Se normaliza a 0 */
+  productos_total?: number
+}
+
+/** Tolera respuestas sin los campos de productos (o con basura): quedan [] y 0 */
+function normalizeBatch(batch: PriceChangeBatch): PriceChangeBatch {
+  const productos = Array.isArray(batch.productos) ? batch.productos.filter((t): t is string => typeof t === 'string') : []
+  const total = typeof batch.productos_total === 'number' && Number.isFinite(batch.productos_total) ? batch.productos_total : 0
+  return { ...batch, productos, productos_total: Math.max(total, productos.length) }
 }
 
 export type PriceChangeErrorKey =
@@ -209,6 +220,7 @@ export const priceChangeService = {
   async listRecentPriceBatches(limit = 10): Promise<{ data: PriceChangeBatch[]; error: PriceChangeError | null }> {
     const { data, error } = await rpc('list_recent_price_batches', { p_limit: limit })
     if (error) return { data: [], error: toPriceChangeError(error) }
-    return { data: Array.isArray(data) ? (data as PriceChangeBatch[]) : [], error: null }
+    const list = Array.isArray(data) ? (data as PriceChangeBatch[]) : []
+    return { data: list.map(normalizeBatch), error: null }
   },
 }
