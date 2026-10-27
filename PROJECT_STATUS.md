@@ -432,12 +432,56 @@ Solo frontend: sin migraciones ni cambios de backend (las acciones masivas reuti
 - **Sin helper compartido (decisión):** el código común (plantilla, escape, reemplazo de etiquetas, respuestas) está **duplicado** en `api/categoria.ts` con el origen comentado. Un import entre funciones (`api/_lib/`) con `"type": "module"` depende de cómo el runtime de Vercel resuelve extensiones en ESM y no se podía probar antes del deploy (la vista previa está protegida y sin la clave anon); `api/producto.ts` quedó intacto. Unificar en una tanda futura que se pueda verificar en una vista previa.
 - **`"trailingSlash": false`** en `vercel.json`: cualquier ruta que termina en `/` responde 308 a la misma ruta sin la barra (documentación de Vercel: "`/about/` will redirect to `/about`"). Corrige que `/producto/<slug>/` y `/categoria/<slug>/` caían en el catch-all con el shell genérico, y evita contenido duplicado con y sin barra.
 
+### Tanda 4: diagnóstico de rendimiento (2026-10-27, solo medición)
+
+Lighthouse 12.8.2 en laboratorio (3 corridas, mediana, móvil con throttling simulado), desde una sola máquina en Argentina; sin datos de campo.
+
+| Página | Score móvil | LCP móvil | Peso |
+|---|---|---|---|
+| Home | 77 | 4,5 s (el `h1`, con fade-in) | 4,4 MB |
+| Categoría (2 medidas) | 70 y 69 | **12,9 y 13,6 s** | 2,4–2,7 MB |
+| Ficha (con variantes / simple) | 71 y 65 | 5,7 y 9,4 s | 2,3–2,4 MB |
+| `/ofertas` | 74 | 5,0 s | **12,4 MB** |
+
+CLS (≤ 0,036) y TBT (≤ 15 ms) están bien en todas. La "navegación interna de ~9 s" **no se reprodujo**: medida en Chrome real da 0,7–0,9 s; los 9 s eran esperas fijas de una verificación anterior.
+
+**Causas, por impacto:**
+
+1. **Íconos de categoría** (`src/assets/images/icons/*.png`): 13 PNG de 1254×1254 px que suman **11,1 MB** y se muestran a 56 px o menos. Se cargan 4 en la Home, 2 por categoría y los 13 en `/ofertas`; en la categoría bajan con prioridad alta antes que la foto LCP.
+2. **Consultas a Supabase en serie**, cada una con su preflight CORS: la ficha hace 6 seguidas antes de pedir las imágenes y la categoría hace 4 rondas.
+3. **Foto LCP de la categoría** con `loading="lazy"` y de 1000–1500 px para mostrarse a 239 px.
+4. **Imagen principal de la ficha sin prioridad** (Lighthouse estima 1–3,2 s), compitiendo con los relacionados (hasta 731 KB).
+5. **Assets sin cache largo:** `/assets/*` con hash salían con `max-age=0, must-revalidate`, así que cada visita repetida los revalidaba.
+6. **Regiones desalineadas:** las funciones corrían en `iad1` (Washington) y Supabase está en `sa-east-1` (São Paulo, inferido por latencia). TTFB de una ficha en MISS: 0,75–0,78 s, contra 0,19–0,22 s con HIT.
+7. **Logo** `iguazu1.png` de 187 KB mostrado a 153×65 px.
+8. **Fuentes TTF** sin woff2 (`MarkPro.ttf`, 85 KB comprimido, sin preload).
+9. **framer-motion** en el chunk de arranque (`index`, 189 KB gzip; unos 55 % sin usar en la primera pantalla).
+
+### Tanda 4A (hecha): cache `immutable` para `/assets` y funciones en `gru1`
+
+- **`vercel.json`:** `headers` con `Cache-Control: public, max-age=31536000, immutable` para `/assets/(.*)`. En el build todos los archivos de `dist/assets/` llevan hash en el nombre; los que no tienen hash (`og-default.png`, favicons, `robots.txt`, `index.html`) están fuera de `/assets/` y no cambian.
+- **`vercel.json`:** `"regions": ["gru1"]` para que las funciones (`api/sitemap`, `api/producto`, `api/categoria`) corran en São Paulo, junto al borde y a Supabase. Hobby admite una sola región; con más regiones de las permitidas, el deploy falla.
+- **Línea base antes del cambio:** JS, CSS, TTF, HTML y `og-default.png` con `public, max-age=0, must-revalidate`. Cinco MISS a una ficha: mediana 709 ms, rango 391–2.640 ms, todos en `gru1::iad1`.
+- El resultado medido después del deploy queda en el reporte de la tanda.
+
 ### Plan de las siguientes tandas (en este orden)
 
-1. **Tanda 3:** 404 reales para las rutas fuera del router + canonical/`og:url` correctos en el HTML de las páginas estáticas (`/`, `/categoria`, `/ofertas`, `/contacto`, legales, etc.).
-2. **Tanda 4:** rendimiento: cache `immutable` para `/assets`, imágenes redimensionadas (sin la transformación de Supabase, que no está habilitada), LCP de categoría (~14 s).
-3. **Tanda 5:** JSON-LD con un generador compartido (`Product` con `AggregateOffer` para variantes, `BreadcrumbList`, `ItemList`, `FAQPage`, `priceValidUntil`/`shippingDetails`/`hasMerchantReturnPolicy`, sin inventar ratings), `og:image:alt` y `product:*` + limpieza en `Seo.tsx`, y `h1` en la home. **Pendiente para esta tanda:** volver a agregar en `api/producto.ts` `og:image:alt` y `product:price:amount`/`product:price:currency`/`product:availability` (precio de la preselección del cliente de `ProductPage`: opción base con stock → precio del producto, si no la primera variante activa con stock; disponibilidad de `get_product_availability`; hay que reimplementarlas, no quedaron commiteadas), junto con el cambio de `Seo.tsx` para que limpie las etiquetas inyectadas por el servidor al navegar dentro de la SPA, y el generador compartido de JSON-LD.
-4. **Slugs descriptivos** con 301 desde los slugs viejos (ver abajo).
+**Rendimiento** (las tandas 4B a 4G):
+
+| Tanda | Qué cambia |
+|---|---|
+| **4B** | Íconos de categoría y logo a WebP (íconos a ~128 px); fuentes a woff2 con preload de `MarkPro`; preconnect a Supabase con `%VITE_SUPABASE_URL%` en `index.html`, sin escribir la URL en el repo. |
+| **4C** | Prioridad de imágenes: `eager` y `fetchpriority="high"` en la primera fila de la grilla y en la imagen principal de la ficha; `lazy` en relacionados y miniaturas; `width`/`height`; sin animación de entrada en el `h1` de la Home ni en la galería. |
+| **4D** | Paralelizar consultas: `Promise.all` en `ProductPage`; quitar el `getByProductId` repetido; una sola consulta de categorías, cacheada; favoritos en lote; columnas de tarjeta en `STORE_SELECT`; borrar `getActiveProducts`, que no se usa. |
+| **4E** | `LazyMotion` / reducir framer-motion en el arranque. |
+| **4F** | Vista o RPC "catálogo disponible" con las columnas de tarjeta (migración), para eliminar la ronda de disponibilidad y la lista de ~170 ids en la URL. |
+| **4G** | Redimensionar las fotos de producto al subirlas en el admin, más un script de migración de las ~996 fotos existentes. Requiere aprobación del dueño y respaldo. La transformación de imágenes de Supabase no está habilitada en el plan. |
+
+**Pendientes de SEO:**
+
+1. **Tanda 3:** 404 reales para las rutas fuera del router; canonical y `og:url` correctos en el HTML de las páginas estáticas (`/`, `/categoria`, `/ofertas`, `/contacto`, legales, etc.); `X-Robots-Tag` para las rutas privadas.
+2. **Tanda 5:** JSON-LD con un generador compartido (`Product` con `AggregateOffer` para variantes, `BreadcrumbList`, `ItemList`, `FAQPage`, `priceValidUntil`/`shippingDetails`/`hasMerchantReturnPolicy`, sin inventar ratings), `og:image:alt` y `product:*` + limpieza en `Seo.tsx`, y `h1` en la home. **Pendiente para esta tanda:** volver a agregar en `api/producto.ts` `og:image:alt` y `product:price:amount`/`product:price:currency`/`product:availability` (precio de la preselección del cliente de `ProductPage`: opción base con stock → precio del producto, si no la primera variante activa con stock; disponibilidad de `get_product_availability`; hay que reimplementarlas, no quedaron commiteadas), junto con el cambio de `Seo.tsx` para que limpie las etiquetas inyectadas por el servidor al navegar dentro de la SPA, y el generador compartido de JSON-LD.
+3. **Slugs descriptivos** con 301 desde los slugs viejos (ver abajo).
 
 **Pendiente nuevo (sin implementar): slugs descriptivos.** 138 de 161 productos tienen un slug de solo dígitos (URLs tipo `/producto/<número>`), que no aportan palabras clave y se confunden con el id. Proponer más adelante una tanda de "slugs descriptivos" (generados desde el título con la regla del admin) con **redirección 301 desde los slugs viejos**, idealmente antes de que haya enlaces indexados (Search Console recién por dar de alta).
 
@@ -492,7 +536,7 @@ La lista completa vive en **🚨 Bloqueadores críticos** (única fuente de verd
 - `src/pages/checkout/CheckoutContext.tsx:75`: el comentario dice "ambos métodos" y ya son tres.
 - `PaymentUsdtPage` promete confirmar el pago por WhatsApp o email; la confirmación real llega por email (o a mano desde el admin).
 - Automatizar la reposición de stock al cancelar pedidos con pago aprobado (hoy es manual, con aviso en el admin).
-- SEO fase 2: ~~`sitemap.xml` dinámico~~ (Tanda 1), ~~vista previa Open Graph por producto + 404/301 en fichas~~ (Tanda 2) y ~~categorías + barra final~~ (Tanda 2B) hechos; quedan el soft 404 del resto de las rutas, rendimiento y JSON-LD (ver "SEO fase 2").
+- SEO fase 2: ~~`sitemap.xml` dinámico~~ (Tanda 1), ~~vista previa Open Graph por producto + 404/301 en fichas~~ (Tanda 2), ~~categorías + barra final~~ (Tanda 2B) y ~~cache immutable de /assets + funciones en gru1~~ (Tanda 4A) hechos; quedan el soft 404 del resto de las rutas, el resto de rendimiento (4B-4G) y JSON-LD (ver "SEO fase 2").
 - `public/og-default.png` es provisoria: reemplazar por una imagen diseñada.
 - ~~`ProductPage.tsx` muestra un SKU inventado (armado desde el slug, con `'DEMO-SKU-001'` de último recurso)~~ — **resuelto** (2026-10-08): ver "Hardcodeos vigentes" (SKU solo si es real).
 - `ProtectedRoute` muestra su pantalla de carga sin `Seo` mientras resuelve la sesión (sin impacto: redirige a `/login`, que tiene `noindex`).
