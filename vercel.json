@@ -1,7 +1,9 @@
 {
+  "trailingSlash": false,
   "rewrites": [
     { "source": "/sitemap.xml", "destination": "/api/sitemap" },
     { "source": "/producto/:slug", "destination": "/api/producto?slug=:slug" },
+    { "source": "/categoria/:slug", "destination": "/api/categoria?slug=:slug" },
     { 
       "source": "/(.*)", 
       "destination": "/index.html" 
