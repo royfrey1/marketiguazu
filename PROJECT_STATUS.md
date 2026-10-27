@@ -462,7 +462,13 @@ CLS (≤ 0,036) y TBT (≤ 15 ms) están bien en todas. La "navegación interna 
 - **`vercel.json`:** `headers` con `Cache-Control: public, max-age=31536000, immutable` para `/assets/(.*)`. En el build todos los archivos de `dist/assets/` llevan hash en el nombre; los que no tienen hash (`og-default.png`, favicons, `robots.txt`, `index.html`) están fuera de `/assets/` y no cambian.
 - **`vercel.json`:** `"regions": ["gru1"]` para que las funciones (`api/sitemap`, `api/producto`, `api/categoria`) corran en São Paulo, junto al borde y a Supabase. Hobby admite una sola región; con más regiones de las permitidas, el deploy falla.
 - **Línea base antes del cambio:** JS, CSS, TTF, HTML y `og-default.png` con `public, max-age=0, must-revalidate`. Cinco MISS a una ficha: mediana 709 ms, rango 391–2.640 ms, todos en `gru1::iad1`.
-- El resultado medido después del deploy queda en el reporte de la tanda.
+- **Resultado medido en producción tras el deploy (commit `bd7df04`):**
+  - JS, CSS y TTF de `/assets` salen con `public, max-age=31536000, immutable` y brotli. HTML, `og-default.png` y `robots.txt` siguen con `max-age=0, must-revalidate`.
+  - Las funciones (ficha, categoría y sitemap) corren en `gru1::gru1`.
+  - Cinco MISS a la misma ficha: mediana **152 ms**, rango 134–330 ms (antes 709 ms; 391–2.640 ms).
+  - En Chrome, al volver a cargar la Home y la ficha, los 22 assets salen de la caché del navegador sin pedirse a la red.
+  - Rutas, metadatos, 404, 301 y redirecciones sin cambios.
+- **Observación:** un archivo inexistente bajo `/assets/` cae en el catch-all y responde **200 con el shell** (igual que antes), pero ahora con la cabecera `immutable`. Es de impacto bajo, porque los nombres llevan hash y un nombre viejo no vuelve a ser válido. Para que respondan un 404 real habría que excluir `/assets/` del catch-all (queda para la Tanda 3).
 
 ### Plan de las siguientes tandas (en este orden)
 
