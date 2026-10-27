@@ -1,6 +1,6 @@
 # Iguazú Marketplace — Estado del Proyecto
 
-**Última actualización:** 2026-10-26
+**Última actualización:** 2026-10-27
 **Fuente:** QA manual del usuario + auditoría de opencode con verificación en vivo (repo, BD remota y Supabase CLI) el 2026-10-07
 
 > Este documento es la fuente de verdad de en qué fase estamos. Actualizarlo después de cada sesión de trabajo relevante (no hace falta después de cada micro-tarea).
@@ -414,12 +414,25 @@ Solo frontend: sin migraciones ni cambios de backend (las acciones masivas reuti
 - **Límite:** con más de **45.000 URLs** responde 503 en vez de un XML inválido; al acercarse a ese número hay que pasar a un **sitemap index** (varios sitemaps).
 - `public/robots.txt`: se agregó `Sitemap: https://www.iguazumarketplace.com.ar/sitemap.xml` (User-agent, Allow y los 12 Disallow sin cambios).
 
+### Tanda 2 (hecha): metadatos reales, 404 y 301 en `/producto/:slug`
+
+- **`api/producto.ts`** (Vercel Function, `export default { fetch }`) + rewrite `/producto/:slug` → `/api/producto?slug=:slug` en `vercel.json`, antes del catch-all (sitemap y catch-all sin cambios). Sirve el `index.html` del mismo deployment (pedido a `/index.html` y cacheado en la instancia) con el `<head>` del producto ya armado, para **todos** los visitantes (sin lista de user-agents). La SPA arranca igual por encima.
+- **Qué inyecta** (reemplazando, sin duplicar, las etiquetas del shell): `<title>` con el patrón de `Seo.tsx` (`<título> | Iguazú Marketplace`); meta description con la regla de `ProductPage` (espacios colapsados, 155 caracteres con `...`, fallback "`<título> en <categoría>. Comprá con envío gratis a todo el país.`"); `link rel="canonical"` y `og:url` = `https://www.iguazumarketplace.com.ar/producto/<slug>`; `og:title`, `og:description`, `og:type=product`, `og:image` (la misma imagen que elige `ProductPage`: galería propia con la principal primero, `imagen_url` o la principal de la primera variante activa; sin imagen, `/og-default.png`) y `twitter:title/description/image`. Solo etiquetas que `Seo.tsx` administra y limpia al navegar dentro de la SPA (una sola consulta a Supabase). Conserva `og:site_name`, `og:locale` y `twitter:card`. Todo escapado.
+- **Respuestas:** 200 con `Cache-Control: public, s-maxage=300, stale-while-revalidate=3600`; **404 solo con confirmación de la base** (slug inexistente, inactivo o en papelera; también slugs con caracteres fuera de `[A-Za-z0-9-]` o de más de 200, sin consultar), con el shell + `<meta name="robots" content="noindex">` y `s-maxage=60`; **301** del id numérico al slug (`s-maxage=3600`) solo si no existe un producto con ese slug exacto (138 de 161 slugs son numéricos, por eso primero se busca el slug); 405 para métodos distintos de GET/HEAD.
+- **Fallback seguro:** ante cualquier error (Supabase caído o con error, respuesta inesperada, timeout de 2,5 s con plazo duro) sirve el **shell sin modificar con 200 y `no-store`**. Solo si no hay ninguna plantilla posible (falla `/index.html` y no hay copia en memoria) responde 503 `no-store`.
+- Lecturas solo con la clave anon (las mismas variables que el sitemap) y sin importar nada de `src/`: las reglas están duplicadas en `api/producto.ts` con el archivo de origen comentado. **Si cambian `Seo.tsx`, `ProductPage` (descripción, imagen o preselección) o `productImages.service.ts`, hay que actualizar también `api/producto.ts`.**
+- **Fuera a propósito:** JSON-LD (lo sigue emitiendo la SPA; va en la Tanda 5 con un generador compartido), `og:image:alt` y `product:price:amount`/`product:price:currency`/`product:availability` (`Seo.tsx` no las administra: inyectadas por el servidor quedarían pegadas con los valores de la primera ficha al navegar dentro de la SPA; vuelven en la Tanda 5), `/categoria/:slug` y las rutas genéricas.
+
+**Medición de imágenes** (muestra de 15 imágenes principales, solo lectura): 157 de 161 productos tienen imagen, todas en Supabase Storage; 10 JPEG y 5 WebP; tamaño mínimo 21 KB, mediana 57 KB, máximo 423 KB (1 por encima de 300 KB, ninguna por encima de 600 KB); casi todas cuadradas (640 a 1.200 px de lado). El endpoint de transformación de Supabase (`render/image`) **no está habilitado** en el plan actual (403 `FeatureNotEnabled`). **Decisión pendiente:** generar una imagen social de 1200×630 por producto (las cuadradas se recortan en `summary_large_image`), ya sea habilitando la transformación en Supabase o con otra vía; por peso no hace falta hoy.
+
 ### Plan de las siguientes tandas (en este orden)
 
-1. **Tanda 2:** función que inyecta en el HTML de `/producto/:slug` y `/categoria/:slug`, para **todos** los visitantes (sin lista de user-agents): title, description, canonical, `og:*` con `og:url` y `og:image` reales, JSON-LD `Product`/`Offer` (con `AggregateOffer` para productos con variantes) y `BreadcrumbList`, con el mismo criterio de datos que `Seo.tsx` y `ProductPage`.
-2. **Tanda 3:** 404 reales (slugs inexistentes o inactivos y rutas fuera del router), conservando la UI de la SPA.
-3. **Tanda 4:** rendimiento: cache `immutable` para `/assets`, preload de la fuente, imágenes redimensionadas/`srcset`, lazy-loading y LCP de categoría.
-4. **Tanda 5:** JSON-LD extra (`ItemList`, `FAQPage`; completar `Offer` con `priceValidUntil`, `shippingDetails` y `hasMerchantReturnPolicy`, sin inventar ratings), `h1` en la home y 301 del `/producto/:id` numérico.
+1. **Tanda 2B:** `/categoria/:slug` (metadatos reales + `BreadcrumbList`).
+2. **Tanda 3:** 404 reales para las rutas fuera del router + `og:url`/canonical correctos en el HTML de las páginas estáticas.
+3. **Tanda 4:** rendimiento: cache `immutable` para `/assets`, imágenes redimensionadas, LCP (preload de la fuente, `srcset`, lazy-loading).
+4. **Tanda 5:** JSON-LD con un generador compartido (`Product` con `AggregateOffer` para variantes, `BreadcrumbList`, `ItemList`, `FAQPage`, `priceValidUntil`/`shippingDetails`/`hasMerchantReturnPolicy`, sin inventar ratings) y `h1` en la home. **Pendiente para esta tanda:** volver a agregar en `api/producto.ts` `og:image:alt` y `product:price:amount`/`product:price:currency`/`product:availability` (precio de la preselección del cliente de `ProductPage`: opción base con stock → precio del producto, si no la primera variante activa con stock; disponibilidad de `get_product_availability`; hay que reimplementarlas, no quedaron commiteadas), junto con el cambio de `Seo.tsx` para que limpie las etiquetas inyectadas por el servidor al navegar dentro de la SPA, y el generador compartido de JSON-LD.
+
+**Pendiente nuevo (sin implementar): slugs descriptivos.** 138 de 161 productos tienen un slug de solo dígitos (URLs tipo `/producto/<número>`), que no aportan palabras clave y se confunden con el id. Proponer más adelante una tanda de "slugs descriptivos" (generados desde el título con la regla del admin) con **redirección 301 desde los slugs viejos**, idealmente antes de que haya enlaces indexados (Search Console recién por dar de alta).
 
 **Decisión:** por ahora **no** se migra a SSR ni a un framework; se sigue con la SPA + funciones de Vercel puntuales.
 
@@ -472,7 +485,7 @@ La lista completa vive en **🚨 Bloqueadores críticos** (única fuente de verd
 - `src/pages/checkout/CheckoutContext.tsx:75`: el comentario dice "ambos métodos" y ya son tres.
 - `PaymentUsdtPage` promete confirmar el pago por WhatsApp o email; la confirmación real llega por email (o a mano desde el admin).
 - Automatizar la reposición de stock al cancelar pedidos con pago aprobado (hoy es manual, con aviso en el admin).
-- SEO fase 2: `sitemap.xml` dinámico con productos y categorías (función de Vercel); vista previa Open Graph por producto para WhatsApp/Facebook (no ejecutan JavaScript); soft 404 por el rewrite global de `vercel.json`.
+- SEO fase 2: ~~`sitemap.xml` dinámico~~ (Tanda 1) y ~~vista previa Open Graph por producto + 404/301 en fichas~~ (Tanda 2) hechos; quedan categorías, soft 404 del resto de las rutas y JSON-LD (ver "SEO fase 2").
 - `public/og-default.png` es provisoria: reemplazar por una imagen diseñada.
 - ~~`ProductPage.tsx` muestra un SKU inventado (armado desde el slug, con `'DEMO-SKU-001'` de último recurso)~~ — **resuelto** (2026-10-08): ver "Hardcodeos vigentes" (SKU solo si es real).
 - `ProtectedRoute` muestra su pantalla de carga sin `Seo` mientras resuelve la sesión (sin impacto: redirige a `/login`, que tiene `noindex`).
