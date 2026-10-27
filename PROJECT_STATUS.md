@@ -1,6 +1,6 @@
 # Iguazú Marketplace — Estado del Proyecto
 
-**Última actualización:** 2026-10-22
+**Última actualización:** 2026-10-26
 **Fuente:** QA manual del usuario + auditoría de opencode con verificación en vivo (repo, BD remota y Supabase CLI) el 2026-10-07
 
 > Este documento es la fuente de verdad de en qué fase estamos. Actualizarlo después de cada sesión de trabajo relevante (no hace falta después de cada micro-tarea).
@@ -387,6 +387,45 @@ Solo frontend: sin migraciones ni cambios de backend (las acciones masivas reuti
 - Confirmar en esa prueba el formato real de los errores de PostgREST (junto con el caso `P4096` de precios).
 
 **Camino de recuperación:** Deshacer desde el aviso final o desde "Cambios recientes"; respaldo local en `backup/2026-10-26-stock-masivo/` (ignorada por git, con volcados de tablas y `revert.sql`).
+
+---
+
+## 🔎 SEO fase 2 (2026-10)
+
+### Auditoría SEO (hallazgos CRÍTICO/ALTO)
+
+- El HTML crudo que reciben los buscadores es el mismo shell para todas las rutas: sin title, description, canonical ni JSON-LD por ruta (todo lo pone `Seo.tsx` recién al ejecutar JS).
+- `og:url` y `og:image` genéricos en el HTML crudo (los previews al compartir una ficha muestran la portada del sitio).
+- Soft 404: slugs inexistentes o inactivos y rutas fuera del router responden 200 con el shell.
+- No había sitemap (`/sitemap.xml` devolvía el shell con 200) y `robots.txt` no declaraba `Sitemap`.
+- LCP alto en `/categoria/:slug`.
+- Los assets hasheados de `/assets` no tienen cache largo (`immutable`).
+- La home no tiene `h1`.
+- JSON-LD incompleto (Offer sin `priceValidUntil`/`shippingDetails`/`hasMerchantReturnPolicy`, sin `ItemList`/`FAQPage`/`BreadcrumbList`).
+
+### Tanda 1 (hecha): sitemap dinámico + `Sitemap` en robots.txt
+
+- **`api/sitemap.ts`** (Vercel Function, handler `export default { fetch(request) }`): lee Supabase por PostgREST **solo con la clave anon** (`VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` de Vercel, que hoy solo está en Production) y **solo lecturas**, paginando de a 1.000 con `Range` y exigiendo que lo traído coincida con el total de `Content-Range`.
+- `vercel.json`: rewrite `/sitemap.xml` → `/api/sitemap` **antes** del catch-all a `/index.html` (el catch-all quedó igual).
+- **Incluye** (dominio canónico `https://www.iguazumarketplace.com.ar`, sin barra final salvo la home): las 12 páginas indexables del router (`/`, `/categoria`, `/ofertas`, `/contacto`, `/preguntas-frecuentes`, `/nosotros`, `/envios`, `/medios-de-pago`, `/privacidad`, `/terminos`, `/devoluciones`, `/arrepentimiento`); cada `/producto/:slug` activo y no eliminado (`activo = true`, `deleted_at IS NULL`); cada `/categoria/:slug` **elegible**, con la misma lógica que la página: categoría activa cuyo subárbol de categorías activas (cualquier profundidad) contiene al menos un producto activo con stock disponible según `get_product_availability` (la grilla solo muestra esos).
+- **Excluye** todo lo `noindex` o con `Disallow` (admin, checkout, carrito, perfil, pedidos, pedido, pago, login, register, reset-password, report, búsqueda), `/categoria/:slug` sin productos visibles y rutas con parámetros.
+- `<lastmod>` (YYYY-MM-DD) solo en productos, desde `updated_at`; sin `priority` ni `changefreq`. XML con escapado de entidades, slugs con `encodeURIComponent`, sin duplicados y orden determinista (estáticas, categorías y productos por URL).
+- **Cache:** `Cache-Control: public, s-maxage=3600, stale-while-revalidate=86400` (CDN de Vercel, 1 h). **Ante falla** (Supabase con error, datos incompletos, 0 productos o falta de configuración) responde **503** con `Retry-After` y `Cache-Control: no-store`: nunca se cachea un sitemap vacío ni parcial.
+- **Límite:** con más de **45.000 URLs** responde 503 en vez de un XML inválido; al acercarse a ese número hay que pasar a un **sitemap index** (varios sitemaps).
+- `public/robots.txt`: se agregó `Sitemap: https://www.iguazumarketplace.com.ar/sitemap.xml` (User-agent, Allow y los 12 Disallow sin cambios).
+
+### Plan de las siguientes tandas (en este orden)
+
+1. **Tanda 2:** función que inyecta en el HTML de `/producto/:slug` y `/categoria/:slug`, para **todos** los visitantes (sin lista de user-agents): title, description, canonical, `og:*` con `og:url` y `og:image` reales, JSON-LD `Product`/`Offer` (con `AggregateOffer` para productos con variantes) y `BreadcrumbList`, con el mismo criterio de datos que `Seo.tsx` y `ProductPage`.
+2. **Tanda 3:** 404 reales (slugs inexistentes o inactivos y rutas fuera del router), conservando la UI de la SPA.
+3. **Tanda 4:** rendimiento: cache `immutable` para `/assets`, preload de la fuente, imágenes redimensionadas/`srcset`, lazy-loading y LCP de categoría.
+4. **Tanda 5:** JSON-LD extra (`ItemList`, `FAQPage`; completar `Offer` con `priceValidUntil`, `shippingDetails` y `hasMerchantReturnPolicy`, sin inventar ratings), `h1` en la home y 301 del `/producto/:id` numérico.
+
+**Decisión:** por ahora **no** se migra a SSR ni a un framework; se sigue con la SPA + funciones de Vercel puntuales.
+
+**Pendiente del dueño:** dar de alta Google Search Console (propiedad de dominio) y enviar el sitemap.
+
+**Método de trabajo:** desde 2026-10-26 las tandas de backend las ejecuta **Claude Code (backend)**, porque se agotó la cuota gratuita de opencode.
 
 ---
 

@@ -13,3 +13,5 @@ Disallow: /register
 Disallow: /reset-password
 Disallow: /report
 Disallow: /busqueda
+
+Sitemap: https://www.iguazumarketplace.com.ar/sitemap.xml
